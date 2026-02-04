@@ -27,7 +27,7 @@ Alice <-- Bob: another authentication Response
 
 === Runtime Scenario 2: Playthrough of a Game against a Bot
 
-The following diagram describes the playthrough of a game (start, turns, and finalization)
+The following diagram shows the flow of a normal playthrough of a game against a bot (initialization, turns, and finalization):
 
 [plantuml,"User VS Bot Game Diagram",png]
 ----
@@ -63,3 +63,23 @@ else Bot wins
     GUI --> User: Show defeat screen
 end
 ----
+
+As such, a standard playthrough would be:
+
+1. A user navigates to the game initialization
+2. The backend initializes a bot that is returned, therefore initializing the game
+3. The main loop of the game is initialized
+
+Then the loop of the turns would be:
+
+1. The user makes a move
+2. The move is returned to the backend
+3. A bot move is requested
+4. The move of the bot is done and send to the GUI
+
+It will continue until the game ends, and once that happens:
+
+1. The result of the game is stored in the database (either user wins or user loses)
+2. The backend sends a signal to the GUI with the result of the game
+3. Depending on the result, either a victory or a defeated screen is shown (which could be the same screen with different information, but this is a design decision)
+4. The bot is released  
