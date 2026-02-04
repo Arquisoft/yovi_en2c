@@ -3,72 +3,14 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-concepts]]
 == Cross-cutting Concepts
 
+=== Internationalization
+For the application to be more accessible to a wider range of uses, internationalization was implemented for the languages of english and spanish.
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-.Content
-This section describes overall, principal regulations and solution ideas that are relevant in multiple parts (= cross-cutting) of your system.
-Such concepts are often related to multiple building blocks.
-They can include many different topics, such as
+=== Testing
+Testing every piece of code implemented is critical in order to achieve a sustainable system an lowering the risk of having errors and bugs. For this not only do we have mock tests for the source code, but the Github repository will also use sonarqube to ensure proper coverage.
 
-* models, especially domain models
-* architecture or design patterns
-* rules for using specific technology
-* principal, often technical decisions of an overarching (= cross-cutting) nature
-* implementation rules
+=== Security
+The security features are heavily related to the previous point, as the lowerment of risks and possible breaches is reinforced by testing. Nevertheless, it is also worth adding that the use of a virtual machine and the isolation of the docker containers will also contribute to make the system safer overall, as well as the possible use of Github secrets in the deployment of the application.
 
-
-.Motivation
-Concepts form the basis for _conceptual integrity_ (consistency, homogeneity) of the architecture. 
-Thus, they are an important contribution to achieve inner qualities of your system.
-
-Some of these concepts cannot be assigned to individual building blocks, e.g. security or safety. 
-
-
-.Form
-The form can be varied:
-
-* concept papers with any kind of structure
-* cross-cutting model excerpts or scenarios using notations of the architecture views
-* sample implementations, especially for technical concepts
-* reference to typical usage of standard frameworks (e.g. using Hibernate for object/relational mapping)
-
-.Structure
-A potential (but not mandatory) structure for this section could be:
-
-* Domain concepts
-* User Experience concepts (UX)
-* Safety and security concepts
-* Architecture and design patterns
-* "Under-the-hood"
-* development concepts
-* operational concepts
-
-Note: it might be difficult to assign individual concepts to one specific topic
-on this list.
-
-image::08-concepts-EN.drawio.png["Possible topics for crosscutting concepts"]
-
-
-.Further Information
-
-See https://docs.arc42.org/section-8/[Concepts] in the arc42 documentation.
-****
-endif::arc42help[]
-
-=== _<Concept 1>_
-
-_<explanation>_
-
-
-
-=== _<Concept 2>_
-
-_<explanation>_
-
-...
-
-=== _<Concept n>_
-
-_<explanation>_
+=== Gateway
+The gateway service is an architectural feature that works as a bridge between the different microservices implemented, being its main function connecting the gamey service (which is in charge of the functionality of the Game Y) and the webapp, which is the GUI that allows the user to interact with the game and play it.

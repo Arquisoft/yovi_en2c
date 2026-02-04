@@ -5,7 +5,7 @@ ifndef::imagesdir[:imagesdir: ../images]
 
 == Deployment View
 [.text-center]
-image::../images/07_deployment.png[]
+image::deployment.png["Deployment view diagram"]
 
 Motivation::
 The application is built to use Docker and a Virtual Machine as a host in such a way that it combines the portability of the containers with the security and isolation features of the VM.
