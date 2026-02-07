@@ -1,17 +1,31 @@
 ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-building-block-view]]
-
-
 == Building Block View
 
 This section describes the static decomposition of the YOVI system into its main building blocks and their dependencies.
 
 === Whitebox Overall System
 
-
 _**Context Diagram: YOVI High-Level Components**_
-image::05_yovi_System_Architecture.png["YOVI System - Context Diagram (Level 1)", width="600"]
+
+[source,mermaid]
+....
+flowchart TD
+    User["Human User"] -->|Uses Web Interface| WebApp
+    Bot["External Bot"] -->|Calls Public Bot API| WebApp
+
+    WebApp["yovi_web_app<br/>TypeScript/React"] -->|Game Management API<br/><i>YEN/JSON over HTTP</i>| Engine
+    Engine["yovi_game_engine<br/>Rust Service"]
+
+    classDef frontend fill:#dae8fc,stroke:#6c8ebf
+    classDef backend fill:#d5e8d4,stroke:#82b366
+    classDef actor fill:#f5f5f5,stroke:#666
+
+    class WebApp frontend
+    class Engine backend
+    class User,Bot actor
+....
 
 The diagram above illustrates the top-level decomposition of the YOVI system and its external actors (Users and Bots).
 
@@ -62,7 +76,7 @@ validate moves, check for a winning condition, and calculate the next move for t
 correctness is critical.
 *   **Directory/File Location**: `/game-engine/` (Contains Rust source code, Cargo.toml).
 *   **Fulfilled Requirements**: Game rule verification, AI move suggestion with multiple strategies.
-*   **Open Issues/Problems/Risks**: Performance of complex AI strategies on large boards. Learning curve for Rust .
+*   **Open Issues/Problems/Risks**: Performance of complex AI strategies on large boards. Learning curve for Rust (See ADR 3 and Section 11).
 
 === Level 2
 
@@ -71,29 +85,79 @@ Here we detail the internal structure of the two main building blocks.
 ==== White Box `yovi_web_app`
 
 _**Decomposition of the Web Application**_
-image::05_yovi_web_app_Nivel_2.png["White Box: yovi_web_app (Level 2)", width="600"]
+
+[source,mermaid]
+....
+flowchart TD
+    subgraph WebApp[yovi_web_app]
+        UI[UI Layer<br/><i>React Components</i>]
+        API[API Client & State Manager]
+        Router[Public API Router]
+        Service[User & Session Service]
+
+        UI --> API
+        API --> Router
+        Router --> Service
+    end
+
+    UI -->|Renders game board<br/>Implements i18n & responsive| UserInterface[Web Browser]
+    Router -->|Exposes /api/v1/*<br/>Handles bot auth| ExternalBot[External Bot]
+    API -->|Calls| GameEngine[yovi_game_engine]
+
+    classDef component fill:#f5f5f5,stroke:#666,color:#333
+    classDef external fill:#e1d5e7,stroke:#9673a6
+
+    class UI,API,Router,Service component
+    class UserInterface,ExternalBot,GameEngine external
+
+    style WebApp fill:#fff,stroke:#6c8ebf,stroke-width:2px
+....
 
 The web application is decomposed into four main components:
 
 * **`UI Layer (React Components)`**: Responsible for rendering all user interfaces, including the game board, user
-dashboard, and registration forms.Implements i18n and responsive design (aligned with ADR 1 & 2).
+dashboard, and registration forms. Implements i18n and responsive design (aligned with ADR 1 & 2).
 * **`API Client & State Manager`**: Manages the application state (e.g., current game, user info) and handles all
-communication with the backend `Game Management API`.Transforms data between frontend models and YEN notation.
-* **`Public API Router`**: Implements and exposes the external `Public Bot API`.It authenticates requests, manages
+communication with the backend `Game Management API`. Transforms data between frontend models and YEN notation.
+* **`Public API Router`**: Implements and exposes the external `Public Bot API`. It authenticates requests, manages
 bot sessions, and translates between the public API calls and internal application logic.
 * **`User & Session Service`**: Handles business logic for user authentication, registration, and persistence/retrieval
 of game history and statistics.
 
-[#_white_box_yovi_game_engine]
 ==== White Box `yovi_game_engine`
+
 _**Decomposition of the Game Engine**_
-image::05_yovi_game_engine_Nivel_2.png["White Box: yovi_game_engine (Level 2)", width="600"]
+
+[source,mermaid]
+....
+flowchart LR
+    subgraph Engine[yovi_game_engine]
+        Parser[YEN Parser & Validator]
+        Rules[Game Rules Core]
+        AI[AI Strategy Module]
+
+        Parser -->|Validated game state| Rules
+        Rules -->|Requests move| AI
+        AI -->|Returns move| Rules
+    end
+
+    WebApp[yovi_web_app] -->|Sends YEN JSON| Parser
+    Rules -->|Returns YEN response| WebApp
+
+    classDef component fill:#f5f5f5,stroke:#666,color:#333
+    classDef external fill:#dae8fc,stroke:#6c8ebf
+
+    class Parser,Rules,AI component
+    class WebApp external
+
+    style Engine fill:#fff,stroke:#82b366,stroke-width:2px
+....
 
 The game engine is decomposed into three logical components:
 
 * **`YEN Parser & Validator`**: Responsible for parsing incoming YEN JSON, validating its syntactic and semantic
 correctness against the current board rules, and serializing outgoing YEN states.
-* **`Game Rules Core`**: The single source of truth for all Game Y variants.Contains the logic for board representation,
+* **`Game Rules Core`**: The single source of truth for all Game Y variants. Contains the logic for board representation,
 move application, and win condition checking.
-* **`AI Strategy Module`**: Implements the pluggable strategy pattern (aligned with ADR 4).Contains different algorithms
+* **`AI Strategy Module`**: Implements the pluggable strategy pattern (aligned with ADR 4). Contains different algorithms
 (e.g., Minimax, Random) and difficulty levels that can be selected via the API request.
