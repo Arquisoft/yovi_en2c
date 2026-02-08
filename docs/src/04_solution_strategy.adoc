@@ -3,6 +3,63 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-solution-strategy]]
 == Solution Strategy
 
+The architecture of the application will be designed designed to ensure responsive gameplay, maintainable logic, and high usability, while remaining simple to extend.
+
+
+-TECHNOLOGY DECISIONS
+
+Programming Language: Rust
+
+Bot Implementation: Heuristic AI to guarantee predictable response times and deterministic behavior.
+
+User Interface: GUI framework to enable clear visualization of game state and give immediate feedback to the player.
+
+
+-ARCHITECTURAL DECOMPOSITION
+
+We will use Layered Architecture:
+
+Presentation Layer: Handles user interaction and visualization
+
+Game Logic Layer: Enforces rules and manages game state
+
+Bot AI Layer: Computes bot decisions independently of UI
+
+Infrastructure Layer: Logging, configuration, and error handling
+
+
+
+-DESIGN PATTERNS AND ARCHITECTURAL STRATEGIES
+
+Model–View–Controller (MVC)
+Ensures clear separation between game state, user interface, and control logic.
+
+Strategy Pattern for bot behavior
+Allows multiple bot difficulty levels and easy extension without modifying core logic.
+
+Observer Pattern for UI updates
+Ensures efficient and consistent propagation of game state changes.
+
+-QUALITY GOAL REALIZATION
+
+Performance: The game must respond in time to player actions.
+
+Usability: UI should be intuitive and players should be able to tell what to do either by the UI or by rules explaining the game.
+
+Scalability: The game must be able to accept changes in the way of playing or accept new features added in the future.
+
+Maintainability: The code should be easy to modify or extend and should have the proper comments and be structured to make it readable.
+
+Reliability: Game can run and tackle exceptions without crashing.
+
+Portability: The game should run on multiple platforms.
+
+
+-ORGANIZATIONAL AND PROCESS DECISIONS
+
+Development Process: Iterative and incremental to enable early validation of gameplay and bot behavior.
+
+Responsibility Separation: Different layers can be assigned to different developers.
 
 ifdef::arc42help[]
 [role="arc42help"]
