@@ -3,78 +3,101 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-context-and-scope]]
 == Context and Scope
 
+This section describes the context of the YOVI system, its external interfaces, and the boundaries between the system and its environment.
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-.Contents
-Context and scope - as the name suggests - delimits your system (i.e. your scope) from all its communication partners
-(neighboring systems and users, i.e. the context of your system). It thereby specifies the external interfaces.
+== Business Context
 
-If necessary, differentiate the business context (domain specific inputs and outputs) from the technical context (channels, protocols, hardware).
+YOVI is a web-based platform that allows users to play Game Y against the computer and enables external bots to interact with the system through a public API. The system is intended to be accessed through a web browser or programmatically via HTTP-based interfaces.
 
-.Motivation
-The domain interfaces and technical interfaces to communication partners are among your system's most critical aspects. Make sure that you completely understand them.
+The main external actors are:
 
-.Form
-Various options:
+* *Human players*, who access the system through a web frontend.
+* *Bots*, who interact with the system using the exposed API.
 
-* Context diagrams
-* Lists of communication partners and their interfaces.
+The YOVI system depends on a separate game engine module, implemented in Rust, which is responsible for validating game states, checking winning conditions, and suggesting the next move for the computer player.
 
+=== Business Context Diagram
 
-.Further Information
+## [plantuml]
 
-See https://docs.arc42.org/section-3/[Context and Scope] in the arc42 documentation.
+@startuml
+left to right direction
 
-****
-endif::arc42help[]
+actor "Human Player" as User
+actor "Bot" as Bot
 
-=== Business Context
+rectangle "YOVI Web Application" {
+component "Web Frontend"
+component "Backend / API"
+}
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-.Contents
-Specification of *all* communication partners (users, IT-systems, ...) with explanations of domain specific inputs and outputs or interfaces.
-Optionally you can add domain specific formats or communication protocols.
+rectangle "Rust Game Engine" {
+component "Game Logic"
+}
 
-.Motivation
-All stakeholders should understand which data are exchanged with the environment of the system.
+User --> "Web Frontend" : plays Game Y
+"Web Frontend" --> "Backend / API"
+Bot --> "Backend / API" : API calls
+"Backend / API" --> "Rust Game Engine" : YEN (JSON)
+"Rust Game Engine" --> "Backend / API" : move / result
 
-.Form
-All kinds of diagrams that show the system as a black box and specify the domain interfaces to communication partners.
+@enduml
 
-Alternatively (or additionally) you can use a table.
-The title of the table is the name of your system, the three columns contain the name of the communication partner, the inputs, and the outputs.
+== Technical Context
 
-****
-endif::arc42help[]
+From a technical point of view, YOVI consists of a web application and an external game engine service communicating over HTTP.
 
-**<Diagram or Table>**
+* The *web application* provides:
+  ** A browser-based user interface for human players.
+  ** A REST-style API for bot interaction and game management.
 
-**<optionally: Explanation of external domain interfaces>**
+* The *game engine service*:
+  ** Receives game states encoded in YEN notation.
+  ** Evaluates whether a game has been won.
+  ** Computes and returns the next move according to the selected strategy.
 
-=== Technical Context
+All communication between the web application and the game engine uses JSON messages following the YEN notation defined for Game Y.
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-.Contents
-Technical interfaces (channels and transmission media) linking your system to its environment. In addition a mapping of domain specific input/output to the channels, i.e. an explanation which I/O uses which channel.
+=== Technical Context Diagram
 
-.Motivation
-Many stakeholders make architectural decision based on the technical interfaces between the system and its context. Especially infrastructure or hardware designers decide these technical interfaces.
+## [plantuml]
 
-.Form
-E.g. UML deployment diagram describing channels to neighboring systems,
-together with a mapping table showing the relationships between channels and input/output.
+@startuml
 
-****
-endif::arc42help[]
+node "Client" {
+component "Web Browser"
+component "Bot Client"
+}
 
-**<Diagram or Table>**
+node "YOVI Web Application" {
+component "Frontend"
+component "API / Backend"
+}
 
-**<optionally: Explanation of technical interfaces>**
+node "Game Engine Service" {
+component "Rust Engine"
+}
 
-**<Mapping Input/Output to Channels>**
+"Web Browser" --> "Frontend" : HTTP
+"Bot Client" --> "API / Backend" : HTTP
+"Frontend" --> "API / Backend" : internal calls
+"API / Backend" --> "Rust Engine" : HTTP + JSON (YEN)
+"Rust Engine" --> "API / Backend" : HTTP + JSON
+
+@enduml
+
+== Scope
+
+The scope of the YOVI system includes:
+
+* Playing Game Y through a web interface.
+* Playing against the computer using multiple strategies.
+* User registration and access to basic statistics and match history.
+* A public API that allows bots to retrieve information and play matches.
+
+The following aspects are explicitly out of scope or optional:
+
+* Support for game variants other than the classic version of Game Y (unless implemented as optional features).
+* Mobile applications.
+* Advanced social features such as chat or video communication.
+* Multiplayer modes involving multiple human players.
