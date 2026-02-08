@@ -1,11 +1,11 @@
 ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-architecture-constraints]]
-= Architecture Constraints
+== Architecture Constraints
 
 This section lists the main constraints that shape the architecture of the YOVI system. These constraints come from the assignment requirements and limit the available architectural choices.
 
-== Technical Constraints
+=== Technical Constraints
 
 * The system is composed of at least two subsystems:
 ** A web application implemented in *TypeScript*.
@@ -19,7 +19,7 @@ This section lists the main constraints that shape the architecture of the YOVI 
 
 * The complete system must be *deployed and publicly accessible via the Web*.
 
-== Domain Constraints
+=== Domain Constraints
 
 * The system must implement the rules of *Game Y*. Support for the classic version of the game is mandatory.
 
@@ -29,7 +29,7 @@ This section lists the main constraints that shape the architecture of the YOVI 
 
 * The computer player must implement *more than one strategy*. The user must be able to select the strategy, optionally including different difficulty levels.
 
-== Organizational and Process Constraints
+=== Organizational and Process Constraints
 
 * The architecture and design decisions must be documented following the guidelines used in the course, including the use of Architectural Decision Records (ADRs).
 
@@ -39,7 +39,7 @@ This section lists the main constraints that shape the architecture of the YOVI 
 
 * The project should support automated build and deployment through CI/CD pipelines.
 
-== External Constraints
+=== External Constraints
 
 * External bots can only interact with the system through the exposed API and must not depend on internal implementation details.
 

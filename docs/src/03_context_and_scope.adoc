@@ -5,7 +5,7 @@ ifndef::imagesdir[:imagesdir: ../images]
 
 This section describes the context of the YOVI system, its external interfaces, and the boundaries between the system and its environment.
 
-== Business Context
+=== Business Context
 
 YOVI is a web-based platform that allows users to play Game Y against the computer and enables external bots to interact with the system through a public API. The system is intended to be accessed through a web browser or programmatically via HTTP-based interfaces.
 
@@ -16,13 +16,10 @@ The main external actors are:
 
 The YOVI system depends on a separate game engine module, implemented in Rust, which is responsible for validating game states, checking winning conditions, and suggesting the next move for the computer player.
 
-=== Business Context Diagram
+==== Business Context Diagram
 
-## [plantuml]
-
-@startuml
-left to right direction
-
+[plantuml,"Business context diagram",png]
+----
 actor "Human Player" as User
 actor "Bot" as Bot
 
@@ -40,10 +37,9 @@ User --> "Web Frontend" : plays Game Y
 Bot --> "Backend / API" : API calls
 "Backend / API" --> "Rust Game Engine" : YEN (JSON)
 "Rust Game Engine" --> "Backend / API" : move / result
+----
 
-@enduml
-
-== Technical Context
+=== Technical Context
 
 From a technical point of view, YOVI consists of a web application and an external game engine service communicating over HTTP.
 
@@ -58,12 +54,10 @@ From a technical point of view, YOVI consists of a web application and an extern
 
 All communication between the web application and the game engine uses JSON messages following the YEN notation defined for Game Y.
 
-=== Technical Context Diagram
+==== Technical Context Diagram
 
-## [plantuml]
-
-@startuml
-
+[plantuml,"Technical context diagram",png]
+----
 node "Client" {
 component "Web Browser"
 component "Bot Client"
@@ -83,10 +77,9 @@ component "Rust Engine"
 "Frontend" --> "API / Backend" : internal calls
 "API / Backend" --> "Rust Engine" : HTTP + JSON (YEN)
 "Rust Engine" --> "API / Backend" : HTTP + JSON
+----
 
-@enduml
-
-== Scope
+=== Scope
 
 The scope of the YOVI system includes:
 

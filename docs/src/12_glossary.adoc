@@ -43,4 +43,7 @@ ifndef::imagesdir[:imagesdir: ../images]
 |HTTP
 |The application-layer protocol used for communication between clients, bots, and system services.
 
+|Microservice
+|An architectural style in which a system is composed of small, independent services that communicate over a network and can be developed, deployed, and scaled separately.
+
 |===
