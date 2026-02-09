@@ -3,8 +3,6 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-design-decisions]]
 == Architecture Decisions
 
-== Architecture Decisions
-
 This section documents the most significant architectural decisions made during the design and development of the YOVI
 platform. Each decision follows the ADR (Architecture Decision Record) format to provide context, rationale, and
 consequences.
