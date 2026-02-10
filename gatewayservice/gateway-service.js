@@ -6,7 +6,7 @@ const app = express();
 const PORT = 8080;
 
 // External bot server (Rust)
-const BOT_SERVER = "http://gamey:3000";
+const BOT_SERVER = "http://gamey:4000";
 const API_VERSION = "v1";
 
 // middleware
@@ -208,4 +208,22 @@ app.get("/game/pvb/state", (req, res) => {
 // Server start
 app.listen(PORT, () => {
   console.log(`Gateway Service listening on http://localhost:${PORT}`);
+});
+
+/**
+ * User creation.
+ */
+app.post("/createuser", async (req, res) => {
+  try {
+    const response = await axios.post(
+      "http://localhost:3000/createuser",
+      req.body
+    );
+
+    res.json(response.data);
+  } catch (e) {
+    res.status(500).json({
+      error: "User service unavailable"
+    });
+  }
 });
