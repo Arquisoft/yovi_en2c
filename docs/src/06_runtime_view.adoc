@@ -4,26 +4,108 @@ ifndef::imagesdir[:imagesdir: ../images]
 == Runtime View
 
 
-=== <Runtime Scenario 1>
+=== Runtime Scenario 1: Playthgough of a Game against two players
 
+The following diagram shows the flow of a normal playthrough of a game with two players going against eachother :
 
-* _<insert runtime diagram or textual description of the scenario>_
-* _<insert description of the notable aspects of the interactions between the
-building block instances depicted in this diagram.>_
-
-It is possible to use a sequence diagram:
-
-[plantuml,"Sequence diagram",png]
+[plantuml,"User VS User Game Diagram",png]
 ----
-actor Alice
-actor Bob
-database Pod as "Bob's Pod"
-Alice -> Bob: Authentication Request
-Bob --> Alice: Authentication Response
-Alice  --> Pod: Store route
-Alice -> Bob: Another authentication Request
-Alice <-- Bob: another authentication Response
+actor User1
+actor User2
+actor GUI1 as "GUI (User1)"
+actor GUI2 as "GUI (User2)"
+actor Backend
+database Database as "Database"
+
+== Initialization ==
+User1 -> GUI1: Navigate to Game Initialization
+GUI1 -> Backend: Request multiplayer game
+
+Backend -> Backend: Create game session
+Backend -> Database: Store pending game session
+
+User2 -> GUI2: Join game
+GUI2 -> Backend: Request to join session
+Backend -> Database: Update game session (2 players connected)
+
+Backend --> GUI1: Game is initialized
+Backend --> GUI2: Game is initialized
+
+GUI1 --> User1: Render initialized game
+GUI2 --> User2: Render initialized game
+
+== Turns ==
+loop Each turn until game ends
+    User1 -> GUI1: Perform move
+    GUI1 -> Backend: Send move
+    Backend -> Database: Update game state
+    Backend --> GUI2: Updated game state
+    GUI2 --> User2: Render updated game state
+
+    User2 -> GUI2: Perform move
+    GUI2 -> Backend: Send move
+    Backend -> Database: Update game state
+    Backend --> GUI1: Updated game state
+    GUI1 --> User1: Render updated game state
+end
+
+== Finalization ==
+alt User1 wins
+    Backend -> Database: Store game result (User1 victory)
+    Backend --> GUI1: Game finished (User1 wins)
+    Backend --> GUI2: Game finished (User2 loses)
+    GUI1 --> User1: Show victory screen
+    GUI2 --> User2: Show defeat screen
+else User2 wins
+    Backend -> Database: Store game result (User2 victory)
+    Backend --> GUI1: Game finished (User1 loses)
+    Backend --> GUI2: Game finished (User2 wins)
+    GUI1 --> User1: Show defeat screen
+    GUI2 --> User2: Show victory screen
+end
 ----
+As such the standard gameplay would be as follows:
+
+Initialization:
+
+1. User1 navigates to game initialization.
+
+2. The backend creates a new game session and stores it.
+
+3. User2 joins the session.
+
+4. The backend confirms that both players are connected.
+
+5. The game loop is initialized.
+
+6. Both users see the initialized game state.
+
+Turns:
+
+1. The active player makes a move.
+
+2. The move is sent to the backend.
+
+3. The backend validates and updates the game state.
+
+4. The updated state is sent to the opponent.
+
+5. The opponent’s GUI renders the updated game state.
+
+6. The turn switches to the other player.
+
+
+Finalization:
+
+1. The backend stores the result of the game in the database (User1 victory or User2 victory).
+
+2. The backend sends the final result to both GUIs.
+
+3. The winner sees a victory screen.
+
+4. The loser sees a defeat screen.
+
+5. The game session is closed and resources are released.
 
 === Runtime Scenario 2: Playthrough of a Game against a Bot
 
