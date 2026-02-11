@@ -17,7 +17,8 @@ User Interface: GUI framework to enable clear visualization of game state and gi
 
 -ARCHITECTURAL DECOMPOSITION
 
-We will use Layered Architecture:
+
+We will use Layered Architecture based on the implementation of different microservices:
 
 Presentation Layer: Handles user interaction and visualization
 
@@ -27,6 +28,7 @@ Bot AI Layer: Computes bot decisions independently of UI
 
 Infrastructure Layer: Logging, configuration, and error handling
 
+Database Layer: Stores all the relevant data of the application
 
 
 -DESIGN PATTERNS AND ARCHITECTURAL STRATEGIES
@@ -59,7 +61,7 @@ Portability: The game should run on multiple platforms.
 
 Development Process: Iterative and incremental to enable early validation of gameplay and bot behavior.
 
-Responsibility Separation: Different layers can be assigned to different developers.
+Responsibility Separation: Different layers or microserviecs can be assigned to different developers.
 
 ifdef::arc42help[]
 [role="arc42help"]
