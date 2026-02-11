@@ -6,7 +6,7 @@ const app = express();
 const PORT = 8080;
 
 // External bot server (Rust)
-const BOT_SERVER = "http://localhost:3000"; //pending checking
+const BOT_SERVER = "http://localhost:3000";
 const API_VERSION = "v1";
 
 // middleware
