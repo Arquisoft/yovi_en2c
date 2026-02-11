@@ -20,27 +20,6 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// in memory games currently to support several users in the app
-//const games = new Map();
-
-// YEN HELPERS
-
-// Create an empty YEN board
-function createEmptyYEN(size) {
-  const rows = [];
-  for (let i = 1; i <= size; i++) {
-    rows.push(".".repeat(i));
-  }
-
-  return {
-    size,
-    turn: 0,
-    players: ["B", "R"],
-    layout: rows.join("/")
-  };
-}
-
-
 // PLAYER VS BOT
 app.post("/game/pvb/move", async (req, res) => {
   try {
