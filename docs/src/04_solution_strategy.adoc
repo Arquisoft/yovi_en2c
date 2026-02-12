@@ -8,8 +8,6 @@ The architecture of the application will be designed designed to ensure responsi
 
 -TECHNOLOGY DECISIONS
 
-Programming Language: Rust
-
 Bot Implementation: Heuristic AI to guarantee predictable response times and deterministic behavior.
 
 User Interface: GUI framework to enable clear visualization of game state and give immediate feedback to the player.
@@ -18,15 +16,15 @@ User Interface: GUI framework to enable clear visualization of game state and gi
 -ARCHITECTURAL DECOMPOSITION
 
 
-We will use Layered Architecture based on the implementation of different microservices:
+We will use Model-View-Controller Architecture based on the implementation of different microservices:
 
-Presentation Layer: Handles user interaction and visualization
+Presentation Layer: Handles visualization
 
 Game Logic Layer: Enforces rules and manages game state
 
 Bot AI Layer: Computes bot decisions independently of UI
 
-Infrastructure Layer: Logging, configuration, and error handling
+Infrastructure Layer: Logging, configuration, error handling user interaction
 
 Database Layer: Stores all the relevant data of the application
 
@@ -63,6 +61,7 @@ Development Process: Iterative and incremental to enable early validation of gam
 
 Responsibility Separation: Different layers or microserviecs can be assigned to different developers.
 
+Kanban: We will use it as a tool to organize the task and have a clear visualization of the work relative to the rest of the team.
 ifdef::arc42help[]
 [role="arc42help"]
 ****
