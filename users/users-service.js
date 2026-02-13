@@ -116,7 +116,7 @@ app.post('/gameresult', async (req, res) => {
         }
 
         // user existance verification
-        const userExists = await User.findOne({ username });
+        const userExists = await User.findOne({ username: username.toString() });
         if (!userExists) {
             return res.status(404).json({
                 success: false,
@@ -155,9 +155,9 @@ app.get('/history/:username', async (req, res) => {
         const { username } = req.params;
         const { limit = 20 } = req.query; // By defect 20 games (Can be changed)
 
-        const history = await GameResult.find({ username })
+        const history = await GameResult.find({ username : username.toString() })
             .sort({ date: -1 }) // Order : from today to the past
-            .limit(parseInt(limit));
+            .limit(Number.parseInt(limit));
 
         // Stats
         const stats = {
