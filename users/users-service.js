@@ -1,9 +1,7 @@
 
 const express = require('express');
 const mongoose = require('mongoose');
-
-// DATA BASE CONECTION (MongoDB)
-// Import from db file
+require('dotenv').config();
 require('./db');
 
 // IMPORT MODELS
@@ -230,19 +228,24 @@ app.get('/health', async (req, res) => {
     });
 });
 
+module.exports = app;
+
 
 // =============================== START THE SERVER   ======================================
 
-app.listen(PORT, () => {
-    console.log(`USERS SERVER running in port :  http://localhost:${PORT}`);
-    console.log(`Available endpoints :`);
-    console.log(`   POST   /createuser`);
-    console.log(`   GET    /users`);
-    console.log(`   POST   /gameresult`);
-    console.log(`   GET    /history/:username`);
-    console.log(`   GET    /ranking`);
-    console.log(`   GET    /health`);
-});
+if (require.main === module) {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+        console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+        console.log(`📡 Endpoints disponibles:`);
+        console.log(`   POST   /createuser`);
+        console.log(`   GET    /users`);
+        console.log(`   POST   /gameresult`);
+        console.log(`   GET    /history/:username`);
+        console.log(`   GET    /ranking`);
+        console.log(`   GET    /health`);
+    });
+}
 
 // Handeling for not cactched errors
 process.on('unhandledRejection', (error) => {
