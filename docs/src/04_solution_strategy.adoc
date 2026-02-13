@@ -6,62 +6,77 @@ ifndef::imagesdir[:imagesdir: ../images]
 The architecture of the application will be designed designed to ensure responsive gameplay, maintainable logic, and high usability, while remaining simple to extend.
 
 
--TECHNOLOGY DECISIONS
+=== Technology Decisions
 
-Bot Implementation: Heuristic AI to guarantee predictable response times and deterministic behavior.
+This section explains the core technological foundations of the system and why they were selected:
 
-User Interface: GUI framework to enable clear visualization of game state and give immediate feedback to the player.
+- Bot Implementation: Heuristic AI to guarantee predictable response times and deterministic behavior which simplifies testing. A trade-off of this choice would be that a heuristic model is less adaptable than a machine learning model and may make less rational decisions in higher dificulties.
+
+- User Interface: GUI framework to enable clear visualization of game state and give immediate feedback to the player. This will make the experience more enjoyable for the player, however it will be harder to develop than a text-based game.
+
+- Database: We decided to integrate a Database in order to store user related data. However this will increase system complexity.
+
+- Internationalization: We will make it so the game can be internationalized. We will make it in English and Spanish, but we will code it in such a way any language or region could be easily implemented. This will require string management from the very beginning and a more complex UI.
 
 
--ARCHITECTURAL DECOMPOSITION
+=== Organizational and Process Decisions
 
+This section explains the way the team organizes itself to ensure quality:
+
+- Development Process: Iterative and incremental to enable early validation of gameplay and bot behavior. This will require planning of every stage of development.
+
+- Responsibility Separation: Different layers or microserviecs can be assigned to different developers. This will increase modularity, encourage parallel programming and reduces coupling, however it requires more communication and coordination between developers.
+
+- Kanban: We will use it as a tool to organize the task and have a clear visualization of the work relative to the rest of the team. It will require continuous updating.
+
+
+=== Architectural Decomposition
 
 We will use Model-View-Controller Architecture based on the implementation of different microservices:
 
-Presentation Layer: Handles visualization
+- Presentation Layer: Handles visualization.
 
-Game Logic Layer: Enforces rules and manages game state
+- Game Logic Layer: Enforces rules and manages game state.
 
-Bot AI Layer: Computes bot decisions independently of UI
+- Bot AI Layer: Computes bot decisions independently of UI.
 
-Infrastructure Layer: Logging, configuration, error handling user interaction
+- Infrastructure Layer: Logging, configuration, error handling user interaction.
 
-Database Layer: Stores all the relevant data of the application
-
-
--DESIGN PATTERNS AND ARCHITECTURAL STRATEGIES
-
-Model–View–Controller (MVC)
-Ensures clear separation between game state, user interface, and control logic.
-
-Strategy Pattern for bot behavior
-Allows multiple bot difficulty levels and easy extension without modifying core logic.
-
-Observer Pattern for UI updates
-Ensures efficient and consistent propagation of game state changes.
-
--QUALITY GOAL REALIZATION
-
-Performance: The game must respond in time to player actions.
-
-Usability: UI should be intuitive and players should be able to tell what to do either by the UI or by rules explaining the game.
-
-Scalability: The game must be able to accept changes in the way of playing or accept new features added in the future.
-
-Maintainability: The code should be easy to modify or extend and should have the proper comments and be structured to make it readable.
-
-Reliability: Game can run and tackle exceptions without crashing.
-
-Portability: The game should run on multiple platforms.
+- Database Layer: Stores all the relevant data of the application.
 
 
--ORGANIZATIONAL AND PROCESS DECISIONS
+=== Design Patterns
 
-Development Process: Iterative and incremental to enable early validation of gameplay and bot behavior.
+Our main goal will be to create a game that can be easily modified and easily adapts to future changes in the code, for example, that allows new features or rules into the game. That's why we chose that our project follow these design patterns:
 
-Responsibility Separation: Different layers or microserviecs can be assigned to different developers.
+- Model–View–Controller (MVC): Ensures clear separation between game state, user interface, and control logic.
 
-Kanban: We will use it as a tool to organize the task and have a clear visualization of the work relative to the rest of the team.
+- Strategy Pattern for bot behavior: Allows multiple bot difficulty levels and easy extension without modifying core logic.
+
+- Observer Pattern for UI updates: Ensures efficient and consistent propagation of game state changes.
+
+=== Quality Goal Realization
+
+This section contains the main quality goals that our project aspires for:
+
+- Performance: The game must respond in time to player actions.
+
+- Usability: UI should be intuitive and players should be able to tell what to do either by the UI or by rules explaining the game.
+
+- Scalability: The game must be able to accept changes in the way of playing or accept new features added in the future.
+
+- Maintainability: The code should be easy to modify or extend and should have the proper comments and be structured to make it readable.
+
+- Reliability: Game can run and tackle exceptions without crashing.
+
+- Portability: The game should run on multiple platforms.
+
+=== Conclusion
+
+Our solution strategy deliberately prioritizes modularity, predictability, and extensibility.
+
+
+
 ifdef::arc42help[]
 [role="arc42help"]
 ****
