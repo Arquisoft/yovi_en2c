@@ -6,7 +6,7 @@ const app = express();
 const PORT = 8080;
 
 // External bot server (Rust)
-const BOT_SERVER = "http://localhost:3000";
+const GAME_SERVER = "http://localhost:3000";
 const API_VERSION = "v1";
 
 // middleware
@@ -19,6 +19,27 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+
+// NEW GAME CREATION
+app.post("/game/new", async (req, res) => {
+  try {
+    const response = await axios.post(
+      `${GAME_SERVER}/game/new`,
+      req.body
+    );
+
+    res.json({
+      ok: true,
+      yen: response.data
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      error: "Game server unavailable"
+    });
+  }
+});
 
 // PLAYER VS BOT
 app.post("/game/pvb/move", async (req, res) => {
@@ -33,16 +54,15 @@ app.post("/game/pvb/move", async (req, res) => {
     }
 
     const botId = bot || "random_bot";
-    console.log("Calling:", `${BOT_SERVER}/${API_VERSION}/ybot/choose/${botId}`);
-
+    console.log("Calling ->", `${GAME_SERVER}/${API_VERSION}/game/pvb/${botId}`);
     const botResponse = await axios.post(
-      `${BOT_SERVER}/${API_VERSION}/ybot/choose/${botId}`,
+      `${GAME_SERVER}/${API_VERSION}/game/pvb/${botId}`,
       yen
     );
 
     return res.json({
       ok: true,
-      botMove: botResponse.data
+      yen: botResponse.data
     });
 
   } catch (err) {
@@ -60,6 +80,7 @@ app.post("/game/pvb/move", async (req, res) => {
 // Server start
 app.listen(PORT, () => {
   console.log(`Gateway Service listening on http://localhost:${PORT}`);
+  console.log("Gateway connected to Rust server at", GAME_SERVER);
 });
 
 

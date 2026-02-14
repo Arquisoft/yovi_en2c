@@ -1,4 +1,4 @@
-use crate::error::ErrorResponse;
+use crate::game_server::error::ErrorResponse;
 
 /// The currently supported API version.
 pub const SUPPORTED_VERSION: &str = "v1";

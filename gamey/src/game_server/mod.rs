@@ -19,17 +19,27 @@
 //! }
 //! ```
 
-pub mod choose;
 pub mod error;
 pub mod state;
 pub mod version;
+
+pub mod bot {
+    pub mod choose;
+}
+
+pub mod game {
+    pub mod pvb;
+    pub mod new; // starts game
+    pub mod pvp; // for the future endpoint
+}
+
 use axum::response::IntoResponse;
 use std::sync::Arc;
-pub use choose::MoveResponse;
+pub use bot::choose::MoveResponse;
 pub use error::ErrorResponse;
 pub use version::*;
 
-use crate::{GameYError, RandomBot, YBotRegistry, state::AppState};
+use crate::{GameYError, RandomBot, YBotRegistry, game_server::state::AppState};
 
 /// Creates the Axum router with the given state.
 ///
@@ -39,7 +49,19 @@ pub fn create_router(state: AppState) -> axum::Router {
         .route("/status", axum::routing::get(status))
         .route(
             "/{api_version}/ybot/choose/{bot_id}",
-            axum::routing::post(choose::choose),
+            axum::routing::post(bot::choose::choose),
+        )
+        .route(
+            "/{api_version}/game/pvb/{bot_id}",
+            axum::routing::post(game::pvb::pvb_move),
+        )
+        .route( // for the future
+            "/{api_version}/game/pvp",
+            axum::routing::post(game::pvp::pvp_move),
+        )
+        .route(
+            "/game/new",
+            axum::routing::post(game::new::new_game),
         )
         .with_state(state)
 }
@@ -52,7 +74,7 @@ pub fn create_default_state() -> AppState {
     AppState::new(bots)
 }
 
-/// Starts the bot server on the specified port.
+/// Starts the game server on the specified port.
 ///
 /// This function blocks until the server is shut down.
 ///
