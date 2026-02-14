@@ -9,7 +9,7 @@
 //!
 //! # Example
 //! ```no_run
-//! use gamey::run_bot_server;
+//! use gamey::game_server::run_bot_server;
 //!
 //! #[tokio::main]
 //! async fn main() {

@@ -14,7 +14,7 @@ pub const SUPPORTED_VERSION: &str = "v1";
 ///
 /// # Example
 /// ```
-/// use gamey::check_api_version;
+/// use gamey::game_server::check_api_version;
 ///
 /// assert!(check_api_version("v1").is_ok());
 /// assert!(check_api_version("v2").is_err());
