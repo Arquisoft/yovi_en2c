@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import request from 'supertest'
-import app from '../src/gateway-service.js'
+import app from '../gateway-service.js'
 import axios from 'axios'
 
 vi.mock('axios')
