@@ -112,13 +112,6 @@ app.post("/game/bot/choose", async (req, res) => {
   }
 });
 
-// Server start
-app.listen(PORT, () => {
-  console.log(`Gateway Service listening on http://localhost:${PORT}`);
-  console.log("Gateway connected to Rust server at", GAME_SERVER);
-});
-
-
 // User creation
 app.post("/createuser", async (req, res) => {
   try {
@@ -134,3 +127,13 @@ app.post("/createuser", async (req, res) => {
     });
   }
 });
+
+// exporting without running the server
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`Gateway Service listening on http://localhost:${PORT}`);
+    console.log("Gateway connected to Rust server at", GAME_SERVER);
+  });
+}
+
+export default app;
