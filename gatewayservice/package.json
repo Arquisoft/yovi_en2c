@@ -2,10 +2,10 @@
   "name": "gatewayservice",
   "version": "1.0.0",
   "description": "Gateway service for the Game of Y",
-  "main": "gateway-service.js",
+  "main": "src/gateway-service.js",
   "type": "module",
   "scripts": {
-    "start": "node gateway-service.js",
+    "start": "node src/gateway-service.js",
     "test": "vitest run --coverage",
     "test:coverage": "vitest run --coverage"
   },
