@@ -1,4 +1,5 @@
-use crate::{Coordinates, GameY, YEN, check_api_version, error::ErrorResponse, state::AppState};
+use crate::{Coordinates, GameY, YEN};
+use crate::game_server::{version::check_api_version, error::ErrorResponse, state::AppState};
 use axum::{
     Json,
     extract::{Path, State},

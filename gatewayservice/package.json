@@ -1,0 +1,21 @@
+{
+  "name": "gatewayservice",
+  "version": "1.0.0",
+  "description": "Gateway service for the Game of Y",
+  "main": "gateway-service.js",
+  "type": "module",
+  "scripts": {
+    "start": "node gateway-service.js",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "express": "^5.0.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.4",
+    "vitest": "^4.0.15",
+    "@vitest/coverage-v8": "^4.0.15"
+  }
+}
