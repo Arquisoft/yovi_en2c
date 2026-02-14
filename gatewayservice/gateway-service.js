@@ -41,7 +41,7 @@ app.post("/game/new", async (req, res) => {
   }
 });
 
-// PLAYER VS BOT
+// PLAYER VS BOT - returns the whole YEN board with a new move
 app.post("/game/pvb/move", async (req, res) => {
   try {
     const { yen, bot } = req.body;
@@ -73,6 +73,41 @@ app.post("/game/pvb/move", async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: "Bot server unavailable"
+    });
+  }
+});
+
+// PLAYER VS BOT - returns the coords of the move only
+app.post("/game/bot/choose", async (req, res) => {
+  try {
+    const { yen, bot } = req.body;
+
+    if (!yen) {
+      return res.status(400).json({
+        ok: false,
+        error: "Missing YEN object"
+      });
+    }
+
+    const botId = bot || "random_bot";
+
+    const response = await axios.post(
+      `${GAME_SERVER}/${API_VERSION}/ybot/choose/${botId}`,
+      yen
+    );
+
+    return res.json({
+      ok: true,
+      coordinates: response.data
+    });
+
+  } catch (err) {
+    console.log("AXIOS ERROR:", err.message);
+    console.log("AXIOS ERROR FULL:", err.response?.data);
+
+    return res.status(500).json({
+      ok: false,
+      error: err.message
     });
   }
 });
