@@ -30,7 +30,6 @@ pub mod bot {
 pub mod game {
     pub mod pvb;
     pub mod new; // starts game
-    pub mod pvp; // for the future endpoint
 }
 
 use axum::response::IntoResponse;
@@ -54,10 +53,6 @@ pub fn create_router(state: AppState) -> axum::Router {
         .route(
             "/{api_version}/game/pvb/{bot_id}",
             axum::routing::post(game::pvb::pvb_move),
-        )
-        .route( // for the future
-            "/{api_version}/game/pvp",
-            axum::routing::post(game::pvp::pvp_move),
         )
         .route(
             "/game/new",
@@ -111,4 +106,34 @@ pub async fn run_bot_server(port: u16) -> Result<(), GameYError> {
 /// Returns "OK" to indicate the server is running.
 pub async fn status() -> impl IntoResponse {
     "OK"
+}
+
+
+#[cfg(test)]
+mod router_tests {
+    use super::*;
+    use axum::http::{Request, StatusCode};
+    use axum::body::Body;
+    use tower::ServiceExt;
+    use crate::bot::ybot_registry::YBotRegistry;
+
+    #[tokio::test]
+    async fn test_unknown_route_returns_404() {
+        let state = crate::game_server::state::AppState::new(
+            YBotRegistry::default()
+        );
+
+        let app = create_router(state);
+
+        let response = app
+            .oneshot(
+                Request::get("/unknown")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
 }
