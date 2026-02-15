@@ -3,6 +3,7 @@ import axios from "axios";
 import crypto from "crypto";
 
 const app = express();
+app.disable('x-powered-by');
 const PORT = 8080;
 
 // External bot server (Rust)
