@@ -5,28 +5,22 @@ const app = express();
 app.disable("x-powered-by");
 const PORT = 8080;
 
+// SOLO base URL, no URLs completas
+const GAME_BASE_URL = "http://localhost:4000";
+const USER_BASE_URL = "http://localhost:3000";
+
 app.use(express.json());
 
-// STATIC ROUTES
-const PVB_MOVE_ROUTES = {
-  random_bot: "http://localhost:4000/v1/game/pvb/random_bot",
-  smart_bot: "http://localhost:4000/v1/game/pvb/smart_bot"
-};
-
-const BOT_CHOOSE_ROUTES = {
-  random_bot: "http://localhost:4000/v1/ybot/choose/random_bot",
-  smart_bot: "http://localhost:4000/v1/ybot/choose/smart_bot"
-};
-
-const GAME_NEW_URL = "http://localhost:4000/game/new";
-const CREATE_USER_URL = "http://localhost:3000/createuser";
-
-/* ======================
+/* =========================
    NEW GAME
-====================== */
+========================= */
+
 app.post("/game/new", async (req, res) => {
   try {
-    const response = await axios.post(GAME_NEW_URL, req.body);
+    const response = await axios.post(
+      `${GAME_BASE_URL}/game/new`,
+      req.body
+    );
 
     return res.status(200).json({
       ok: true,
@@ -41,9 +35,10 @@ app.post("/game/new", async (req, res) => {
   }
 });
 
-/* ======================
+/* =========================
    PVB MOVE
-====================== */
+========================= */
+
 app.post("/game/pvb/move", async (req, res) => {
   const { yen, bot } = req.body;
 
@@ -54,17 +49,25 @@ app.post("/game/pvb/move", async (req, res) => {
     });
   }
 
-  const route = PVB_MOVE_ROUTES[bot];
-
-  if (!route) {
-    return res.status(400).json({
-      ok: false,
-      error: "Invalid bot id"
-    });
-  }
-
   try {
-    const response = await axios.post(route, yen);
+    let response;
+
+    if (bot === "random_bot") {
+      response = await axios.post(
+        `${GAME_BASE_URL}/v1/game/pvb/random_bot`,
+        yen
+      );
+    } else if (bot === "smart_bot") {
+      response = await axios.post(
+        `${GAME_BASE_URL}/v1/game/pvb/smart_bot`,
+        yen
+      );
+    } else {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid bot id"
+      });
+    }
 
     return res.status(200).json({
       ok: true,
@@ -79,9 +82,10 @@ app.post("/game/pvb/move", async (req, res) => {
   }
 });
 
-/* ======================
+/* =========================
    BOT CHOOSE
-====================== */
+========================= */
+
 app.post("/game/bot/choose", async (req, res) => {
   const { yen, bot } = req.body;
 
@@ -92,17 +96,25 @@ app.post("/game/bot/choose", async (req, res) => {
     });
   }
 
-  const route = BOT_CHOOSE_ROUTES[bot];
-
-  if (!route) {
-    return res.status(400).json({
-      ok: false,
-      error: "Invalid bot id"
-    });
-  }
-
   try {
-    const response = await axios.post(route, yen);
+    let response;
+
+    if (bot === "random_bot") {
+      response = await axios.post(
+        `${GAME_BASE_URL}/v1/ybot/choose/random_bot`,
+        yen
+      );
+    } else if (bot === "smart_bot") {
+      response = await axios.post(
+        `${GAME_BASE_URL}/v1/ybot/choose/smart_bot`,
+        yen
+      );
+    } else {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid bot id"
+      });
+    }
 
     return res.status(200).json({
       ok: true,
@@ -117,12 +129,16 @@ app.post("/game/bot/choose", async (req, res) => {
   }
 });
 
-/* ======================
+/* =========================
    CREATE USER
-====================== */
+========================= */
+
 app.post("/createuser", async (req, res) => {
   try {
-    const response = await axios.post(CREATE_USER_URL, req.body);
+    const response = await axios.post(
+      `${USER_BASE_URL}/createuser`,
+      req.body
+    );
 
     return res.status(200).json(response.data);
 
