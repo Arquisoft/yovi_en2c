@@ -6,8 +6,13 @@ const app = express();
 app.disable('x-powered-by');
 const PORT = 8080;
 
+// Users
+const USERS = "http://localhost:4000";
+
 // External bot server (Rust)
-const GAME_SERVER = "http://localhost:3000";
+const GAME_SERVER = "http://localhost:4000";
+const GAME_SERVER_NEW = "http://localhost:4000/game/new";
+const ALLOWED_BOTS = ["random_bot", "smart_bot"];
 const API_VERSION = "v1";
 
 // middleware
@@ -25,7 +30,7 @@ app.use(express.json());
 app.post("/game/new", async (req, res) => {
   try {
     const response = await axios.post(
-      `${GAME_SERVER}/game/new`,
+      `${GAME_SERVER_NEW}`,
       req.body
     );
 
@@ -54,12 +59,15 @@ app.post("/game/pvb/move", async (req, res) => {
       });
     }
 
-    const botId = bot || "random_bot";
-    console.log("Calling ->", `${GAME_SERVER}/${API_VERSION}/game/pvb/${botId}`);
-    const botResponse = await axios.post(
-      `${GAME_SERVER}/${API_VERSION}/game/pvb/${botId}`,
-      yen
-    );
+    if (!bot || !ALLOWED_BOTS.includes(bot)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid bot id"
+      });
+    }
+
+    const botUrl = new URL(`/v1/game/pvb/${bot}`, GAME_SERVER);
+    const botResponse = await axios.post(botUrl.href, yen);
 
     return res.json({
       ok: true,
@@ -90,12 +98,15 @@ app.post("/game/bot/choose", async (req, res) => {
       });
     }
 
-    const botId = bot || "random_bot";
+    if (!bot || !ALLOWED_BOTS.includes(bot)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid bot id"
+      });
+    }
 
-    const response = await axios.post(
-      `${GAME_SERVER}/${API_VERSION}/ybot/choose/${botId}`,
-      yen
-    );
+    const chooseUrl = new URL(`/v1/ybot/choose/${bot}`, GAME_SERVER);
+    const response = await axios.post(chooseUrl.href, yen);
 
     return res.json({
       ok: true,
@@ -116,10 +127,8 @@ app.post("/game/bot/choose", async (req, res) => {
 // User creation
 app.post("/createuser", async (req, res) => {
   try {
-    const response = await axios.post(
-      "http://localhost:3000/createuser",
-      req.body
-    );
+    const userUrl = new URL("/createuser", USERS);
+    const response = await axios.post(userUrl.href, req.body);
 
     res.json(response.data);
   } catch (e) {
