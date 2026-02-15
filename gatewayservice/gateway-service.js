@@ -3,16 +3,14 @@ import axios from "axios";
 
 const app = express();
 app.disable("x-powered-by");
-
 const PORT = 8080;
 
-// IMPORTANT
-const GAME_BASE_URL = "http://localhost:4000";
-const USERS_BASE_URL = "http://localhost:4000";
-
+// IMPORTANT - Base URLs from environment
+const GAME_BASE_URL = process.env.GAME_SERVER_URL || "http://localhost:4000";
+const USERS_BASE_URL = process.env.USERS_URL || "http://localhost:4000";
 const API_VERSION = "v1";
 
-// STATIC BOT ROUTES
+// STATIC BOT ROUTES - Predefined
 const BOT_MOVE_ROUTES = {
   random_bot: `${GAME_BASE_URL}/${API_VERSION}/game/pvb/random_bot`,
   smart_bot: `${GAME_BASE_URL}/${API_VERSION}/game/pvb/smart_bot`
@@ -25,16 +23,13 @@ const BOT_CHOOSE_ROUTES = {
 
 // Middleware
 app.use(express.json());
-
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
   }
-
   next();
 });
 
@@ -46,12 +41,10 @@ app.post("/game/new", async (req, res) => {
       req.body,
       { timeout: 3000 }
     );
-
     return res.json({
       ok: true,
       yen: response.data
     });
-
   } catch {
     return res.status(500).json({
       ok: false,
@@ -64,37 +57,36 @@ app.post("/game/new", async (req, res) => {
 app.post("/game/pvb/move", async (req, res) => {
   try {
     const { yen, bot } = req.body;
-
+    
     if (!yen) {
       return res.status(400).json({
         ok: false,
         error: "Missing YEN object"
       });
     }
-
+    
     if (!bot || !BOT_MOVE_ROUTES[bot]) {
       return res.status(400).json({
         ok: false,
         error: "Invalid bot id"
       });
     }
-
+    
+    // Use predefined static route
     const response = await axios.post(
       BOT_MOVE_ROUTES[bot],
       yen,
       { timeout: 3000 }
     );
-
+    
     return res.json({
       ok: true,
       yen: response.data
     });
-
   } catch (err) {
     if (err.response?.data) {
       return res.status(400).json(err.response.data);
     }
-
     return res.status(500).json({
       ok: false,
       error: "Bot server unavailable"
@@ -106,32 +98,32 @@ app.post("/game/pvb/move", async (req, res) => {
 app.post("/game/bot/choose", async (req, res) => {
   try {
     const { yen, bot } = req.body;
-
+    
     if (!yen) {
       return res.status(400).json({
         ok: false,
         error: "Missing YEN object"
       });
     }
-
+    
     if (!bot || !BOT_CHOOSE_ROUTES[bot]) {
       return res.status(400).json({
         ok: false,
         error: "Invalid bot id"
       });
     }
-
+    
+    // Use predefined static route
     const response = await axios.post(
       BOT_CHOOSE_ROUTES[bot],
       yen,
       { timeout: 3000 }
     );
-
+    
     return res.json({
       ok: true,
       coordinates: response.data
     });
-
   } catch {
     return res.status(500).json({
       ok: false,
@@ -148,9 +140,8 @@ app.post("/createuser", async (req, res) => {
       req.body,
       { timeout: 3000 }
     );
-
+    
     return res.json(response.data);
-
   } catch {
     return res.status(500).json({
       error: "User service unavailable"
