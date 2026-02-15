@@ -5,33 +5,28 @@ const app = express();
 app.disable("x-powered-by");
 const PORT = 8080;
 
-const gameApi = axios.create({
-  baseURL: process.env.GAME_SERVER_URL || "http://localhost:4000",
-  timeout: 3000
-});
-
-const userApi = axios.create({
-  baseURL: process.env.USERS_URL || "http://localhost:3000",
-  timeout: 3000
-});
-
 app.use(express.json());
 
 // STATIC ROUTES
 const PVB_MOVE_ROUTES = {
-  random_bot: "/v1/game/pvb/random_bot",
-  smart_bot: "/v1/game/pvb/smart_bot"
+  random_bot: "http://localhost:4000/v1/game/pvb/random_bot",
+  smart_bot: "http://localhost:4000/v1/game/pvb/smart_bot"
 };
 
 const BOT_CHOOSE_ROUTES = {
-  random_bot: "/v1/ybot/choose/random_bot",
-  smart_bot: "/v1/ybot/choose/smart_bot"
+  random_bot: "http://localhost:4000/v1/ybot/choose/random_bot",
+  smart_bot: "http://localhost:4000/v1/ybot/choose/smart_bot"
 };
 
-// NEW GAME
+const GAME_NEW_URL = "http://localhost:4000/game/new";
+const CREATE_USER_URL = "http://localhost:3000/createuser";
+
+/* ======================
+   NEW GAME
+====================== */
 app.post("/game/new", async (req, res) => {
   try {
-    const response = await gameApi.post("/game/new", req.body);
+    const response = await axios.post(GAME_NEW_URL, req.body);
 
     return res.status(200).json({
       ok: true,
@@ -46,7 +41,9 @@ app.post("/game/new", async (req, res) => {
   }
 });
 
-// PVB MOVE
+/* ======================
+   PVB MOVE
+====================== */
 app.post("/game/pvb/move", async (req, res) => {
   const { yen, bot } = req.body;
 
@@ -67,7 +64,7 @@ app.post("/game/pvb/move", async (req, res) => {
   }
 
   try {
-    const response = await gameApi.post(route, yen);
+    const response = await axios.post(route, yen);
 
     return res.status(200).json({
       ok: true,
@@ -82,7 +79,9 @@ app.post("/game/pvb/move", async (req, res) => {
   }
 });
 
-// BOT CHOOSE
+/* ======================
+   BOT CHOOSE
+====================== */
 app.post("/game/bot/choose", async (req, res) => {
   const { yen, bot } = req.body;
 
@@ -103,7 +102,7 @@ app.post("/game/bot/choose", async (req, res) => {
   }
 
   try {
-    const response = await gameApi.post(route, yen);
+    const response = await axios.post(route, yen);
 
     return res.status(200).json({
       ok: true,
@@ -118,10 +117,12 @@ app.post("/game/bot/choose", async (req, res) => {
   }
 });
 
-// CREATE USER
+/* ======================
+   CREATE USER
+====================== */
 app.post("/createuser", async (req, res) => {
   try {
-    const response = await userApi.post("/createuser", req.body);
+    const response = await axios.post(CREATE_USER_URL, req.body);
 
     return res.status(200).json(response.data);
 
