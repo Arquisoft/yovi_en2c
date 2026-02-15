@@ -4,7 +4,6 @@ require('dotenv').config(); // <-- Carga las variables del archivo .env
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-// Verificar que la variable existe
 if (!MONGODB_URI) {
     console.error('MongoDB URL not found in variables');
     console.error('Check .env file ');

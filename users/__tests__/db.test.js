@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// No hacer mock de mongoose al principio, lo haremos en cada test
+
 describe('db.js', () => {
     const originalEnv = process.env
     let mockExit
@@ -9,17 +9,14 @@ describe('db.js', () => {
     let originalMongooseConnect
 
     beforeEach(() => {
-        // Guardar el connect original
+
         originalMongooseConnect = vi.spyOn(require('mongoose'), 'connect')
 
-        // Mock process.exit
         mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {})
 
-        // Mock console methods
         mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
         mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-        // Reset modules
         vi.resetModules()
         process.env = { ...originalEnv }
     })
@@ -33,7 +30,6 @@ describe('db.js', () => {
 
 
     it('should handle connection error and exit (lines 17-19)', async () => {
-        // Arrange
         const testUri = 'mongodb://test-uri'
         process.env.MONGODB_URI = testUri
         const connectionError = new Error('Connection failed')

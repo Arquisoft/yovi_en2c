@@ -55,7 +55,7 @@ app.post('/createuser', async (req, res) => {
             user: {
                 id: savedUser._id,
                 username: savedUser.username,
-                email: savedUser.email || null, // Devolver null si no hay email
+                email: savedUser.email || null, // NUll if not email is insert
                 createdAt: savedUser.createdAt
             }
         });

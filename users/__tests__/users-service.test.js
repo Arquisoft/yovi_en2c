@@ -3,13 +3,11 @@ import request from 'supertest'
 import app from '../users-service.js'
 import mongoose from 'mongoose'
 
-// Variable para controlar si ya estamos conectados
 let isConnected = false;
 
 describe('POST /createuser', () => {
-    // Configurar conexión a MongoDB para tests
+
     beforeAll(async () => {
-        // Solo conectar si no estamos conectados
         if (!isConnected) {
             const TEST_URI = process.env.MONGODB_URI ;
             await mongoose.connect(TEST_URI);
@@ -30,7 +28,7 @@ describe('POST /createuser', () => {
         vi.restoreAllMocks()
     })
 
-    it('debe crear un usuario correctamente con username y email', async () => {
+    it('should create an user with username and email', async () => {
         const res = await request(app)
             .post('/createuser')
             .send({
@@ -48,42 +46,42 @@ describe('POST /createuser', () => {
         expect(res.body.user).toHaveProperty('email', 'pablo@uniovi.es')
     })
 
-    it('debe crear un usuario correctamente SIN email', async () => {
+    it('should create an user without an email', async () => {
         const res = await request(app)
             .post('/createuser')
             .send({
-                username: 'UsuarioSinEmail'
+                username: 'UsuarioWithoutEmail'
             })
             .set('Accept', 'application/json')
 
         expect(res.status).toBe(201)
         expect(res.body).toHaveProperty('success', true)
-        expect(res.body.message).toMatch(/User UsuarioSinEmail created/i)
-        expect(res.body.user).toHaveProperty('username', 'UsuarioSinEmail')
+        expect(res.body.message).toMatch(/User UsuarioWithoutEmail created/i)
+        expect(res.body.user).toHaveProperty('username', 'UsuarioWithoutEmail')
         expect(res.body.user).toHaveProperty('email', null) // CAMBIO: email debe ser null
     })
 
-    // CAMBIO: Nuevo test para crear usuario con email vacío
-    it('debe crear un usuario correctamente con email vacío', async () => {
+
+    it('should create a new user with empty email', async () => {
         const res = await request(app)
             .post('/createuser')
             .send({
-                username: 'UsuarioEmailVacio',
+                username: 'UsuarEmailEmpty',
                 email: ''
             })
             .set('Accept', 'application/json')
 
         expect(res.status).toBe(201)
         expect(res.body).toHaveProperty('success', true)
-        expect(res.body.user).toHaveProperty('username', 'UsuarioEmailVacio')
-        expect(res.body.user).toHaveProperty('email', null) // CAMBIO: email debe ser null
+        expect(res.body.user).toHaveProperty('username', 'UsuarEmailEmpty')
+        expect(res.body.user).toHaveProperty('email', null)
     })
 
-    it('debe crear un usuario correctamente con email con espacios', async () => {
+    it('should create a new user with an email with spaces', async () => {
         const res = await request(app)
             .post('/createuser')
             .send({
-                username: 'UsuarioEmailEspacios',
+                username: 'UserEmailSpaces',
                 email: '   '
             })
             .set('Accept', 'application/json')
@@ -92,11 +90,11 @@ describe('POST /createuser', () => {
         // y crear el usuario correctamente
         expect(res.status).toBe(201)
         expect(res.body).toHaveProperty('success', true)
-        expect(res.body.user).toHaveProperty('username', 'UsuarioEmailEspacios')
+        expect(res.body.user).toHaveProperty('username', 'UserEmailSpaces')
         expect(res.body.user).toHaveProperty('email', null) // CAMBIO: email debe ser null
     })
 
-    it('debe devolver error 400 si falta el username', async () => {
+    it('should gave error 400 if there is not username', async () => {
         const res = await request(app)
             .post('/createuser')
             .send({
@@ -109,7 +107,7 @@ describe('POST /createuser', () => {
         expect(res.body.error).toMatch(/Username is a mandatory field/i)
     })
 
-    it('debe devolver error 400 si el email no es válido', async () => {
+    it('should gave error 400 if the email is not valid', async () => {
         const res = await request(app)
             .post('/createuser')
             .send({
@@ -123,7 +121,7 @@ describe('POST /createuser', () => {
         expect(res.body).toHaveProperty('error')
     })
 
-    it('debe devolver error 400 si el usuario ya existe', async () => {
+    it('should gave error 400 if the user already exists', async () => {
         // Primero limpiamos el usuario si existe
         await mongoose.connection.collections['users']?.deleteMany({ username: 'duplicado' });
 
@@ -324,7 +322,7 @@ describe('GET /users', () => {
     beforeAll(async () => {
         // Asegurar conexión
         if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI || 'mongodb+srv://yovi_user:yovi1234@cluster0.xxxxx.mongodb.net/yovi_db_test';
+            const TEST_URI = process.env.MONGODB_URI ;
             await mongoose.connect(TEST_URI);
             isConnected = true;
         }
@@ -346,8 +344,7 @@ describe('GET /users', () => {
         vi.restoreAllMocks()
     })
 
-    // TEST EXISTENTE
-    it('debe devolver la lista de usuarios', async () => {
+    it('should return the list of users', async () => {
         const res = await request(app)
             .get('/users')
             .expect(200)
@@ -359,7 +356,6 @@ describe('GET /users', () => {
         expect(Array.isArray(res.body.users)).toBe(true)
     })
 
-    // ========== NUEVOS TESTS PARA ERROR HANDLING ==========
     describe('GET /users - Error handling', () => {
         it('should return 500 when a database error occurs during find()', async () => {
             // Simular error en find()
@@ -455,7 +451,6 @@ describe('GET /users', () => {
         })
 
         it('should handle error when find() returns null and sort is called', async () => {
-            // Simular que find() devuelve null y luego sort() falla
             const mockError = new Error('Cannot read property sort of null');
 
             const findSpy = vi.spyOn(mongoose.Model, 'find')
@@ -476,24 +471,21 @@ describe('GET /users', () => {
 
 describe('POST /gameresult', () => {
     beforeAll(async () => {
-        // Asegurar conexión
         if (!isConnected) {
             const TEST_URI = process.env.MONGODB_URI ;
             await mongoose.connect(TEST_URI);
             isConnected = true;
         }
 
-        // Limpiar colecciones
         await mongoose.connection.collections['users']?.deleteMany({});
         await mongoose.connection.collections['gameresults']?.deleteMany({});
 
-        // Crear usuario para los tests
         await request(app)
             .post('/createuser')
             .send({ username: 'jugador', email: 'jugador@uniovi.es' })
     });
 
-    it('debe guardar un resultado de partida correctamente', async () => {
+    it('should save correctly the game result in the db', async () => {
         const res = await request(app)
             .post('/gameresult')
             .send({
@@ -514,7 +506,7 @@ describe('POST /gameresult', () => {
         expect(res.body.game).toHaveProperty('score', 150)
     })
 
-    it('debe devolver error 400 si faltan campos', async () => {
+    it('should return error 400 if fields are missing', async () => {
         const res = await request(app)
             .post('/gameresult')
             .send({
@@ -529,7 +521,7 @@ describe('POST /gameresult', () => {
         expect(res.body.error).toMatch(/absent field/i)
     })
 
-    it('debe devolver error 404 si el usuario no existe', async () => {
+    it('should return 404 error if user does not exist', async () => {
         const res = await request(app)
             .post('/gameresult')
             .send({
@@ -545,14 +537,12 @@ describe('POST /gameresult', () => {
     })
     describe('POST /gameresult - Error handling', () => {
         beforeAll(async () => {
-            // Asegurar conexión
             if (!isConnected) {
                 const TEST_URI = process.env.MONGODB_URI || 'mongodb+srv://yovi_user:yovi1234@cluster0.xxxxx.mongodb.net/yovi_db_test';
                 await mongoose.connect(TEST_URI);
                 isConnected = true;
             }
 
-            // Crear usuario para los tests
             await mongoose.connection.collections['users']?.deleteMany({ username: 'jugador_error' });
             await request(app)
                 .post('/createuser')
@@ -583,11 +573,9 @@ describe('POST /gameresult', () => {
                 .set('Accept', 'application/json')
                 .expect(500)
 
-            // Verificar respuesta
             expect(res.body).toHaveProperty('success', false)
             expect(res.body.error).toBe('Database connection failed during user lookup')
 
-            // Verificar que se llamó a console.error
             expect(consoleErrorSpy).toHaveBeenCalled()
             expect(consoleErrorSpy).toHaveBeenCalledWith(
                 'Error in POST /gameresult:',
@@ -599,11 +587,9 @@ describe('POST /gameresult', () => {
         })
 
         it('should return 500 when a database error occurs during game save', async () => {
-            // Primero verificar que el usuario existe (findOne funciona)
             const findOneSpy = vi.spyOn(mongoose.Model, 'findOne')
                 .mockResolvedValueOnce({ username: 'jugador_error' })
 
-            // Simular error en game.save()
             const mockError = new Error('Database error while saving game result');
             const saveSpy = vi.spyOn(mongoose.Model.prototype, 'save')
                 .mockRejectedValueOnce(mockError)
@@ -646,7 +632,6 @@ describe('POST /gameresult', () => {
             for (const errorMessage of errorMessages) {
                 const mockError = new Error(errorMessage);
 
-                // Simular error en findOne
                 const findOneSpy = vi.spyOn(mongoose.Model, 'findOne')
                     .mockRejectedValueOnce(mockError)
 
@@ -697,11 +682,10 @@ describe('POST /gameresult', () => {
         })
 
         it('should handle error when GameResult model save fails after user exists', async () => {
-            // Simular que findOne funciona correctamente
+
             const findOneSpy = vi.spyOn(mongoose.Model, 'findOne')
                 .mockResolvedValueOnce({ username: 'jugador_error' })
 
-            // Simular error en el constructor o save de GameResult
             const mockError = new Error('GameResult validation failed');
             const saveSpy = vi.spyOn(mongoose.Model.prototype, 'save')
                 .mockRejectedValueOnce(mockError)
@@ -725,7 +709,6 @@ describe('POST /gameresult', () => {
         })
 
         it('should handle error when username contains special characters', async () => {
-            // Simular error por username con caracteres especiales
             const mockError = new Error('Username contains invalid characters');
             const findOneSpy = vi.spyOn(mongoose.Model, 'findOne')
                 .mockRejectedValueOnce(mockError)
@@ -751,23 +734,21 @@ describe('POST /gameresult', () => {
 
 describe('GET /history/:username', () => {
     beforeAll(async () => {
-        // Asegurar conexión
+
         if (!isConnected) {
             const TEST_URI = process.env.MONGODB_URI ;
             await mongoose.connect(TEST_URI);
             isConnected = true;
         }
 
-        // Limpiar colecciones
         await mongoose.connection.collections['users']?.deleteMany({});
         await mongoose.connection.collections['gameresults']?.deleteMany({});
 
-        // Crear usuario
+
         await request(app)
             .post('/createuser')
             .send({ username: 'historial_user', email: 'history@uniovi.es' })
 
-        // Crear algunas partidas
         await request(app)
             .post('/gameresult')
             .send({ username: 'historial_user', opponent: 'bot1', result: 'win', score: 100 })
@@ -777,7 +758,7 @@ describe('GET /history/:username', () => {
             .send({ username: 'historial_user', opponent: 'bot2', result: 'loss', score: 50 })
     });
 
-    it('debe devolver el historial de un usuario', async () => {
+    it('should return a user history', async () => {
         const res = await request(app)
             .get('/history/historial_user')
             .expect(200)
@@ -792,7 +773,7 @@ describe('GET /history/:username', () => {
         expect(res.body.games.length).toBe(2)
     })
 
-    it('debe devolver historial vacío para usuario sin partidas', async () => {
+    it('should return empty history for user without games', async () => {
         const res = await request(app)
             .get('/history/usuario_sin_partidas')
             .expect(200)
@@ -805,18 +786,15 @@ describe('GET /history/:username', () => {
 
     describe('GET /history/:username - Error handling', () => {
         beforeAll(async () => {
-            // Asegurar conexión
             if (!isConnected) {
                 const TEST_URI = process.env.MONGODB_URI || 'mongodb+srv://yovi_user:yovi1234@cluster0.xxxxx.mongodb.net/yovi_db_test';
                 await mongoose.connect(TEST_URI);
                 isConnected = true;
             }
 
-            // Limpiar colecciones
             await mongoose.connection.collections['users']?.deleteMany({});
             await mongoose.connection.collections['gameresults']?.deleteMany({});
 
-            // Crear usuario
             await request(app)
                 .post('/createuser')
                 .send({ username: 'history_user', email: 'history@uniovi.es' })
@@ -829,7 +807,6 @@ describe('GET /history/:username', () => {
         it('should return 500 when a database error occurs during GameResult.find()', async () => {
             const mockError = new Error('Database connection failed while fetching history');
 
-            // Simular error en GameResult.find()
             const findSpy = vi.spyOn(mongoose.Model, 'find')
                 .mockImplementationOnce(() => {
                     throw mockError;
@@ -848,7 +825,6 @@ describe('GET /history/:username', () => {
         it('should return 500 when a database error occurs during sort()', async () => {
             const mockError = new Error('Sort operation failed in history query');
 
-            // Simular error en el encadenamiento sort()
             const mockQuery = {
                 sort: vi.fn().mockReturnThis(),
                 limit: vi.fn().mockRejectedValueOnce(mockError)
@@ -870,7 +846,6 @@ describe('GET /history/:username', () => {
         it('should return 500 when a database error occurs during limit()', async () => {
             const mockError = new Error('Limit operation failed in history query');
 
-            // Simular error en limit()
             const mockQuery = {
                 sort: vi.fn().mockReturnThis(),
                 limit: vi.fn().mockRejectedValueOnce(mockError)
@@ -890,7 +865,6 @@ describe('GET /history/:username', () => {
         })
 
         it('should return 500 when there is an error parsing the limit parameter', async () => {
-            // El código usa Number.parseInt(limit), si limit no es un número válido
             const mockError = new Error('Invalid limit parameter');
 
             const findSpy = vi.spyOn(mongoose.Model, 'find')
@@ -996,7 +970,6 @@ describe('GET /history/:username', () => {
         })
 
         it('should handle error during stats calculation', async () => {
-            // Simular que find funciona pero hay error al calcular stats
             const mockGames = [
                 { result: 'win' },
                 { result: 'win' },
@@ -1011,8 +984,6 @@ describe('GET /history/:username', () => {
             const findSpy = vi.spyOn(mongoose.Model, 'find')
                 .mockReturnValueOnce(mockQuery)
 
-            // No hay error aquí porque el cálculo de stats es síncrono y simple
-            // Pero si hubiera una operación compleja, podría fallar
             const res = await request(app)
                 .get('/history/history_user')
                 .expect(200) // Debería funcionar correctamente
@@ -1028,18 +999,16 @@ describe('GET /history/:username', () => {
 
 describe('GET /ranking', () => {
     beforeAll(async () => {
-        // Asegurar conexión
+
         if (!isConnected) {
             const TEST_URI = process.env.MONGODB_URI ;
             await mongoose.connect(TEST_URI);
             isConnected = true;
         }
 
-        // Limpiar colecciones
         await mongoose.connection.collections['users']?.deleteMany({});
         await mongoose.connection.collections['gameresults']?.deleteMany({});
 
-        // Crear usuarios
         await request(app)
             .post('/createuser')
             .send({ username: 'top1', email: 'top1@uniovi.es' })
@@ -1052,7 +1021,6 @@ describe('GET /ranking', () => {
             .post('/createuser')
             .send({ username: 'top3', email: 'top3@uniovi.es' })
 
-        // Crear partidas (top1: 3 wins, top2: 2 wins, top3: 0 wins)
         for (let i = 0; i < 3; i++) {
             await request(app)
                 .post('/gameresult')
@@ -1070,7 +1038,7 @@ describe('GET /ranking', () => {
             .send({ username: 'top3', opponent: 'bot', result: 'loss', score: 0 })
     });
 
-    it('debe devolver el ranking ordenado por victorias', async () => {
+    it('should return the ranking ordered by victories', async () => {
         const res = await request(app)
             .get('/ranking')
             .expect(200)
@@ -1082,7 +1050,6 @@ describe('GET /ranking', () => {
         const ranking = res.body.ranking
         expect(ranking.length).toBeGreaterThanOrEqual(2)
 
-        // Puede que top3 no aparezca si no tiene wins
         if (ranking.length > 0 && ranking[0]?.username === 'top1') {
             expect(ranking[0].wins).toBe(3)
         }
@@ -1092,7 +1059,7 @@ describe('GET /ranking', () => {
     })
     describe('GET /ranking - Error handling', () => {
         beforeAll(async () => {
-            // Asegurar conexión
+
             if (!isConnected) {
                 const TEST_URI = process.env.MONGODB_URI || 'mongodb+srv://yovi_user:yovi1234@cluster0.xxxxx.mongodb.net/yovi_db_test';
                 await mongoose.connect(TEST_URI);
@@ -1107,10 +1074,8 @@ describe('GET /ranking', () => {
         it('should return 500 when a database error occurs during aggregation', async () => {
             const mockError = new Error('Database connection failed during ranking aggregation');
 
-            // Espiar console.error
             const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-            // Simular error en aggregate
             const aggregateSpy = vi.spyOn(mongoose.Model, 'aggregate')
                 .mockRejectedValueOnce(mockError)
 
@@ -1118,11 +1083,9 @@ describe('GET /ranking', () => {
                 .get('/ranking')
                 .expect(500)
 
-            // Verificar respuesta
             expect(res.body).toHaveProperty('success', false)
             expect(res.body.error).toBe('Database connection failed during ranking aggregation')
 
-            // Verificar que se llamó a console.error
             expect(consoleErrorSpy).toHaveBeenCalled()
             expect(consoleErrorSpy).toHaveBeenCalledWith(
                 'Error in GET /ranking:',
@@ -1261,7 +1224,6 @@ describe('GET /ranking', () => {
             expect(res.body).toHaveProperty('error')
             expect(typeof res.body.error).toBe('string')
 
-            // Verificar que console.error recibió el objeto no-Error
             expect(consoleErrorSpy).toHaveBeenCalledWith(
                 'Error in GET /ranking:',
                 nonErrorObject
@@ -1272,10 +1234,6 @@ describe('GET /ranking', () => {
         })
 
         it('should handle error when there are no games in the collection', async () => {
-            // Este test verifica que la agregación funciona incluso con colección vacía
-            // No debería dar error, sino devolver ranking vacío
-
-            // Limpiar colección de gameresults
             await mongoose.connection.collections['gameresults']?.deleteMany({});
 
             const res = await request(app)
