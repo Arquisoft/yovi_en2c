@@ -6,22 +6,21 @@ app.disable("x-powered-by");
 
 const PORT = 8080;
 
-// External services
-const USERS_URL = process.env.USERS_URL || "http://localhost:4000";
-const GAME_URL = process.env.GAME_SERVER_URL || "http://localhost:4000";
+// IMPORTANT
+const GAME_BASE_URL = "http://localhost:4000";
+const USERS_BASE_URL = "http://localhost:4000";
 
 const API_VERSION = "v1";
 
-// Static bot route mapping
-const BOT_ROUTES = {
-  random_bot: {
-    move: `/${API_VERSION}/game/pvb/random_bot`,
-    choose: `/${API_VERSION}/ybot/choose/random_bot`
-  },
-  smart_bot: {
-    move: `/${API_VERSION}/game/pvb/smart_bot`,
-    choose: `/${API_VERSION}/ybot/choose/smart_bot`
-  }
+// STATIC BOT ROUTES
+const BOT_MOVE_ROUTES = {
+  random_bot: `${GAME_BASE_URL}/${API_VERSION}/game/pvb/random_bot`,
+  smart_bot: `${GAME_BASE_URL}/${API_VERSION}/game/pvb/smart_bot`
+};
+
+const BOT_CHOOSE_ROUTES = {
+  random_bot: `${GAME_BASE_URL}/${API_VERSION}/ybot/choose/random_bot`,
+  smart_bot: `${GAME_BASE_URL}/${API_VERSION}/ybot/choose/smart_bot`
 };
 
 // Middleware
@@ -31,7 +30,11 @@ app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") return res.sendStatus(204);
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
   next();
 });
 
@@ -39,7 +42,7 @@ app.use((req, res, next) => {
 app.post("/game/new", async (req, res) => {
   try {
     const response = await axios.post(
-      `${GAME_URL}/game/new`,
+      `${GAME_BASE_URL}/game/new`,
       req.body,
       { timeout: 3000 }
     );
@@ -69,7 +72,7 @@ app.post("/game/pvb/move", async (req, res) => {
       });
     }
 
-    if (!bot || !BOT_ROUTES[bot]) {
+    if (!bot || !BOT_MOVE_ROUTES[bot]) {
       return res.status(400).json({
         ok: false,
         error: "Invalid bot id"
@@ -77,7 +80,7 @@ app.post("/game/pvb/move", async (req, res) => {
     }
 
     const response = await axios.post(
-      `${GAME_URL}${BOT_ROUTES[bot].move}`,
+      BOT_MOVE_ROUTES[bot],
       yen,
       { timeout: 3000 }
     );
@@ -111,7 +114,7 @@ app.post("/game/bot/choose", async (req, res) => {
       });
     }
 
-    if (!bot || !BOT_ROUTES[bot]) {
+    if (!bot || !BOT_CHOOSE_ROUTES[bot]) {
       return res.status(400).json({
         ok: false,
         error: "Invalid bot id"
@@ -119,7 +122,7 @@ app.post("/game/bot/choose", async (req, res) => {
     }
 
     const response = await axios.post(
-      `${GAME_URL}${BOT_ROUTES[bot].choose}`,
+      BOT_CHOOSE_ROUTES[bot],
       yen,
       { timeout: 3000 }
     );
@@ -141,7 +144,7 @@ app.post("/game/bot/choose", async (req, res) => {
 app.post("/createuser", async (req, res) => {
   try {
     const response = await axios.post(
-      `${USERS_URL}/createuser`,
+      `${USERS_BASE_URL}/createuser`,
       req.body,
       { timeout: 3000 }
     );
@@ -159,8 +162,8 @@ app.post("/createuser", async (req, res) => {
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
     console.log(`Gateway listening on http://localhost:${PORT}`);
-    console.log(`Game server at ${GAME_URL}`);
-    console.log(`User service at ${USERS_URL}`);
+    console.log(`Game server: ${GAME_BASE_URL}`);
+    console.log(`User service: ${USERS_BASE_URL}`);
   });
 }
 
