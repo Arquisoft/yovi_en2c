@@ -16,19 +16,26 @@ const userSchema = new mongoose.Schema({
         lowercase: true,
         validate: {
             validator: function(v) {
-                if (!v) return true; // Allow empty emails due to sparse:tru
+                if (!v) return true;
+
                 const parts = v.split('@');
+
                 if (parts.length !== 2) return false;
-                const [local, domain] = parts;
 
-                if (local.length === 0 || local.length > 64) return false;
-                if (domain.length === 0 || domain.length > 255) return false;
+                const localPart = parts[0];
+                const domainPart = parts[1];
 
-                const domainParts = domain.split('.');
+                if (localPart.length === 0 || domainPart.length === 0) return false;
+
+                const domainParts = domainPart.split('.');
+
                 if (domainParts.length < 2) return false;
 
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                return emailRegex.test(v);
+                for (const part of domainParts) {
+                    if (part.length === 0) return false;
+                }
+
+                return true;
             },
             message: 'Please insert a valid email'
         }
