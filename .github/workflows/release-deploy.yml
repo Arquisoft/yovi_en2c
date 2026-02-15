@@ -10,6 +10,7 @@ permissions:
 
 env:
   IMAGE_TAG: ${{ github.event.release.tag_name }}
+  MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
 jobs:
   test-node:
@@ -36,6 +37,8 @@ jobs:
         run: |
           cd ${{ matrix.service }}
           npm test
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
   test-rust:
     name: Run rust (gamey) tests
@@ -67,6 +70,8 @@ jobs:
         run: |
           cd users
           npm ci
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
       - name: Install webapp dependencies
         run: |
           cd webapp
@@ -79,6 +84,8 @@ jobs:
         run: |
           cd webapp
           npm run test:e2e
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
   docker-push-users:
     name: Publish users image
@@ -99,6 +106,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
           workdir: users
+          buildargs: | 
+            MONGODB_URI=${{ secrets.MONGODB_URI }}
   
   docker-push-gateway:
   name: Publish gateway image

@@ -3,42 +3,47 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-glossary]]
 == Glossary
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-.Contents
-The most important domain and technical terms that your stakeholders use when discussing the system.
-
-You can also see the glossary as source for translations if you work in multi-language teams.
-
-.Motivation
-You should clearly define your terms, so that all stakeholders
-
-* have an identical understanding of these terms
-* do not use synonyms and homonyms
-
-
-.Form
-
-A table with columns <Term> and <Definition>.
-
-Potentially more columns in case you need translations.
-
-
-.Further Information
-
-See https://docs.arc42.org/section-12/[Glossary] in the arc42 documentation.
-
-****
-endif::arc42help[]
-
-[cols="e,2e" options="header"]
+[cols="e,2e", options="header"]
 |===
 |Term |Definition
 
-|<Term-1>
-|<definition-1>
+|YOVI
+|Name of the system developed in this project. A web-based platform for playing Game Y, supporting human players and external bots.
 
-|<Term-2>
-|<definition-2>
+|Game Y
+|An abstract strategy board game in which players aim to connect three different sides of the board.
+
+|Classic Game Y
+|The standard version of Game Y defined by the original rules, without additional variants or optional mechanics.
+
+|YEN Notation
+|A JSON-based notation used to represent the state of a Game Y match, including board size, current turn, players, and board layout.
+
+|Game State
+|A complete representation of a Game Y match at a specific point in time, encoded using YEN notation.
+
+|TypeScript
+|A statically typed programming language that extends JavaScript and is used to implement the web application.
+
+|Rust
+|A systems programming language focused on safety and performance, used to implement the game engine module.
+
+|API
+|A public HTTP-based interface exposed by the web application that allows external clients and bots to interact with the system.
+
+|Bot
+|An external program that interacts with the system exclusively through the public API to retrieve information and play games automatically.
+
+|Player-versus-Machine
+|A game mode in which a human player competes against a computer-controlled opponent.
+
+|JSON
+|A lightweight data-interchange format used for communication between the web application and the Rust game engine.
+
+|HTTP
+|The application-layer protocol used for communication between clients, bots, and system services.
+
+|Microservice
+|An architectural style in which a system is composed of small, independent services that communicate over a network and can be developed, deployed, and scaled separately.
+
 |===

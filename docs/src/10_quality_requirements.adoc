@@ -3,7 +3,25 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-quality-scenarios]]
 == Quality Requirements
 
+Quality requirements ensure that the code doesn't just work, but that is works well. The quality requirements our game must meet are as follows:
 
+-Performance: 
+The game must respond in time to player actions.
+
+-Usability:
+UI should be intuitive and players should be able to tell what to do either by the UI or by rules explaining the game.
+
+-Scalability:
+The game must be able to accept changes in the way of playing or accept new features added in the future.
+
+-Maintainability:
+The code should be easy to modify or extend and should have the proper comments and be structured to make it readable.
+
+-Reliability:
+Game can run and tackle exceptions without crashing.
+
+-Portability:
+The game should run on multiple platforms.
 ifdef::arc42help[]
 [role="arc42help"]
 ****
@@ -29,6 +47,8 @@ endif::arc42help[]
 
 === Quality Tree
 
+image::10Tree.png["Quality Tree"]
+
 ifdef::arc42help[]
 [role="arc42help"]
 ****
@@ -51,6 +71,22 @@ In any case the tree should include links to the scenarios of the following sect
 endif::arc42help[]
 
 === Quality Scenarios
+SCENARIO 1
+
+image::10-Sceneriomove.png["Scenario1"]
+
+SCENARIO 2
+
+image::10-Sceneriofeature.png["Scenario2"]
+
+SCENARIO 3
+
+image::10-Scenerionewuser.png["Scenario3"]
+
+SCENARIO 4
+
+image::10-Sceneriocrash["Scenario3"]
+
 
 ifdef::arc42help[]
 [role="arc42help"]

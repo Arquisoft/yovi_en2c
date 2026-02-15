@@ -1,225 +1,163 @@
 ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-building-block-view]]
-
-
 == Building Block View
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-.Content
-The building block view shows the static decomposition of the system into building blocks (modules, components, subsystems, classes, interfaces, packages, libraries, frameworks, layers, partitions, tiers, functions, macros, operations, data structures, ...) as well as their dependencies (relationships, associations, ...)
-
-This view is mandatory for every architecture documentation.
-In analogy to a house this is the _floor plan_.
-
-.Motivation
-Maintain an overview of your source code by making its structure understandable through
-abstraction.
-
-This allows you to communicate with your stakeholder on an abstract level without disclosing implementation details.
-
-.Form
-The building block view is a hierarchical collection of black boxes and white boxes
-(see figure below) and their descriptions.
-
-image::05_building_blocks-EN.png["Hierarchy of building blocks"]
-
-*Level 1* is the white box description of the overall system together with black
-box descriptions of all contained building blocks.
-
-*Level 2* zooms into some building blocks of level 1.
-Thus it contains the white box description of selected building blocks of level 1, together with black box descriptions of their internal building blocks.
-
-*Level 3* zooms into selected building blocks of level 2, and so on.
-
-
-.Further Information
-
-See https://docs.arc42.org/section-5/[Building Block View] in the arc42 documentation.
-
-****
-endif::arc42help[]
+This section describes the static decomposition of the YOVI system into its main building blocks and their dependencies.
 
 === Whitebox Overall System
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-Here you describe the decomposition of the overall system using the following white box template. It contains
+_**Context Diagram: YOVI High-Level Components**_
 
- * an overview diagram
- * a motivation for the decomposition
- * black box descriptions of the contained building blocks. For these we offer you alternatives:
+[source,mermaid]
+....
+flowchart TD
+    User["Human User"] -->|Uses Web Interface| WebApp
+    Bot["External Bot"] -->|Calls Public Bot API| WebApp
 
-   ** use _one_ table for a short and pragmatic overview of all contained building blocks and their interfaces
-   ** use a list of black box descriptions of the building blocks according to the black box template (see below).
-   Depending on your choice of tool this list could be sub-chapters (in text files), sub-pages (in a Wiki) or nested elements (in a modeling tool).
+    WebApp["yovi_web_app<br/>TypeScript/React"] -->|Game Management API<br/><i>YEN/JSON over HTTP</i>| Engine
+    Engine["yovi_game_engine<br/>Rust Service"]
 
+    classDef frontend fill:#dae8fc,stroke:#6c8ebf
+    classDef backend fill:#d5e8d4,stroke:#82b366
+    classDef actor fill:#f5f5f5,stroke:#666
 
- * (optional:) important interfaces, that are not explained in the black box templates of a building block, but are very important for understanding the white box.
-Since there are so many ways to specify interfaces why do not provide a specific template for them.
- In the worst case you have to specify and describe syntax, semantics, protocols, error handling,
- restrictions, versions, qualities, necessary compatibilities and many things more.
-In the best case you will get away with examples or simple signatures.
+    class WebApp frontend
+    class Engine backend
+    class User,Bot actor
+....
 
-****
-endif::arc42help[]
-
-_**<Overview Diagram>**_
+The diagram above illustrates the top-level decomposition of the YOVI system and its external actors (Users and Bots).
 
 Motivation::
 
-_<text explanation>_
-
+The architecture is decomposed based on the core technical requirement to separate the user interface and game management
+logic (suited for TypeScript/Web) from the core game rule verification and AI strategy computation (suited for Rust).
+This separation aligns with the specified subsystems and promotes modularity, independent scalability, and clear
+responsibility boundaries.
 
 Contained Building Blocks::
-_<Description of contained building block (black boxes)>_
+
+*   **`yovi_web_app`**: The main web application that provides the user interface, manages game sessions, and handles
+user data.
+*   **`yovi_game_engine`**: A standalone service responsible for validating game states, determining winners, and
+calculating AI moves.
 
 Important Interfaces::
-_<Description of important interfaces>_
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-Insert your explanations of black boxes from level 1:
+*   **`Game Management API`**: The RESTful interface exposed by the `yovi_web_app` to the `yovi_game_engine` to request
+move validation and AI suggestions. This interface uses **YEN notation** over JSON.
+*   **`Public Bot API`**: The external RESTful API exposed by the `yovi_web_app` to allow programmatic bots to play the
+game.
 
-If you use tabular form you will only describe your black boxes with name and
-responsibility according to the following schema:
+==== yovi_web_app
 
-[cols="1,2" options="header"]
-|===
-| **Name** | **Responsibility**
-| _<black box 1>_ | _<Text>_
-| _<black box 2>_ | _<Text>_
-|===
+*   **Purpose/Responsibility**: Serves as the primary interface for human users and the gateway for external bots. It is
+responsible for user management (registration, history), session state, rendering the game UI, and orchestrating calls
+to the game engine.
+*   **Interface(s)**:
+*   **Provided**: Public REST API (`/api/v1/*`) for bots, Web Interface (HTML/JS) for users.
+*   **Required**: Consumes the `Game Management API` from the `yovi_game_engine`.
+*   **Quality/Performance Characteristics**: Must be highly available and responsive for a good user experience. Stateless
+to allow horizontal scaling.
+*   **Directory/File Location**: `/web-app/` (Contains React/TypeScript source code).
+*   **Fulfilled Requirements**: User registration/history, web frontend, public bot API, strategy selection.
+*   **Open Issues/Problems/Risks**: Complexity in managing real-time updates for potential multiplayer features. See
+technical risks (Section 11).
 
+==== yovi_game_engine
 
-
-If you use a list of black box descriptions then you fill in a separate black box template for every important building block .
-Its headline is the name of the black box.
-****
-endif::arc42help[]
-
-==== <Name black box 1>
-
-ifdef::arc42help[]
-[role="arc42help"]
-****
-Here you describe <black box 1>
-according the the following black box template:
-
-* Purpose/Responsibility
-* Interface(s), when they are not extracted as separate paragraphs. This interfaces may include qualities and performance characteristics.
-* (Optional) Quality-/Performance characteristics of the black box, e.g.availability, run time behavior, ....
-* (Optional) directory/file location
-* (Optional) Fulfilled requirements (if you need traceability to requirements).
-* (Optional) Open issues/problems/risks
-
-****
-endif::arc42help[]
-
-_<Purpose/Responsibility>_
-
-_<Interface(s)>_
-
-_<(Optional) Quality/Performance Characteristics>_
-
-_<(Optional) Directory/File Location>_
-
-_<(Optional) Fulfilled Requirements>_
-
-_<(optional) Open Issues/Problems/Risks>_
-
-
-
-
-==== <Name black box 2>
-
-_<black box template>_
-
-==== <Name black box n>
-
-_<black box template>_
-
-
-==== <Name interface 1>
-
-...
-
-==== <Name interface m>
-
-
+*   **Purpose/Responsibility**: Encapsulates the definitive rules of Game Y and its variants. Its core functions are to
+validate moves, check for a winning condition, and calculate the next move for the AI based on a selected strategy.
+*   **Interface(s)**:
+*   **Provided**: `Game Management API` (Web Service, e.g., over HTTP). Accepts and returns game states in YEN notation.
+*   **Required**: None (it's a terminal building block for core logic).
+*   **Quality/Performance Characteristics**: Must have low latency for AI calculations to not hinder gameplay. High
+correctness is critical.
+*   **Directory/File Location**: `/game-engine/` (Contains Rust source code, Cargo.toml).
+*   **Fulfilled Requirements**: Game rule verification, AI move suggestion with multiple strategies.
+*   **Open Issues/Problems/Risks**: Performance of complex AI strategies on large boards. Learning curve for Rust (See ADR 3 and Section 11).
 
 === Level 2
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-Here you can specify the inner structure of (some) building blocks from level 1 as white boxes.
+Here we detail the internal structure of the two main building blocks.
 
-You have to decide which building blocks of your system are important enough to justify such a detailed description.
-Please prefer relevance over completeness. Specify important, surprising, risky, complex or volatile building blocks.
-Leave out normal, simple, boring or standardized parts of your system
-****
-endif::arc42help[]
+==== White Box `yovi_web_app`
 
-==== White Box _<building block 1>_
+_**Decomposition of the Web Application**_
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-...describes the internal structure of _building block 1_.
-****
-endif::arc42help[]
+[source,mermaid]
+....
+flowchart TD
+    subgraph WebApp[yovi_web_app]
+        UI[UI Layer<br/><i>React Components</i>]
+        API[API Client & State Manager]
+        Router[Public API Router]
+        Service[User & Session Service]
 
-_<white box template>_
+        UI --> API
+        API --> Router
+        Router --> Service
+    end
 
-==== White Box _<building block 2>_
+    UI -->|Renders game board<br/>Implements i18n & responsive| UserInterface[Web Browser]
+    Router -->|Exposes /api/v1/*<br/>Handles bot auth| ExternalBot[External Bot]
+    API -->|Calls| GameEngine[yovi_game_engine]
 
+    classDef component fill:#f5f5f5,stroke:#666,color:#333
+    classDef external fill:#e1d5e7,stroke:#9673a6
 
-_<white box template>_
+    class UI,API,Router,Service component
+    class UserInterface,ExternalBot,GameEngine external
 
-...
+    style WebApp fill:#fff,stroke:#6c8ebf,stroke-width:2px
+....
 
-==== White Box _<building block m>_
+The web application is decomposed into four main components:
 
+* **`UI Layer (React Components)`**: Responsible for rendering all user interfaces, including the game board, user
+dashboard, and registration forms. Implements i18n and responsive design (aligned with ADR 1 & 2).
+* **`API Client & State Manager`**: Manages the application state (e.g., current game, user info) and handles all
+communication with the backend `Game Management API`. Transforms data between frontend models and YEN notation.
+* **`Public API Router`**: Implements and exposes the external `Public Bot API`. It authenticates requests, manages
+bot sessions, and translates between the public API calls and internal application logic.
+* **`User & Session Service`**: Handles business logic for user authentication, registration, and persistence/retrieval
+of game history and statistics.
 
-_<white box template>_
+==== White Box `yovi_game_engine`
 
+_**Decomposition of the Game Engine**_
 
+[source,mermaid]
+....
+flowchart LR
+    subgraph Engine[yovi_game_engine]
+        Parser[YEN Parser & Validator]
+        Rules[Game Rules Core]
+        AI[AI Strategy Module]
 
-=== Level 3
+        Parser -->|Validated game state| Rules
+        Rules -->|Requests move| AI
+        AI -->|Returns move| Rules
+    end
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-Here you can specify the inner structure of (some) building blocks from level 2 as white boxes.
+    WebApp[yovi_web_app] -->|Sends YEN JSON| Parser
+    Rules -->|Returns YEN response| WebApp
 
-When you need more detailed levels of your architecture please copy this
-part of arc42 for additional levels.
-****
-endif::arc42help[]
+    classDef component fill:#f5f5f5,stroke:#666,color:#333
+    classDef external fill:#dae8fc,stroke:#6c8ebf
 
-==== White Box <_building block x.1_>
+    class Parser,Rules,AI component
+    class WebApp external
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-Specifies the internal structure of _building block x.1_.
-****
-endif::arc42help[]
+    style Engine fill:#fff,stroke:#82b366,stroke-width:2px
+....
 
-_<white box template>_
+The game engine is decomposed into three logical components:
 
-
-==== White Box <_building block x.2_>
-
-_<white box template>_
-
-
-
-==== White Box <_building block y.1_>
-
-_<white box template>_
+* **`YEN Parser & Validator`**: Responsible for parsing incoming YEN JSON, validating its syntactic and semantic
+correctness against the current board rules, and serializing outgoing YEN states.
+* **`Game Rules Core`**: The single source of truth for all Game Y variants. Contains the logic for board representation,
+move application, and win condition checking.
+* **`AI Strategy Module`**: Implements the pluggable strategy pattern (aligned with ADR 4). Contains different algorithms
+(e.g., Minimax, Random) and difficulty levels that can be selected via the API request.
