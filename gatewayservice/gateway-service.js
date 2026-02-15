@@ -74,7 +74,7 @@ app.post("/game/pvb/move", async (req, res) => {
       });
     }
     
-    // Build URL safely
+    // Build URL safely - use template literal for path string, then pass to URL constructor
     const url = new URL(`/${API_VERSION}/game/pvb/${bot}`, GAME_URL);
     
     const response = await axios.post(url.href, yen, {
@@ -115,7 +115,7 @@ app.post("/game/bot/choose", async (req, res) => {
       });
     }
     
-    // Build URL safely
+    // Build URL safely - use template literal for path string, then pass to URL constructor
     const url = new URL(`/${API_VERSION}/ybot/choose/${bot}`, GAME_URL);
     
     const response = await axios.post(url.href, yen, {
