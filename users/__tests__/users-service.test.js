@@ -11,10 +11,14 @@ describe('POST /createuser', () => {
     beforeAll(async () => {
         // Solo conectar si no estamos conectados
         if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI || 'mongodb+srv://yovi_user:yovi1234@cluster0.xxxxx.mongodb.net/yovi_db_test';
+            const TEST_URI = process.env.MONGODB_URI ;
             await mongoose.connect(TEST_URI);
             isConnected = true;
         }
+    });
+
+    beforeEach(async () => {
+        await mongoose.connection.collections['users']?.deleteMany({});
     });
 
     afterAll(async () => {
@@ -44,24 +48,59 @@ describe('POST /createuser', () => {
         expect(res.body.user).toHaveProperty('email', 'pablo@uniovi.es')
     })
 
+    it('debe crear un usuario correctamente SIN email', async () => {
+        const res = await request(app)
+            .post('/createuser')
+            .send({
+                username: 'UsuarioSinEmail'
+            })
+            .set('Accept', 'application/json')
+
+        expect(res.status).toBe(201)
+        expect(res.body).toHaveProperty('success', true)
+        expect(res.body.message).toMatch(/User UsuarioSinEmail created/i)
+        expect(res.body.user).toHaveProperty('username', 'UsuarioSinEmail')
+        expect(res.body.user).toHaveProperty('email', null) // CAMBIO: email debe ser null
+    })
+
+    // CAMBIO: Nuevo test para crear usuario con email vacío
+    it('debe crear un usuario correctamente con email vacío', async () => {
+        const res = await request(app)
+            .post('/createuser')
+            .send({
+                username: 'UsuarioEmailVacio',
+                email: ''
+            })
+            .set('Accept', 'application/json')
+
+        expect(res.status).toBe(201)
+        expect(res.body).toHaveProperty('success', true)
+        expect(res.body.user).toHaveProperty('username', 'UsuarioEmailVacio')
+        expect(res.body.user).toHaveProperty('email', null) // CAMBIO: email debe ser null
+    })
+
+    it('debe crear un usuario correctamente con email con espacios', async () => {
+        const res = await request(app)
+            .post('/createuser')
+            .send({
+                username: 'UsuarioEmailEspacios',
+                email: '   '
+            })
+            .set('Accept', 'application/json')
+
+        // CAMBIO: El servidor debe tratar el email con espacios como undefined
+        // y crear el usuario correctamente
+        expect(res.status).toBe(201)
+        expect(res.body).toHaveProperty('success', true)
+        expect(res.body.user).toHaveProperty('username', 'UsuarioEmailEspacios')
+        expect(res.body.user).toHaveProperty('email', null) // CAMBIO: email debe ser null
+    })
+
     it('debe devolver error 400 si falta el username', async () => {
         const res = await request(app)
             .post('/createuser')
             .send({
                 email: 'pablo@uniovi.es'
-            })
-            .set('Accept', 'application/json')
-
-        expect(res.status).toBe(400)
-        expect(res.body).toHaveProperty('success', false)
-        expect(res.body.error).toMatch(/Username is a mandatory field/i)
-    })
-
-    it('debe devolver error 400 si falta el email', async () => {
-        const res = await request(app)
-            .post('/createuser')
-            .send({
-                username: 'Pablo'
             })
             .set('Accept', 'application/json')
 

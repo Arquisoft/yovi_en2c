@@ -26,15 +26,25 @@ app.post('/createuser', async (req, res) => {
         const { username, email } = req.body;
 
         // Validación básica
-        if (!username || !email) {
+        if (!username) {
             return res.status(400).json({
                 success: false,
                 error: 'Username is a mandatory field'
             });
         }
 
+        let processedEmail = undefined;
+        if (email && typeof email === 'string' && email.trim() !== '') {
+            processedEmail = email.trim();
+        }
+
+        const userData = {
+            username,
+            email: processedEmail
+        };
+
         // new user model
-        const newUser = new User({ username, email });
+        const newUser = new User(userData);
 
         // save the user in db
         const savedUser = await newUser.save();
@@ -45,7 +55,7 @@ app.post('/createuser', async (req, res) => {
             user: {
                 id: savedUser._id,
                 username: savedUser.username,
-                email: savedUser.email,
+                email: savedUser.email || null, // Devolver null si no hay email
                 createdAt: savedUser.createdAt
             }
         });
