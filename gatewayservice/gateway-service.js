@@ -5,16 +5,13 @@ const app = express();
 app.disable("x-powered-by");
 const PORT = 8080;
 
-// SOLO base URL, no URLs completas
 const GAME_BASE_URL = "http://localhost:4000";
 const USER_BASE_URL = "http://localhost:3000";
 
 app.use(express.json());
 
-/* =========================
-   NEW GAME
-========================= */
 
+// NEW GAME
 app.post("/game/new", async (req, res) => {
   try {
     const response = await axios.post(
@@ -35,10 +32,7 @@ app.post("/game/new", async (req, res) => {
   }
 });
 
-/* =========================
-   PVB MOVE
-========================= */
-
+//PVB MOVE
 app.post("/game/pvb/move", async (req, res) => {
   const { yen, bot } = req.body;
 
@@ -82,10 +76,7 @@ app.post("/game/pvb/move", async (req, res) => {
   }
 });
 
-/* =========================
-   BOT CHOOSE
-========================= */
-
+// BOT CHOOSE
 app.post("/game/bot/choose", async (req, res) => {
   const { yen, bot } = req.body;
 
@@ -129,10 +120,7 @@ app.post("/game/bot/choose", async (req, res) => {
   }
 });
 
-/* =========================
-   CREATE USER
-========================= */
-
+// CREATE USER
 app.post("/createuser", async (req, res) => {
   try {
     const response = await axios.post(
