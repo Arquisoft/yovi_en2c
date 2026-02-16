@@ -187,6 +187,6 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           command: |
             wget https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/master/docker-compose.yml -O docker-compose.yml
-            export MONGODB_URI='${{ secrets.MONGODB_URI }}'
+            echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
             docker compose down
             docker compose up -d --pull always
