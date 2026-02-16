@@ -20,7 +20,7 @@ const RegisterForm: React.FC = () => {
 
     setLoading(true);
     try {
-      const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+      const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
       const res = await fetch(`${API_URL}/createuser`, {
         method: 'POST',
         headers: {
@@ -30,13 +30,10 @@ const RegisterForm: React.FC = () => {
       });
 
       const data = await res.json();
+      
       if (res.ok) {
         setResponseMessage(data.message);
-        setUsername('');
-        if (res.ok) {
-          navigate('/game', { state: { username } });
-        }
-
+        navigate('/game', { state: { username } });
       } else {
         setError(data.error || 'Server error');
       }
