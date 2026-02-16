@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const RegisterForm: React.FC = () => {
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [responseMessage, setResponseMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +33,10 @@ const RegisterForm: React.FC = () => {
       if (res.ok) {
         setResponseMessage(data.message);
         setUsername('');
+        if (res.ok) {
+          navigate('/game', { state: { username } });
+        }
+
       } else {
         setError(data.error || 'Server error');
       }

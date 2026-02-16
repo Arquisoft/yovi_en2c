@@ -12,11 +12,15 @@ describe('Gateway Service', () => {
   })
 
   describe('GameY endpoints', () =>{
+
+    // =====================
     // NEW GAME
+    // =====================
     it('POST /game/new returns YEN when Rust server responds correctly', async () => {
 
         axios.post.mockResolvedValueOnce({
-        data: { size: 5, turn: 0, layout: "....." }
+            status: 200,
+            data: { size: 5, turn: 0, layout: "....." }
         })
 
         const res = await request(app)
@@ -29,7 +33,7 @@ describe('Gateway Service', () => {
         expect(axios.post).toHaveBeenCalledTimes(1)
     })
 
-    it('POST /game/new returns 500 if Rust server fails', async () => {
+    it('POST /game/new returns 502 if Rust server fails', async () => {
 
         axios.post.mockRejectedValueOnce(new Error("Server down"))
 
@@ -37,23 +41,28 @@ describe('Gateway Service', () => {
         .post('/game/new')
         .send({ size: 5 })
 
-        expect(res.status).toBe(500)
+        expect(res.status).toBe(502)
         expect(res.body.ok).toBe(false)
         expect(res.body.error).toMatch(/Game server unavailable/i)
     })
 
+    // =====================
     // PVB MOVE
+    // =====================
     it('POST /game/pvb/move returns updated YEN', async () => {
 
         axios.post.mockResolvedValueOnce({
-        data: { size: 5, turn: 1, layout: "...B." }
+            status: 200,
+            data: { size: 5, turn: 1, layout: "...B." }
         })
 
         const res = await request(app)
         .post('/game/pvb/move')
         .send({
             yen: { size: 5, turn: 0, layout: "....." },
-            bot: "random_bot"
+            bot: "random_bot",
+            row: 0,
+            col: 0
         })
 
         expect(res.status).toBe(200)
@@ -73,13 +82,14 @@ describe('Gateway Service', () => {
         expect(res.body.error).toMatch(/Missing YEN/i)
     })
 
+    // =====================
     // BOT CHOOSE
+    // =====================
     it('POST /game/bot/choose returns coordinates', async () => {
 
         axios.post.mockResolvedValueOnce({
+            status: 200,
             data: {
-                api_version: "v1",
-                bot_id: "random_bot",
                 coords: { x: 0, y: 1, z: 3 }
             }
         })
@@ -90,9 +100,11 @@ describe('Gateway Service', () => {
                 yen: { size: 5, turn: 0, layout: "....." },
                 bot: "random_bot"
             })
+
         expect(res.status).toBe(200)
         expect(res.body.ok).toBe(true)
         expect(res.body).toHaveProperty('coordinates')
+        expect(res.body.coordinates).toEqual({ x: 0, y: 1, z: 3 })
         expect(axios.post).toHaveBeenCalledTimes(1)
     })
 
@@ -112,8 +124,10 @@ describe('Gateway Service', () => {
     it('POST /createuser forwards request correctly', async () => {
 
         axios.post.mockResolvedValueOnce({
-        data: { message: "Hello Ana! welcome to the course!" }
+            status: 200,
+            data: { message: "Hello Ana! welcome to the course!" }
         })
+
         const res = await request(app)
         .post('/createuser')
         .send({ username: 'Ana' })
@@ -137,6 +151,4 @@ describe('Gateway Service', () => {
         expect(res.body.error).toMatch(/User service unavailable/i)
     })
   })
-
-
 })
