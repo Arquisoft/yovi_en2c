@@ -6,7 +6,7 @@ type GatewayResponse =
   | { ok: true; yen?: any; message?: string }
   | { ok: false; error: string; details?: any };
 
-const API_URL = "http://localhost:8080";
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
 
 const HUMAN = "B";
 const BOT = "R";
