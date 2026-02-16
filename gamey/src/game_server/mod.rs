@@ -9,7 +9,7 @@
 //!
 //! # Example
 //! ```no_run
-//! use gamey::run_bot_server;
+//! use gamey::game_server::run_bot_server;
 //!
 //! #[tokio::main]
 //! async fn main() {
@@ -19,17 +19,26 @@
 //! }
 //! ```
 
-pub mod choose;
 pub mod error;
 pub mod state;
 pub mod version;
+
+pub mod bot {
+    pub mod choose;
+}
+
+pub mod game {
+    pub mod pvb;
+    pub mod new; // starts game
+}
+
 use axum::response::IntoResponse;
 use std::sync::Arc;
-pub use choose::MoveResponse;
+pub use bot::choose::MoveResponse;
 pub use error::ErrorResponse;
 pub use version::*;
 
-use crate::{GameYError, RandomBot, YBotRegistry, state::AppState};
+use crate::{GameYError, RandomBot, YBotRegistry, game_server::state::AppState};
 
 /// Creates the Axum router with the given state.
 ///
@@ -39,7 +48,15 @@ pub fn create_router(state: AppState) -> axum::Router {
         .route("/status", axum::routing::get(status))
         .route(
             "/{api_version}/ybot/choose/{bot_id}",
-            axum::routing::post(choose::choose),
+            axum::routing::post(bot::choose::choose),
+        )
+        .route(
+            "/{api_version}/game/pvb/{bot_id}",
+            axum::routing::post(game::pvb::pvb_move),
+        )
+        .route(
+            "/game/new",
+            axum::routing::post(game::new::new_game),
         )
         .with_state(state)
 }
@@ -52,7 +69,7 @@ pub fn create_default_state() -> AppState {
     AppState::new(bots)
 }
 
-/// Starts the bot server on the specified port.
+/// Starts the game server on the specified port.
 ///
 /// This function blocks until the server is shut down.
 ///
@@ -89,4 +106,34 @@ pub async fn run_bot_server(port: u16) -> Result<(), GameYError> {
 /// Returns "OK" to indicate the server is running.
 pub async fn status() -> impl IntoResponse {
     "OK"
+}
+
+
+#[cfg(test)]
+mod router_tests {
+    use super::*;
+    use axum::http::{Request, StatusCode};
+    use axum::body::Body;
+    use tower::ServiceExt;
+    use crate::bot::ybot_registry::YBotRegistry;
+
+    #[tokio::test]
+    async fn test_unknown_route_returns_404() {
+        let state = crate::game_server::state::AppState::new(
+            YBotRegistry::default()
+        );
+
+        let app = create_router(state);
+
+        let response = app
+            .oneshot(
+                Request::get("/unknown")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
 }

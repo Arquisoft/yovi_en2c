@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const RegisterForm: React.FC = () => {
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [responseMessage, setResponseMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +20,7 @@ const RegisterForm: React.FC = () => {
 
     setLoading(true);
     try {
-      const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+      const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
       const res = await fetch(`${API_URL}/createuser`, {
         method: 'POST',
         headers: {
@@ -31,6 +33,10 @@ const RegisterForm: React.FC = () => {
       if (res.ok) {
         setResponseMessage(data.message);
         setUsername('');
+        if (res.ok) {
+          navigate('/game', { state: { username } });
+        }
+
       } else {
         setError(data.error || 'Server error');
       }
