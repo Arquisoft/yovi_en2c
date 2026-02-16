@@ -3,46 +3,82 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-architecture-constraints]]
 == Architecture Constraints
 
-This section lists the main constraints that shape the architecture of the YOVI system. These constraints come from the assignment requirements and limit the available architectural choices.
+This section lists the main constraints that shape the architecture of the YOVI system. Unlike requirements , constraints define
+how it must be done or which technologies must be used. These are non-negotiable boundaries within which we must operate.
+.
 
 === Technical Constraints
+These constraints are imposed by the  client (Micrati). They dictate the technology stack and communication protocols.
 
-* The system is composed of at least two subsystems:
-** A web application implemented in *TypeScript*.
-** A game engine module implemented in *Rust*.
-
-* The Rust module must be exposed as a *web service* so it can be invoked remotely by the web application.
-
-* Communication between the web application and the Rust module must use *JSON messages* following the *YEN notation* for representing the state of a Game Y match.
-
-* The web application must expose a *public API* that allows external bots to interact with the system.
-
-* The complete system must be *deployed and publicly accessible via the Web*.
+|===
+| Constraint | Explanation | Rationale | Negotiable?
+| **Frontend Technology** | The web application MUST be implemented in **TypeScript**. React is the chosen framework but not strictly mandatory. | The client requires TypeScript for type safety and maintainability. |  No (TypeScript is mandatory)
+| **Game Engine Language** | The game logic module MUST be implemented in **Rust**. | Performance and safety requirements for game state validation and AI strategies. |  No
+| **Communication Protocol** | All communication between the webapp and game engine MUST use **JSON messages** following **YEN notation** for game states. | Standardized format specified by the client for interoperability. |  No
+| **Public API** | The system MUST expose a documented public API that allows external bots to interact. | Core requirement from Micrati for third-party integration. |  No
+| **Deployment** | The complete system MUST be publicly accessible via the Web. | The client needs to demonstrate the working product. |  No
+| **Containerization** | All services MUST be containerized using **Docker** with a root-level `docker-compose.yml`. | Ensures consistent deployment across environments. |  Partial (format flexible)
+| **Database** | User data MUST be persisted. **MongoDB** is the current implementation, but alternatives are possible. | Data persistence is mandatory; the specific database technology is negotiable. | Yes (technology choice)
+|===
 
 === Domain Constraints
 
-* The system must implement the rules of *Game Y*. Support for the classic version of the game is mandatory.
+These constraints come from the game domain itself and the specific requirements of Game Y.
 
-* A *player-versus-machine* game mode must be available.
+|===
+| Constraint | Explanation | Rationale | Negotiable?
+| **Game Rules** | The system MUST correctly implement the rules of **Game Y** (classic version minimum). | Core business requirement; incorrect game rules make the product worthless. |  No
+| **Game Mode** | A **player-versus-machine** mode MUST be available. | Primary use case for the platform. |  No
+| **Board Size** | The game MUST support **variable board sizes** configurable by the user. | Required for different difficulty levels and game variants. |  No
+| **AI Strategies** | The computer MUST implement **more than one strategy**, selectable by the user. | Demonstrates AI sophistication and provides varied gameplay. |  No
+| **User Data** | Users MUST be able to register and access their match history. | Basic user management requirement. |  No
+|===
 
-* The game must support a *variable board size*.
+=== Organizational Constraints
 
-* The computer player must implement *more than one strategy*. The user must be able to select the strategy, optionally including different difficulty levels.
+These constraints govern our development process and team practices.
 
-=== Organizational and Process Constraints
-
-* The architecture and design decisions must be documented following the guidelines used in the course, including the use of Architectural Decision Records (ADRs).
-
-* The system must include automated testing at different levels, such as unit, integration, and end-to-end tests.
-
-* Development must be carried out using a version-controlled repository, including issue tracking and documented architectural decisions.
-
-* The project should support automated build and deployment through CI/CD pipelines.
+|===
+| Constraint | Explanation | Rationale | Negotiable?
+| **Documentation Standard** | Architecture MUST be documented following the **Arc42 template**. | Course requirement for the ASR lab. |  No
+| **Decision Recording** | Architectural decisions MUST be recorded as **ADRs** (Architectural Decision Records) in the wiki of Github. | Ensures traceability and rationale documentation. |  No
+| **Version Control** | Development MUST use **Git** with the repository hosted on **GitHub** (`Arquisoft/yovi_en2c`). | Course requirement for collaboration and evaluation. |  No
+| **Branching Strategy** | A **branch-based workflow** MUST be followed (feature branches, pull requests, code reviews). | Ensures code quality and team coordination. |  Partial (specific workflow details negotiable)
+| **Testing Requirements** | The system MUST include **unit tests**, **integration tests**, and **end-to-end tests**. | Quality assurance requirement from course evaluation. |  No
+| **Test Coverage** | Code coverage MUST meet thresholds defined in `sonar-project.properties` (minimum 80%). | Quality gate for acceptance. |  No
+| **CI/CD** | Automated **build, test, and deployment** MUST be implemented via CI/CD pipelines (GitHub Actions). | Ensures reproducible builds and deployment automation. |  No
+| **Issue Tracking** | All tasks MUST be tracked using **GitHub Issues**. | Project management and traceability requirement. |  No
+|===
 
 === External Constraints
 
-* External bots can only interact with the system through the exposed API and must not depend on internal implementation details.
+These constraints come from external stakeholders and the operating environment.
 
-* The public API must be documented to allow third-party developers to implement compatible bots.
+|===
+| Constraint | Explanation | Rationale | Negotiable?
+| **Bot Integration** | External bots can ONLY interact through the public API; no direct access to internal services. | Security and encapsulation requirement. |  No
+| **API Documentation** | The public API MUST be documented for third-party developers. | Enables external developers to build compatible bots. |  Partial (documentation format negotiable)
+| **YEN Notation Compliance** | Any system claiming to support Game Y MUST use YEN notation for game state representation. | Industry standard for this game family. |  No
+| **Public Accessibility** | The deployed system MUST be accessible without special network configuration. | End users and evaluators need to access the platform easily. |  No
+|===
 
-These constraints define the boundaries within which the YOVI architecture has been designed.
+=== Quality Constraints
+
+These constraints define the minimum acceptable quality levels the architecture must guarantee.
+
+|===
+| Constraint | Target | Measurement | Negotiable?
+| **Response Time** | Game engine must respond within **2 seconds** for standard board sizes. | Performance testing with realistic loads. |  Partial (exact threshold)
+| **Concurrent Users** | Support at least **10 concurrent users** without degradation. | Load testing simulation. | Yes (scale up with resources)
+| **Availability** | System must achieve **99% uptime** during evaluation period. | Monitoring and observability tools. |  Partial (percentage)
+|===
+
+=== Implications of These Constraints
+
+These constraints collectively shape our architecture in specific ways:
+
+* **Three-service structure**: The technology constraints (TypeScript + Rust) force a separation between frontend (`webapp`) and game engine (`gamey`). The user management requirement adds a third service (`users`).
+* **API Gateway necessity**: Multiple services with public API exposure require a gateway for request routing and security.
+* **Docker standardization**: The containerization constraint ensures consistent development and deployment environments.
+* **Documentation overhead**: Arc42 and ADR requirements mean we must invest time in documentation alongside development.
+* **Testing necessity**: The testing requirements force us to design for testability from the start.
