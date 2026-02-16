@@ -12,27 +12,27 @@ services:
     build:
       context: ./webapp
       args:
-        - VITE_API_URL=http://localhost:8080
+        - VITE_API_URL=http://gateway:8080
     container_name: webapp
     image: ghcr.io/arquisoft/yovi_en2c-webapp:latest
     ports:
       - "80:80"
     depends_on:
-      - users
+      - gateway
     networks:
       - monitor-net
 
-    gateway:
-      build: ./gatewayservice
-      container_name: gateway
-      image: ghcr.io/arquisoft/yovi_0-gateway:latest
-      ports:
-        - "8080:8080"
-      depends_on:
-        - users
-        - gamey
-      networks:
-        - monitor-net
+  gateway:
+    build: ./gatewayservice
+    container_name: gateway
+    image: ghcr.io/arquisoft/yovi_en2c-gateway:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - users
+      - gamey
+    networks:
+      - monitor-net
 
   gamey:
     build: ./gamey
