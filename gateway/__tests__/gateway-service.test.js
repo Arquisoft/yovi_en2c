@@ -182,4 +182,103 @@ describe('Gateway Service', () => {
         expect(res.body.error).toMatch(/User service unavailable/i)
     })
   })
+
+describe("Additional branch coverage", () => {
+  it("POST /game/pvb/move returns 400 if row/col missing", async () => {
+
+    const res = await request(app)
+      .post("/game/pvb/move")
+      .send({
+        yen: { size: 5 },
+        bot: "random_bot"
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.ok).toBe(false);
+    expect(res.body.error).toMatch(/Missing row\/col/i);
+  });
+
+  it("POST /game/pvb/move returns 400 if invalid bot id", async () => {
+
+    const res = await request(app)
+      .post("/game/pvb/move")
+      .send({
+        yen: { size: 5 },
+        bot: "invalid_bot",
+        row: 0,
+        col: 0
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.ok).toBe(false);
+    expect(res.body.error).toMatch(/Invalid bot id/i);
+  });
+
+  it("POST /game/bot/choose returns 400 if invalid bot id", async () => {
+
+    const res = await request(app)
+      .post("/game/bot/choose")
+      .send({
+        yen: { size: 5 },
+        bot: "invalid_bot"
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.ok).toBe(false);
+    expect(res.body.error).toMatch(/Invalid bot id/i);
+  });
+
+  it("POST /game/new propagates axios response error status", async () => {
+
+    axios.post.mockRejectedValueOnce({
+      response: {
+        status: 503,
+        data: { error: "Downstream error" }
+      }
+    });
+
+    const res = await request(app)
+      .post("/game/new")
+      .send({ size: 5 });
+
+    expect(res.status).toBe(503);
+    expect(res.body.ok).toBe(false);
+    expect(res.body.error).toMatch(/Downstream error/i);
+  });
+
+  it("GET /game/status propagates axios response error status", async () => {
+
+    axios.get.mockRejectedValueOnce({
+      response: {
+        status: 504,
+        data: { message: "Timeout" }
+      }
+    });
+
+    const res = await request(app)
+      .get("/game/status");
+
+    expect(res.status).toBe(504);
+    expect(res.body.ok).toBe(false);
+    expect(res.body.error).toMatch(/Timeout/i);
+  });
+
+  it("POST /createuser propagates user-service error response", async () => {
+
+    axios.post.mockRejectedValueOnce({
+      response: {
+        status: 409,
+        data: { error: "User already exists" }
+      }
+    });
+
+    const res = await request(app)
+      .post("/createuser")
+      .send({ username: "Ana" });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/User already exists/i);
+  });
+  });
+
 })
