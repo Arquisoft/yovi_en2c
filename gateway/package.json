@@ -1,5 +1,5 @@
 {
-  "name": "gatewayservice",
+  "name": "gateway",
   "version": "1.0.0",
   "description": "Gateway service for the Game of Y",
   "main": "gateway-service.js",

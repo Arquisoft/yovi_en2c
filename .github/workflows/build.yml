@@ -22,7 +22,7 @@ jobs:
 
       - run: npm --prefix users ci
       - run: npm --prefix webapp ci
-      - run: npm --prefix gatewayservice ci
+      - run: npm --prefix gateway ci
 
       - name: Run users tests with MongoDB
         run: npm --prefix users run test:coverage
@@ -33,7 +33,7 @@ jobs:
         run: npm --prefix webapp run test:coverage
       
       - name: Run gateway tests
-        run: npm --prefix gatewayservice run test:coverage
+        run: npm --prefix gateway run test:coverage
 
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --locked

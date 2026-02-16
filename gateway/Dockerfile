@@ -3,7 +3,7 @@ FROM node:22-alpine
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --silent --ignore-scripts
+RUN npm ci --omit=dev
 
 COPY . .
 
@@ -12,6 +12,6 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
 
 USER appuser
 
-EXPOSE 3000
+EXPOSE 8080
 
-CMD ["node", "users-service.js"]
+CMD ["node", "gateway-service.js"]

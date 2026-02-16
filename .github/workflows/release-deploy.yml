@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [webapp, users, gatewayservice]
+        service: [webapp, users, gateway]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -74,7 +74,7 @@ jobs:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
       - name: Install gateway dependencies
         run: |
-          cd gatewayservice
+          cd gateway
           npm ci
       - name: Install webapp dependencies
         run: |
@@ -131,7 +131,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
-          workdir: gatewayservice
+          workdir: gateway
 
   docker-push-webapp:
     name: Publish webapp image

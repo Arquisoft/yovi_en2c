@@ -25,7 +25,7 @@ services:
       - monitor-net
 
   gateway:
-    build: ./gatewayservice
+    build: ./gateway
     container_name: gateway
     image: ghcr.io/arquisoft/yovi_en2c-gateway:latest
     ports:
