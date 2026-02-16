@@ -14,12 +14,12 @@
     "test:e2e:run": "cucumber-js --import test/e2e/support/setup.mjs --import test/e2e/steps/**/*.mjs test/e2e/features --format progress",
     "test:e2e": "start-server-and-test start:all http://localhost:5173 test:e2e:run",
     "test:e2e:install-browsers": "npx playwright install",
-    "start:all": "concurrently \"npm run dev\" \"npm --prefix ../users start\""
+    "start:all": "concurrently \"npm run dev\" \"npm --prefix ../users start\" \"npm --prefix ../gateway start\""
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.22.3"
+    "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^12.4.0",
@@ -30,6 +30,7 @@
     "@types/node": "^24.10.1",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
+    "@types/react-router-dom": "^5.3.3",
     "@vitejs/plugin-react": "^5.1.1",
     "@vitest/coverage-v8": "^4.0.16",
     "concurrently": "^8.2.0",
