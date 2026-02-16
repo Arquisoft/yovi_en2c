@@ -117,6 +117,37 @@ describe('Gateway Service', () => {
         expect(res.status).toBe(400)
         expect(res.body.ok).toBe(false)
     })
+
+    // =====================
+    // HEALTH CHECK
+    // =====================
+    it('GET /game/status returns OK when Rust server responds correctly', async () => {
+
+        axios.get.mockResolvedValueOnce({
+            status: 200,
+            data: "GameY running"
+        })
+
+        const res = await request(app)
+            .get('/game/status')
+
+        expect(res.status).toBe(200)
+        expect(res.body.ok).toBe(true)
+        expect(res.body.message).toBe("GameY running")
+        expect(axios.get).toHaveBeenCalledTimes(1)
+    })
+
+    it('GET /game/status returns 502 if Rust server fails', async () => {
+
+        axios.get.mockRejectedValueOnce(new Error("Server down"))
+
+        const res = await request(app)
+            .get('/game/status')
+
+        expect(res.status).toBe(502)
+        expect(res.body.ok).toBe(false)
+        expect(res.body.error).toMatch(/Game server unavailable/i)
+    })
   })
 
   describe('Users endpoints', () => {

@@ -7,7 +7,12 @@ app.disable("x-powered-by");
 const PORT = 8080;
 
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"],
+  })
+);
 
 const PVB_MOVE_ROUTES = {
   random_bot: "http://localhost:4000/v1/game/pvb/random_bot",
