@@ -25,11 +25,14 @@ services:
       - monitor-net
 
   gateway:
-    build: ./gateway
+    build: ./gatewayservice
     container_name: gateway
     image: ghcr.io/arquisoft/yovi_en2c-gateway:latest
     ports:
       - "8080:8080"
+    environment:
+      - USERS_BASE_URL=http://users:3000
+      - GAMEY_BASE_URL=http://gamey:4000
     depends_on:
       - users
       - gamey
