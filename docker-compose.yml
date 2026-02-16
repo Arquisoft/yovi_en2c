@@ -5,6 +5,8 @@ services:
     image: ghcr.io/arquisoft/yovi_en2c-users:latest
     ports:
       - "3000:3000"
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
     networks:
       - monitor-net
 
