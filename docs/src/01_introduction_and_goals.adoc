@@ -3,12 +3,15 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-introduction-and-goals]]
 == Introduction and Goals
 
-We are a team of four Software Engineering students developing YOVI, a web-based gaming platform for the company Micrati
+We are a team of four Software Engineering students from the University of Oviedo developing YOVI, a web-based gaming
+platform for the company Micrati
 as part of our Architecture of Software Systems (ASR) course project.
 
-The platform will allow users to play various versions of Game Y against AI opponents with different strategies, track
-their performance, and compete through an optional public ranking system. Our goal is to deliver an engaging, intuitive,
-and reliable gaming experience that can be extended with new game variants in the future.
+The platform will allow users to play Game Y against AI opponents with strategies and track
+their games via their own account. Our solution is built with a service-oriented
+architecture comprising three main components: a React frontend (webapp/), a Node.js user service (users/), and a Rust
+game engine (gamey/), all orchestrated via an API gateway. This architecture ensures clarity, maintainability, and
+scalability while fulfilling both academic requirements and player expectations.
 
 This document outlines the architectural vision for YOVI, balancing functionality with clarity and maintainability to
 meet both academic requirements and player expectations.
@@ -17,17 +20,16 @@ meet both academic requirements and player expectations.
 
 
 The YOVI system is a web-based gaming platform based on Game Y, developed for the company Micrati. The main goal is to
-allow users to play matches against the machine or via bots, with support for multiple strategies, variable board sizes,
-and registration and statistics functionalities.
+allow users to play matches against the machine or via bots, with support for registration and statistics functionalities.
 
 Key functional requirements include:
 
-* Development of a web application in TypeScript that allows playing at least the classic version of Game Y.
-* Implementation of a Rust module to verify the game state and suggest moves, with JSON communication using YEN.
-* A documented public API to allow bot interaction.
-* User registration and access to match history, statistics, and metrics.
-* Support for multiple strategies and difficulty levels in the vs. machine mode.
 * Public deployment and web accessibility.
+* Development of a web application in React that allows playing at least the classic version of Game Y.
+* Implementation of a Rust module to verify the game state and suggest moves to the bot.
+* User registration and access to match history.
+* Support for multiple strategies and difficulty levels in the vs. machine mode.
+
 
 
 
@@ -36,13 +38,15 @@ Key functional requirements include:
 
 The main quality attributes for the system architecture are:
 
-- **Functionality**: The system must support multiple Game Y variants and allow matches against AI with different
-strategies.
-- **Usability**: The interface must be intuitive and optionally support internationalization (i18n).
-- **Maintainability**: The architecture must facilitate the extension with new game variants without rewriting core
-components.
-- **Availability**: The application must be deployed and publicly accessible with high availability.
-- **Interoperability**: The API must be well-documented and allow integration with external bots via YEN.
+- **Functionality**: The system must correctly implement Game Y rules and provide at least one working AI strategies.
+- **Usability**: The React-based interface must be intuitive for players. The component-based architecture of the webapp
+supports future internationalization (i18n)
+- **Modularity & Maintainability**: The clear separation into services ensures that components can be developed, tested,
+and extended independently.
+- **Deployability & Availability**: Using Docker and Docker Compose ensures that the multi-service application can be
+consistently deployed in any environment. The gateway provides a single entry point, simplifying deployment
+- **Testability**: The separation of concerns allows for comprehensive testing at multiple levels: unit tests in Rust
+and Node.js, integration tests between services, and end-to-end tests for the webapp
 
 === Stakeholders
 
