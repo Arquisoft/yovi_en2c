@@ -7,26 +7,29 @@ app.disable("x-powered-by");
 const PORT = 8080;
 
 app.use(express.json());
-app.use(
-  cors({
-    origin: true,
-    methods: ["GET", "POST"],
-  })
-);
+app.use(cors({
+  origin: true,
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type"],
+}));
+
+
+const USERS_BASE_URL = process.env.USERS_BASE_URL || "http://localhost:3000";
+const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://localhost:4000";
 
 const PVB_MOVE_ROUTES = {
-  random_bot: "http://gamey:4000/v1/game/pvb/random_bot",
-  smart_bot: "http://gamey:4000/v1/game/pvb/smart_bot",
+  random_bot: `${GAMEY_BASE_URL}/v1/game/pvb/random_bot`,
+  smart_bot: `${GAMEY_BASE_URL}/v1/game/pvb/smart_bot`,
 };
 
 const BOT_CHOOSE_ROUTES = {
-  random_bot: "http://gamey:4000/v1/ybot/choose/random_bot",
-  smart_bot: "http://gamey:4000/v1/ybot/choose/smart_bot",
+  random_bot: `${GAMEY_BASE_URL}/v1/ybot/choose/random_bot`,
+  smart_bot: `${GAMEY_BASE_URL}/v1/ybot/choose/smart_bot`,
 };
 
-const CREATE_USER_URL = "http://users:3000/createuser";
-const GAME_NEW_URL = "http://gamey:4000/game/new";
-const GAME_STATUS_URL = "http://gamey:4000/status";
+const CREATE_USER_URL = `${USERS_BASE_URL}/createuser`;
+const GAME_NEW_URL = `${GAMEY_BASE_URL}/game/new`;
+const GAME_STATUS_URL = `${GAMEY_BASE_URL}/status`;
 
 function forwardAxiosError(res, error, fallbackMessage) {
   const status = error?.response?.status;
