@@ -72,6 +72,10 @@ jobs:
           npm ci
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      - name: Install gateway dependencies
+        run: |
+          cd gatewayservice
+          npm ci
       - name: Install webapp dependencies
         run: |
           cd webapp
