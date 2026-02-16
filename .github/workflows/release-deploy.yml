@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [webapp, users]
+        service: [webapp, users, gateway]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -72,6 +72,10 @@ jobs:
           npm ci
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      - name: Install gateway dependencies
+        run: |
+          cd gateway
+          npm ci
       - name: Install webapp dependencies
         run: |
           cd webapp
@@ -108,6 +112,26 @@ jobs:
           workdir: users
           buildargs: | 
             MONGODB_URI=${{ secrets.MONGODB_URI }}
+  
+  docker-push-gateway:
+    name: Publish gateway image
+    runs-on: ubuntu-latest
+    needs: e2e
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish to Registry (gateway)
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-gateway
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: gateway
 
   docker-push-webapp:
     name: Publish webapp image
@@ -128,7 +152,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
           workdir: webapp
-          buildargs: VITE_API_URL=http://${{ secrets.DEPLOY_HOST }}:3000
+          buildargs: VITE_API_URL=http://${{ secrets.DEPLOY_HOST }}:8080
 
   docker-push-gamey:
     name: Publish gamey image
@@ -153,7 +177,7 @@ jobs:
   deploy:
     name: Deploy over SSH
     runs-on: ubuntu-latest
-    needs: [docker-push-users, docker-push-webapp, docker-push-gamey]
+    needs: [docker-push-users, docker-push-webapp, docker-push-gamey, docker-push-gateway]
     steps:
       - name: Deploy over SSH
         uses: fifsky/ssh-action@master
@@ -163,5 +187,6 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           command: |
             wget https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/master/docker-compose.yml -O docker-compose.yml
+            echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
             docker compose down
             docker compose up -d --pull always

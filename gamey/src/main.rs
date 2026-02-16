@@ -20,7 +20,8 @@
 //! ```
 
 use clap::Parser;
-use gamey::{self, CliArgs, Mode, run_bot_server, run_cli_game};
+use gamey::{self, CliArgs, Mode, run_cli_game};
+use gamey::game_server::run_bot_server;
 use tracing_subscriber::prelude::*;
 
 /// Main entry point for the GameY application.
