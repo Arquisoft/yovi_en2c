@@ -15,18 +15,18 @@ app.use(
 );
 
 const PVB_MOVE_ROUTES = {
-  random_bot: "http://localhost:4000/v1/game/pvb/random_bot",
-  smart_bot: "http://localhost:4000/v1/game/pvb/smart_bot",
+  random_bot: "http://gamey:4000/v1/game/pvb/random_bot",
+  smart_bot: "http://gamey:4000/v1/game/pvb/smart_bot",
 };
 
 const BOT_CHOOSE_ROUTES = {
-  random_bot: "http://localhost:4000/v1/ybot/choose/random_bot",
-  smart_bot: "http://localhost:4000/v1/ybot/choose/smart_bot",
+  random_bot: "http://gamey:4000/v1/ybot/choose/random_bot",
+  smart_bot: "http://gamey:4000/v1/ybot/choose/smart_bot",
 };
 
-const GAME_NEW_URL = "http://localhost:4000/game/new";
-const GAME_STATUS_URL = "http://localhost:4000/status";
-const CREATE_USER_URL = "http://localhost:3000/createuser";
+const CREATE_USER_URL = "http://users:3000/createuser";
+const GAME_NEW_URL = "http://gamey:4000/game/new";
+const GAME_STATUS_URL = "http://gamey:4000/status";
 
 function forwardAxiosError(res, error, fallbackMessage) {
   const status = error?.response?.status;
