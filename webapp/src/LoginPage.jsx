@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import Navbar from "./Navbar";
+import { Link, useNavigate } from "react-router-dom";
+import Navbar from "./Navbar.jsx";
 
 function LoginPage() {
 
@@ -41,6 +41,11 @@ function LoginPage() {
 
                 </div>
 
+                <div style={styles.registerLink}>
+                    <span>Don't have an account yet? </span>
+                    <Link to="/register">Register</Link>
+                </div>
+
                 <button
                     style={styles.loginButton}
                     onClick={handleLogin}
@@ -76,6 +81,11 @@ const styles = {
     input: {
         marginLeft: "20px",
         padding: "10px"
+    },
+
+    registerLink: {
+        marginTop: "15px",
+        fontSize: "14px"
     },
 
     loginButton: {

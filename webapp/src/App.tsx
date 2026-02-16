@@ -1,22 +1,21 @@
-import './App.css'
-import RegisterForm from './RegisterForm';
-import reactLogo from './assets/react.svg'
+import "./App.css";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import LoginPage from "./LoginPage.jsx";
+import RegisterPage from "./RegisterPage.jsx";
+import HomePage from "./HomePage.jsx";
+import PlayPage from "./PlayPage.jsx";
 
 function App() {
   return (
-    <div className="App">
-      <div>
-        <a href="https://vitejs.dev" target="_blank" rel="noreferrer">
-          <img src="/vite.svg" className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank" rel="noreferrer">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-
-      <h2>Welcome to the Software Arquitecture 2025-2026 course</h2>
-      <RegisterForm />
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/play" element={<PlayPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
