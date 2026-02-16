@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.26">
-<title>yovi_0</title>
+<title>yovi_en2c</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -436,7 +436,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </head>
 <body class="article">
 <div id="header">
-<h1><span class="image"><img src="./images/arc42-logo.png" alt="arc42"></span> yovi_0</h1>
+<h1><span class="image"><img src="./images/arc42-logo.png" alt="arc42"></span> yovi_en2c</h1>
 <div class="details">
 <span id="revnumber">version 8.2 EN,</span>
 <span id="revdate">January 2023</span>
@@ -452,43 +452,57 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_stakeholders">1.3. Stakeholders</a></li>
 </ul>
 </li>
-<li><a href="#section-architecture-constraints">2. Architecture Constraints</a></li>
+<li><a href="#section-architecture-constraints">2. Architecture Constraints</a>
+<ul class="sectlevel2">
+<li><a href="#_technical_constraints">2.1. Technical Constraints</a></li>
+<li><a href="#_domain_constraints">2.2. Domain Constraints</a></li>
+<li><a href="#_organizational_and_process_constraints">2.3. Organizational and Process Constraints</a></li>
+<li><a href="#_external_constraints">2.4. External Constraints</a></li>
+</ul>
+</li>
 <li><a href="#section-context-and-scope">3. Context and Scope</a>
 <ul class="sectlevel2">
 <li><a href="#_business_context">3.1. Business Context</a></li>
 <li><a href="#_technical_context">3.2. Technical Context</a></li>
+<li><a href="#_scope">3.3. Scope</a></li>
 </ul>
 </li>
-<li><a href="#section-solution-strategy">4. Solution Strategy</a></li>
+<li><a href="#section-solution-strategy">4. Solution Strategy</a>
+<ul class="sectlevel2">
+<li><a href="#_technology_decisions">4.1. Technology Decisions</a></li>
+<li><a href="#_organizational_and_process_decisions">4.2. Organizational and Process Decisions</a></li>
+<li><a href="#_architectural_decomposition">4.3. Architectural Decomposition</a></li>
+<li><a href="#_design_patterns">4.4. Design Patterns</a></li>
+<li><a href="#_quality_goal_realization">4.5. Quality Goal Realization</a></li>
+<li><a href="#_conclusion">4.6. Conclusion</a></li>
+</ul>
+</li>
 <li><a href="#section-building-block-view">5. Building Block View</a>
 <ul class="sectlevel2">
 <li><a href="#_whitebox_overall_system">5.1. Whitebox Overall System</a></li>
 <li><a href="#_level_2">5.2. Level 2</a></li>
-<li><a href="#_level_3">5.3. Level 3</a></li>
 </ul>
 </li>
 <li><a href="#section-runtime-view">6. Runtime View</a>
 <ul class="sectlevel2">
-<li><a href="#_runtime_scenario_1">6.1. &lt;Runtime Scenario 1&gt;</a></li>
-<li><a href="#_runtime_scenario_2">6.2. &lt;Runtime Scenario 2&gt;</a></li>
-<li><a href="#">6.3. &#8230;&#8203;</a></li>
-<li><a href="#_runtime_scenario_n">6.4. &lt;Runtime Scenario n&gt;</a></li>
+<li><a href="#_runtime_scenario_1_playthgough_of_a_game_against_two_players">6.1. Runtime Scenario 1: Playthgough of a Game against two players</a></li>
+<li><a href="#_runtime_scenario_2_playthrough_of_a_game_against_a_bot">6.2. Runtime Scenario 2: Playthrough of a Game against a Bot</a></li>
 </ul>
 </li>
-<li><a href="#section-deployment-view">7. Deployment View</a>
-<ul class="sectlevel2">
-<li><a href="#_infrastructure_level_1">7.1. Infrastructure Level 1</a></li>
-<li><a href="#_infrastructure_level_2">7.2. Infrastructure Level 2</a></li>
-</ul>
-</li>
+<li><a href="#section-deployment-view">7. Deployment View</a></li>
 <li><a href="#section-concepts">8. Cross-cutting Concepts</a>
 <ul class="sectlevel2">
-<li><a href="#_concept_1">8.1. <em>&lt;Concept 1&gt;</em></a></li>
-<li><a href="#_concept_2">8.2. <em>&lt;Concept 2&gt;</em></a></li>
-<li><a href="#_concept_n">8.3. <em>&lt;Concept n&gt;</em></a></li>
+<li><a href="#_internationalization">8.1. Internationalization</a></li>
+<li><a href="#_testing">8.2. Testing</a></li>
+<li><a href="#_security">8.3. Security</a></li>
+<li><a href="#_gateway">8.4. Gateway</a></li>
 </ul>
 </li>
-<li><a href="#section-design-decisions">9. Architecture Decisions</a></li>
+<li><a href="#section-design-decisions">9. Architecture Decisions</a>
+<ul class="sectlevel2">
+<li><a href="#_1_prioritize_early_internationalization_i18n">9.1. 1: Prioritize Early Internationalization (i18n)</a></li>
+</ul>
+</li>
 <li><a href="#section-quality-scenarios">10. Quality Requirements</a>
 <ul class="sectlevel2">
 <li><a href="#_quality_tree">10.1. Quality Tree</a></li>
@@ -552,133 +566,81 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="sect1">
 <h2 id="section-introduction-and-goals">1. Introduction and Goals</h2>
 <div class="sectionbody">
-<div class="sidebarblock arc42help">
-<div class="content">
 <div class="paragraph">
-<p>Describes the relevant requirements and the driving forces that software architects and development team must consider.
-These include</p>
+<p>We are a team of four Software Engineering students developing YOVI, a web-based gaming platform for the company Micrati
+as part of our Architecture of Software Systems (ASR) course project.</p>
+</div>
+<div class="paragraph">
+<p>The platform will allow users to play various versions of Game Y against AI opponents with different strategies, track
+their performance, and compete through an optional public ranking system. Our goal is to deliver an engaging, intuitive,
+and reliable gaming experience that can be extended with new game variants in the future.</p>
+</div>
+<div class="paragraph">
+<p>This document outlines the architectural vision for YOVI, balancing functionality with clarity and maintainability to
+meet both academic requirements and player expectations.</p>
+</div>
+<div class="sect2">
+<h3 id="_requirements_overview">1.1. Requirements Overview</h3>
+<div class="paragraph">
+<p>The YOVI system is a web-based gaming platform based on Game Y, developed for the company Micrati. The main goal is to
+allow users to play matches against the machine or via bots, with support for multiple strategies, variable board sizes,
+and registration and statistics functionalities.</p>
+</div>
+<div class="paragraph">
+<p>Key functional requirements include:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>underlying business goals,</p>
+<p>Development of a web application in TypeScript that allows playing at least the classic version of Game Y.</p>
 </li>
 <li>
-<p>essential features,</p>
+<p>Implementation of a Rust module to verify the game state and suggest moves, with JSON communication using YEN.</p>
 </li>
 <li>
-<p>essential functional requirements,</p>
+<p>A documented public API to allow bot interaction.</p>
 </li>
 <li>
-<p>quality goals for the architecture and</p>
+<p>User registration and access to match history, statistics, and metrics.</p>
 </li>
 <li>
-<p>relevant stakeholders and their expectations</p>
+<p>Support for multiple strategies and difficulty levels in the vs. machine mode.</p>
+</li>
+<li>
+<p>Public deployment and web accessibility.</p>
 </li>
 </ul>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_requirements_overview">1.1. Requirements Overview</h3>
-<div class="sidebarblock arc42help">
-<div class="content">
-<div class="paragraph">
-<div class="title">Contents</div>
-<p>Short description of the functional requirements, driving forces, extract (or abstract)
-of requirements. Link to (hopefully existing) requirements documents
-(with version number and information where to find it).</p>
-</div>
-<div class="paragraph">
-<div class="title">Motivation</div>
-<p>From the point of view of the end users a system is created or modified to
-improve support of a business activity and/or improve the quality.</p>
-</div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>Short textual description, probably in tabular use-case format.
-If requirements documents exist this overview should refer to these documents.</p>
-</div>
-<div class="paragraph">
-<p>Keep these excerpts as short as possible. Balance readability of this document with potential redundancy w.r.t to requirements documents.</p>
-</div>
-<div class="paragraph">
-<div class="title">Further Information</div>
-<p>See <a href="https://docs.arc42.org/section-1/">Introduction and Goals</a> in the arc42 documentation.</p>
-</div>
-</div>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_quality_goals">1.2. Quality Goals</h3>
-<div class="sidebarblock arc42help">
-<div class="content">
 <div class="paragraph">
-<div class="title">Contents</div>
-<p>The top three (max five) quality goals for the architecture whose fulfillment is of highest importance to the major stakeholders.
-We really mean quality goals for the architecture. Don&#8217;t confuse them with project goals.
-They are not necessarily identical.</p>
-</div>
-<div class="paragraph">
-<p>Consider this overview of potential topics (based upon the ISO 25010 standard):</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="./images/01_2_iso-25010-topics-EN.drawio.png" alt="Categories of Quality Requirements">
-</div>
-</div>
-<div class="paragraph">
-<div class="title">Motivation</div>
-<p>You should know the quality goals of your most important stakeholders, since they will influence fundamental architectural decisions.
-Make sure to be very concrete about these qualities, avoid buzzwords.
-If you as an architect do not know how the quality of your work will be judged&#8230;&#8203;</p>
-</div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>A table with quality goals and concrete scenarios, ordered by priorities</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_stakeholders">1.3. Stakeholders</h3>
-<div class="sidebarblock arc42help">
-<div class="content">
-<div class="paragraph">
-<div class="title">Contents</div>
-<p>Explicit overview of stakeholders of the system, i.e. all person, roles or organizations that</p>
+<p>The main quality attributes for the system architecture are:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>should know the architecture</p>
+<p><strong>Functionality</strong>: The system must support multiple Game Y variants and allow matches against AI with different
+strategies.</p>
 </li>
 <li>
-<p>have to be convinced of the architecture</p>
+<p><strong>Usability</strong>: The interface must be intuitive and optionally support internationalization (i18n).</p>
 </li>
 <li>
-<p>have to work with the architecture or with code</p>
+<p><strong>Maintainability</strong>: The architecture must facilitate the extension with new game variants without rewriting core
+components.</p>
 </li>
 <li>
-<p>need the documentation of the architecture for their work</p>
+<p><strong>Availability</strong>: The application must be deployed and publicly accessible with high availability.</p>
 </li>
 <li>
-<p>have to come up with decisions about the system or its development</p>
+<p><strong>Interoperability</strong>: The API must be well-documented and allow integration with external bots via YEN.</p>
 </li>
 </ul>
 </div>
-<div class="paragraph">
-<div class="title">Motivation</div>
-<p>You should know all parties involved in development of the system or affected by the system.
-Otherwise, you may get nasty surprises later in the development process.
-These stakeholders determine the extent and the level of detail of your work and its results.</p>
 </div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>Table with role names, person names, and their expectations with respect to the architecture and its documentation.</p>
-</div>
-</div>
-</div>
+<div class="sect2">
+<h3 id="_stakeholders">1.3. Stakeholders</h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 20%;">
@@ -694,14 +656,29 @@ These stakeholders determine the extent and the level of detail of your work and
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;Role-1&gt;</em></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;Contact-1&gt;</em></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;Expectation-1&gt;</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Development Team</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">yovi_en2c</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implement a scalable, maintainable, and well-documented solution.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;Role-2&gt;</em></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;Contact-2&gt;</em></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;Expectation-2&gt;</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">End Users</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usable, stable interface with complete gameplay and statistics features.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Micrati (Client)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fulfillment of game, API, and public deployment requirements.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Project Evaluators</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Arquisoft</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Compliance with documentation, testing, deployment, and code quality criteria.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bot Developers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">API users</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Well-documented and stable API for automated integration.</p></td>
 </tr>
 </tbody>
 </table>
@@ -712,127 +689,223 @@ These stakeholders determine the extent and the level of detail of your work and
 <div class="sect1">
 <h2 id="section-architecture-constraints">2. Architecture Constraints</h2>
 <div class="sectionbody">
-<div class="sidebarblock arc42help">
-<div class="content">
 <div class="paragraph">
-<div class="title">Contents</div>
-<p>Any requirement that constraints software architects in their freedom of design and implementation decisions or decision about the development process. These constraints sometimes go beyond individual systems and are valid for whole organizations and companies.</p>
+<p>This section lists the main constraints that shape the architecture of the YOVI system. These constraints come from the assignment requirements and limit the available architectural choices.</p>
+</div>
+<div class="sect2">
+<h3 id="_technical_constraints">2.1. Technical Constraints</h3>
+<div class="ulist">
+<ul>
+<li>
+<p>The system is composed of at least two subsystems:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>A web application implemented in <strong>TypeScript</strong>.</p>
+</li>
+<li>
+<p>A game engine module implemented in <strong>Rust</strong>.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>The Rust module must be exposed as a <strong>web service</strong> so it can be invoked remotely by the web application.</p>
+</li>
+<li>
+<p>Communication between the web application and the Rust module must use <strong>JSON messages</strong> following the <strong>YEN notation</strong> for representing the state of a Game Y match.</p>
+</li>
+<li>
+<p>The web application must expose a <strong>public API</strong> that allows external bots to interact with the system.</p>
+</li>
+<li>
+<p>The complete system must be <strong>deployed and publicly accessible via the Web</strong>.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_domain_constraints">2.2. Domain Constraints</h3>
+<div class="ulist">
+<ul>
+<li>
+<p>The system must implement the rules of <strong>Game Y</strong>. Support for the classic version of the game is mandatory.</p>
+</li>
+<li>
+<p>A <strong>player-versus-machine</strong> game mode must be available.</p>
+</li>
+<li>
+<p>The game must support a <strong>variable board size</strong>.</p>
+</li>
+<li>
+<p>The computer player must implement <strong>more than one strategy</strong>. The user must be able to select the strategy, optionally including different difficulty levels.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_organizational_and_process_constraints">2.3. Organizational and Process Constraints</h3>
+<div class="ulist">
+<ul>
+<li>
+<p>The architecture and design decisions must be documented following the guidelines used in the course, including the use of Architectural Decision Records (ADRs).</p>
+</li>
+<li>
+<p>The system must include automated testing at different levels, such as unit, integration, and end-to-end tests.</p>
+</li>
+<li>
+<p>Development must be carried out using a version-controlled repository, including issue tracking and documented architectural decisions.</p>
+</li>
+<li>
+<p>The project should support automated build and deployment through CI/CD pipelines.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_external_constraints">2.4. External Constraints</h3>
+<div class="ulist">
+<ul>
+<li>
+<p>External bots can only interact with the system through the exposed API and must not depend on internal implementation details.</p>
+</li>
+<li>
+<p>The public API must be documented to allow third-party developers to implement compatible bots.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
-<div class="title">Motivation</div>
-<p>Architects should know exactly where they are free in their design decisions and where they must adhere to constraints.
-Constraints must always be dealt with; they may be negotiable, though.</p>
-</div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>Simple tables of constraints with explanations.
-If needed you can subdivide them into
-technical constraints, organizational and political constraints and
-conventions (e.g. programming or versioning guidelines, documentation or naming conventions)</p>
-</div>
-<div class="paragraph">
-<div class="title">Further Information</div>
-<p>See <a href="https://docs.arc42.org/section-2/">Architecture Constraints</a> in the arc42 documentation.</p>
-</div>
-</div>
+<p>These constraints define the boundaries within which the YOVI architecture has been designed.</p>
 </div>
 <div style="page-break-after: always;"></div>
+</div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="section-context-and-scope">3. Context and Scope</h2>
 <div class="sectionbody">
-<div class="sidebarblock arc42help">
-<div class="content">
 <div class="paragraph">
-<div class="title">Contents</div>
-<p>Context and scope - as the name suggests - delimits your system (i.e. your scope) from all its communication partners
-(neighboring systems and users, i.e. the context of your system). It thereby specifies the external interfaces.</p>
+<p>This section describes the context of the YOVI system, its external interfaces, and the boundaries between the system and its environment.</p>
+</div>
+<div class="sect2">
+<h3 id="_business_context">3.1. Business Context</h3>
+<div class="paragraph">
+<p>YOVI is a web-based platform that allows users to play Game Y against the computer and enables external bots to interact with the system through a public API. The system is intended to be accessed through a web browser or programmatically via HTTP-based interfaces.</p>
 </div>
 <div class="paragraph">
-<p>If necessary, differentiate the business context (domain specific inputs and outputs) from the technical context (channels, protocols, hardware).</p>
-</div>
-<div class="paragraph">
-<div class="title">Motivation</div>
-<p>The domain interfaces and technical interfaces to communication partners are among your system&#8217;s most critical aspects. Make sure that you completely understand them.</p>
-</div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>Various options:</p>
+<p>The main external actors are:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Context diagrams</p>
+<p><strong>Human players</strong>, who access the system through a web frontend.</p>
 </li>
 <li>
-<p>Lists of communication partners and their interfaces.</p>
+<p><strong>Bots</strong>, who interact with the system using the exposed API.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<div class="title">Further Information</div>
-<p>See <a href="https://docs.arc42.org/section-3/">Context and Scope</a> in the arc42 documentation.</p>
+<p>The YOVI system depends on a separate game engine module, implemented in Rust, which is responsible for validating game states, checking winning conditions, and suggesting the next move for the computer player.</p>
 </div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_business_context">3.1. Business Context</h3>
-<div class="sidebarblock arc42help">
+<div class="sect3">
+<h4 id="_business_context_diagram">3.1.1. Business Context Diagram</h4>
+<div class="imageblock">
 <div class="content">
-<div class="paragraph">
-<div class="title">Contents</div>
-<p>Specification of <strong>all</strong> communication partners (users, IT-systems, &#8230;&#8203;) with explanations of domain specific inputs and outputs or interfaces.
-Optionally you can add domain specific formats or communication protocols.</p>
-</div>
-<div class="paragraph">
-<div class="title">Motivation</div>
-<p>All stakeholders should understand which data are exchanged with the environment of the system.</p>
-</div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>All kinds of diagrams that show the system as a black box and specify the domain interfaces to communication partners.</p>
-</div>
-<div class="paragraph">
-<p>Alternatively (or additionally) you can use a table.
-The title of the table is the name of your system, the three columns contain the name of the communication partner, the inputs, and the outputs.</p>
+<img src="./images/Business%20context%20diagram.png" alt="Business context diagram" width="226" height="458">
 </div>
 </div>
-</div>
-<div class="paragraph">
-<p><strong>&lt;Diagram or Table&gt;</strong></p>
-</div>
-<div class="paragraph">
-<p><strong>&lt;optionally: Explanation of external domain interfaces&gt;</strong></p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_technical_context">3.2. Technical Context</h3>
-<div class="sidebarblock arc42help">
+<div class="paragraph">
+<p>From a technical point of view, YOVI consists of a web application and an external game engine service communicating over HTTP.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The <strong>web application</strong> provides:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>A browser-based user interface for human players.</p>
+</li>
+<li>
+<p>A REST-style API for bot interaction and game management.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>The <strong>game engine service</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Receives game states encoded in YEN notation.</p>
+</li>
+<li>
+<p>Evaluates whether a game has been won.</p>
+</li>
+<li>
+<p>Computes and returns the next move according to the selected strategy.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>All communication between the web application and the game engine uses JSON messages following the YEN notation defined for Game Y.</p>
+</div>
+<div class="sect3">
+<h4 id="_technical_context_diagram">3.2.1. Technical Context Diagram</h4>
+<div class="imageblock">
 <div class="content">
+<img src="./images/Technical%20context%20diagram.png" alt="Technical context diagram" width="302" height="467">
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_scope">3.3. Scope</h3>
 <div class="paragraph">
-<div class="title">Contents</div>
-<p>Technical interfaces (channels and transmission media) linking your system to its environment. In addition a mapping of domain specific input/output to the channels, i.e. an explanation which I/O uses which channel.</p>
+<p>The scope of the YOVI system includes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Playing Game Y through a web interface.</p>
+</li>
+<li>
+<p>Playing against the computer using multiple strategies.</p>
+</li>
+<li>
+<p>User registration and access to basic statistics and match history.</p>
+</li>
+<li>
+<p>A public API that allows bots to retrieve information and play matches.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
-<div class="title">Motivation</div>
-<p>Many stakeholders make architectural decision based on the technical interfaces between the system and its context. Especially infrastructure or hardware designers decide these technical interfaces.</p>
+<p>The following aspects are explicitly out of scope or optional:</p>
 </div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>E.g. UML deployment diagram describing channels to neighboring systems,
-together with a mapping table showing the relationships between channels and input/output.</p>
-</div>
-</div>
-</div>
-<div class="paragraph">
-<p><strong>&lt;Diagram or Table&gt;</strong></p>
-</div>
-<div class="paragraph">
-<p><strong>&lt;optionally: Explanation of technical interfaces&gt;</strong></p>
-</div>
-<div class="paragraph">
-<p><strong>&lt;Mapping Input/Output to Channels&gt;</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p>Support for game variants other than the classic version of Game Y (unless implemented as optional features).</p>
+</li>
+<li>
+<p>Mobile applications.</p>
+</li>
+<li>
+<p>Advanced social features such as chat or video communication.</p>
+</li>
+<li>
+<p>Multiplayer modes involving multiple human players.</p>
+</li>
+</ul>
 </div>
 <div style="page-break-after: always;"></div>
 </div>
@@ -841,6 +914,127 @@ together with a mapping table showing the relationships between channels and inp
 <div class="sect1">
 <h2 id="section-solution-strategy">4. Solution Strategy</h2>
 <div class="sectionbody">
+<div class="paragraph">
+<p>The architecture of the application will be designed designed to ensure responsive gameplay, maintainable logic, and high usability, while remaining simple to extend.</p>
+</div>
+<div class="sect2">
+<h3 id="_technology_decisions">4.1. Technology Decisions</h3>
+<div class="paragraph">
+<p>This section explains the core technological foundations of the system and why they were selected:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Bot Implementation: Heuristic AI to guarantee predictable response times and deterministic behavior which simplifies testing. A trade-off of this choice would be that a heuristic model is less adaptable than a machine learning model and may make less rational decisions in higher dificulties.</p>
+</li>
+<li>
+<p>User Interface: GUI framework to enable clear visualization of game state and give immediate feedback to the player. This will make the experience more enjoyable for the player, however it will be harder to develop than a text-based game.</p>
+</li>
+<li>
+<p>Database: We decided to integrate a Database in order to store user related data. However this will increase system complexity.</p>
+</li>
+<li>
+<p>Internationalization: We will make it so the game can be internationalized. We will make it in English and Spanish, but we will code it in such a way any language or region could be easily implemented. This will require string management from the very beginning and a more complex UI.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_organizational_and_process_decisions">4.2. Organizational and Process Decisions</h3>
+<div class="paragraph">
+<p>This section explains the way the team organizes itself to ensure quality:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Development Process: Iterative and incremental to enable early validation of gameplay and bot behavior. This will require planning of every stage of development.</p>
+</li>
+<li>
+<p>Responsibility Separation: Different layers or microserviecs can be assigned to different developers. This will increase modularity, encourage parallel programming and reduces coupling, however it requires more communication and coordination between developers.</p>
+</li>
+<li>
+<p>Kanban: We will use it as a tool to organize the task and have a clear visualization of the work relative to the rest of the team. It will require continuous updating.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_architectural_decomposition">4.3. Architectural Decomposition</h3>
+<div class="paragraph">
+<p>We will use Model-View-Controller Architecture based on the implementation of different microservices:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Presentation Layer: Handles visualization.</p>
+</li>
+<li>
+<p>Game Logic Layer: Enforces rules and manages game state.</p>
+</li>
+<li>
+<p>Bot AI Layer: Computes bot decisions independently of UI.</p>
+</li>
+<li>
+<p>Infrastructure Layer: Logging, configuration, error handling user interaction.</p>
+</li>
+<li>
+<p>Database Layer: Stores all the relevant data of the application.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_design_patterns">4.4. Design Patterns</h3>
+<div class="paragraph">
+<p>Our main goal will be to create a game that can be easily modified and easily adapts to future changes in the code, for example, that allows new features or rules into the game. That&#8217;s why we chose that our project follow these design patterns:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Model–View–Controller (MVC): Ensures clear separation between game state, user interface, and control logic.</p>
+</li>
+<li>
+<p>Strategy Pattern for bot behavior: Allows multiple bot difficulty levels and easy extension without modifying core logic.</p>
+</li>
+<li>
+<p>Observer Pattern for UI updates: Ensures efficient and consistent propagation of game state changes.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_quality_goal_realization">4.5. Quality Goal Realization</h3>
+<div class="paragraph">
+<p>This section contains the main quality goals that our project aspires for:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Performance: The game must respond in time to player actions.</p>
+</li>
+<li>
+<p>Usability: UI should be intuitive and players should be able to tell what to do either by the UI or by rules explaining the game.</p>
+</li>
+<li>
+<p>Scalability: The game must be able to accept changes in the way of playing or accept new features added in the future.</p>
+</li>
+<li>
+<p>Maintainability: The code should be easy to modify or extend and should have the proper comments and be structured to make it readable.</p>
+</li>
+<li>
+<p>Reliability: Game can run and tackle exceptions without crashing.</p>
+</li>
+<li>
+<p>Portability: The game should run on multiple platforms.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_conclusion">4.6. Conclusion</h3>
+<div class="paragraph">
+<p>Our solution strategy deliberately prioritizes modularity, predictability, and extensibility.</p>
+</div>
 <div class="sidebarblock arc42help">
 <div class="content">
 <div class="paragraph">
@@ -885,303 +1079,258 @@ Refer to details in the following sections.</p>
 <div style="page-break-after: always;"></div>
 </div>
 </div>
+</div>
 <div class="sect1">
 <h2 id="section-building-block-view">5. Building Block View</h2>
 <div class="sectionbody">
-<div class="sidebarblock arc42help">
-<div class="content">
 <div class="paragraph">
-<div class="title">Content</div>
-<p>The building block view shows the static decomposition of the system into building blocks (modules, components, subsystems, classes, interfaces, packages, libraries, frameworks, layers, partitions, tiers, functions, macros, operations, data structures, &#8230;&#8203;) as well as their dependencies (relationships, associations, &#8230;&#8203;)</p>
-</div>
-<div class="paragraph">
-<p>This view is mandatory for every architecture documentation.
-In analogy to a house this is the <em>floor plan</em>.</p>
-</div>
-<div class="paragraph">
-<div class="title">Motivation</div>
-<p>Maintain an overview of your source code by making its structure understandable through
-abstraction.</p>
-</div>
-<div class="paragraph">
-<p>This allows you to communicate with your stakeholder on an abstract level without disclosing implementation details.</p>
-</div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>The building block view is a hierarchical collection of black boxes and white boxes
-(see figure below) and their descriptions.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="./images/05_building_blocks-EN.png" alt="Hierarchy of building blocks">
-</div>
-</div>
-<div class="paragraph">
-<p><strong>Level 1</strong> is the white box description of the overall system together with black
-box descriptions of all contained building blocks.</p>
-</div>
-<div class="paragraph">
-<p><strong>Level 2</strong> zooms into some building blocks of level 1.
-Thus it contains the white box description of selected building blocks of level 1, together with black box descriptions of their internal building blocks.</p>
-</div>
-<div class="paragraph">
-<p><strong>Level 3</strong> zooms into selected building blocks of level 2, and so on.</p>
-</div>
-<div class="paragraph">
-<div class="title">Further Information</div>
-<p>See <a href="https://docs.arc42.org/section-5/">Building Block View</a> in the arc42 documentation.</p>
-</div>
-</div>
+<p>This section describes the static decomposition of the YOVI system into its main building blocks and their dependencies.</p>
 </div>
 <div class="sect2">
 <h3 id="_whitebox_overall_system">5.1. Whitebox Overall System</h3>
-<div class="sidebarblock arc42help">
+<div class="paragraph">
+<p><em><strong>Context Diagram: YOVI High-Level Components</strong></em></p>
+</div>
+<div class="listingblock">
 <div class="content">
-<div class="paragraph">
-<p>Here you describe the decomposition of the overall system using the following white box template. It contains</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>an overview diagram</p>
-</li>
-<li>
-<p>a motivation for the decomposition</p>
-</li>
-<li>
-<p>black box descriptions of the contained building blocks. For these we offer you alternatives:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>use <em>one</em> table for a short and pragmatic overview of all contained building blocks and their interfaces</p>
-</li>
-<li>
-<p>use a list of black box descriptions of the building blocks according to the black box template (see below).
-Depending on your choice of tool this list could be sub-chapters (in text files), sub-pages (in a Wiki) or nested elements (in a modeling tool).</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>(optional:) important interfaces, that are not explained in the black box templates of a building block, but are very important for understanding the white box.
-Since there are so many ways to specify interfaces why do not provide a specific template for them.
- In the worst case you have to specify and describe syntax, semantics, protocols, error handling,
- restrictions, versions, qualities, necessary compatibilities and many things more.
-In the best case you will get away with examples or simple signatures.</p>
-</li>
-</ul>
-</div>
+<pre class="highlight"><code class="language-mermaid" data-lang="mermaid">flowchart TD
+    User["Human User"] --&gt;|Uses Web Interface| WebApp
+    Bot["External Bot"] --&gt;|Calls Public Bot API| WebApp
+
+    WebApp["yovi_web_app&lt;br/&gt;TypeScript/React"] --&gt;|Game Management API&lt;br/&gt;&lt;i&gt;YEN/JSON over HTTP&lt;/i&gt;| Engine
+    Engine["yovi_game_engine&lt;br/&gt;Rust Service"]
+
+    classDef frontend fill:#dae8fc,stroke:#6c8ebf
+    classDef backend fill:#d5e8d4,stroke:#82b366
+    classDef actor fill:#f5f5f5,stroke:#666
+
+    class WebApp frontend
+    class Engine backend
+    class User,Bot actor</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p><em><strong>&lt;Overview Diagram&gt;</strong></em></p>
+<p>The diagram above illustrates the top-level decomposition of the YOVI system and its external actors (Users and Bots).</p>
 </div>
 <div class="dlist">
 <dl>
 <dt class="hdlist1">Motivation</dt>
 <dd>
-<p><em>&lt;text explanation&gt;</em></p>
+<p>The architecture is decomposed based on the core technical requirement to separate the user interface and game management
+logic (suited for TypeScript/Web) from the core game rule verification and AI strategy computation (suited for Rust).
+This separation aligns with the specified subsystems and promotes modularity, independent scalability, and clear
+responsibility boundaries.</p>
 </dd>
 <dt class="hdlist1">Contained Building Blocks</dt>
 <dd>
-<p><em>&lt;Description of contained building block (black boxes)&gt;</em></p>
-</dd>
-<dt class="hdlist1">Important Interfaces</dt>
-<dd>
-<p><em>&lt;Description of important interfaces&gt;</em></p>
-</dd>
-</dl>
-</div>
-<div class="sidebarblock arc42help">
-<div class="content">
-<div class="paragraph">
-<p>Insert your explanations of black boxes from level 1:</p>
-</div>
-<div class="paragraph">
-<p>If you use tabular form you will only describe your black boxes with name and
-responsibility according to the following schema:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 33.3333%;">
-<col style="width: 66.6667%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top"><strong>Name</strong></th>
-<th class="tableblock halign-left valign-top"><strong>Responsibility</strong></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;black box 1&gt;</em></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"> <em>&lt;Text&gt;</em></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;black box 2&gt;</em></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"> <em>&lt;Text&gt;</em></p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>If you use a list of black box descriptions then you fill in a separate black box template for every important building block .
-Its headline is the name of the black box.</p>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_name_black_box_1">5.1.1. &lt;Name black box 1&gt;</h4>
-<div class="sidebarblock arc42help">
-<div class="content">
-<div class="paragraph">
-<p>Here you describe &lt;black box 1&gt;
-according the the following black box template:</p>
-</div>
 <div class="ulist">
 <ul>
 <li>
-<p>Purpose/Responsibility</p>
+<p><strong><code>yovi_web_app</code></strong>: The main web application that provides the user interface, manages game sessions, and handles
+user data.</p>
 </li>
 <li>
-<p>Interface(s), when they are not extracted as separate paragraphs. This interfaces may include qualities and performance characteristics.</p>
+<p><strong><code>yovi_game_engine</code></strong>: A standalone service responsible for validating game states, determining winners, and
+calculating AI moves.</p>
+</li>
+</ul>
+</div>
+</dd>
+<dt class="hdlist1">Important Interfaces</dt>
+<dd>
+<div class="ulist">
+<ul>
+<li>
+<p><strong><code>Game Management API</code></strong>: The RESTful interface exposed by the <code>yovi_web_app</code> to the <code>yovi_game_engine</code> to request
+move validation and AI suggestions. This interface uses <strong>YEN notation</strong> over JSON.</p>
 </li>
 <li>
-<p>(Optional) Quality-/Performance characteristics of the black box, e.g.availability, run time behavior, &#8230;&#8203;.</p>
+<p><strong><code>Public Bot API</code></strong>: The external RESTful API exposed by the <code>yovi_web_app</code> to allow programmatic bots to play the
+game.</p>
+</li>
+</ul>
+</div>
+</dd>
+</dl>
+</div>
+<div class="sect3">
+<h4 id="_yovi_web_app">5.1.1. yovi_web_app</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Purpose/Responsibility</strong>: Serves as the primary interface for human users and the gateway for external bots. It is
+responsible for user management (registration, history), session state, rendering the game UI, and orchestrating calls
+to the game engine.</p>
 </li>
 <li>
-<p>(Optional) directory/file location</p>
+<p><strong>Interface(s)</strong>:</p>
 </li>
 <li>
-<p>(Optional) Fulfilled requirements (if you need traceability to requirements).</p>
+<p><strong>Provided</strong>: Public REST API (<code>/api/v1/*</code>) for bots, Web Interface (HTML/JS) for users.</p>
 </li>
 <li>
-<p>(Optional) Open issues/problems/risks</p>
+<p><strong>Required</strong>: Consumes the <code>Game Management API</code> from the <code>yovi_game_engine</code>.</p>
+</li>
+<li>
+<p><strong>Quality/Performance Characteristics</strong>: Must be highly available and responsive for a good user experience. Stateless
+to allow horizontal scaling.</p>
+</li>
+<li>
+<p><strong>Directory/File Location</strong>: <code>/web-app/</code> (Contains React/TypeScript source code).</p>
+</li>
+<li>
+<p><strong>Fulfilled Requirements</strong>: User registration/history, web frontend, public bot API, strategy selection.</p>
+</li>
+<li>
+<p><strong>Open Issues/Problems/Risks</strong>: Complexity in managing real-time updates for potential multiplayer features. See
+technical risks (Section 11).</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_yovi_game_engine">5.1.2. yovi_game_engine</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Purpose/Responsibility</strong>: Encapsulates the definitive rules of Game Y and its variants. Its core functions are to
+validate moves, check for a winning condition, and calculate the next move for the AI based on a selected strategy.</p>
+</li>
+<li>
+<p><strong>Interface(s)</strong>:</p>
+</li>
+<li>
+<p><strong>Provided</strong>: <code>Game Management API</code> (Web Service, e.g., over HTTP). Accepts and returns game states in YEN notation.</p>
+</li>
+<li>
+<p><strong>Required</strong>: None (it&#8217;s a terminal building block for core logic).</p>
+</li>
+<li>
+<p><strong>Quality/Performance Characteristics</strong>: Must have low latency for AI calculations to not hinder gameplay. High
+correctness is critical.</p>
+</li>
+<li>
+<p><strong>Directory/File Location</strong>: <code>/game-engine/</code> (Contains Rust source code, Cargo.toml).</p>
+</li>
+<li>
+<p><strong>Fulfilled Requirements</strong>: Game rule verification, AI move suggestion with multiple strategies.</p>
+</li>
+<li>
+<p><strong>Open Issues/Problems/Risks</strong>: Performance of complex AI strategies on large boards. Learning curve for Rust (See ADR 3 and Section 11).</p>
 </li>
 </ul>
 </div>
 </div>
 </div>
-<div class="paragraph">
-<p><em>&lt;Purpose/Responsibility&gt;</em></p>
-</div>
-<div class="paragraph">
-<p><em>&lt;Interface(s)&gt;</em></p>
-</div>
-<div class="paragraph">
-<p><em>&lt;(Optional) Quality/Performance Characteristics&gt;</em></p>
-</div>
-<div class="paragraph">
-<p><em>&lt;(Optional) Directory/File Location&gt;</em></p>
-</div>
-<div class="paragraph">
-<p><em>&lt;(Optional) Fulfilled Requirements&gt;</em></p>
-</div>
-<div class="paragraph">
-<p><em>&lt;(optional) Open Issues/Problems/Risks&gt;</em></p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_name_black_box_2">5.1.2. &lt;Name black box 2&gt;</h4>
-<div class="paragraph">
-<p><em>&lt;black box template&gt;</em></p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_name_black_box_n">5.1.3. &lt;Name black box n&gt;</h4>
-<div class="paragraph">
-<p><em>&lt;black box template&gt;</em></p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_name_interface_1">5.1.4. &lt;Name interface 1&gt;</h4>
-<div class="paragraph">
-<p>&#8230;&#8203;</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_name_interface_m">5.1.5. &lt;Name interface m&gt;</h4>
-
-</div>
-</div>
 <div class="sect2">
 <h3 id="_level_2">5.2. Level 2</h3>
-<div class="sidebarblock arc42help">
+<div class="paragraph">
+<p>Here we detail the internal structure of the two main building blocks.</p>
+</div>
+<div class="sect3">
+<h4 id="_white_box_yovi_web_app">5.2.1. White Box <code>yovi_web_app</code></h4>
+<div class="paragraph">
+<p><em><strong>Decomposition of the Web Application</strong></em></p>
+</div>
+<div class="listingblock">
 <div class="content">
-<div class="paragraph">
-<p>Here you can specify the inner structure of (some) building blocks from level 1 as white boxes.</p>
+<pre class="highlight"><code class="language-mermaid" data-lang="mermaid">flowchart TD
+    subgraph WebApp[yovi_web_app]
+        UI[UI Layer&lt;br/&gt;&lt;i&gt;React Components&lt;/i&gt;]
+        API[API Client &amp; State Manager]
+        Router[Public API Router]
+        Service[User &amp; Session Service]
+
+        UI --&gt; API
+        API --&gt; Router
+        Router --&gt; Service
+    end
+
+    UI --&gt;|Renders game board&lt;br/&gt;Implements i18n &amp; responsive| UserInterface[Web Browser]
+    Router --&gt;|Exposes /api/v1/*&lt;br/&gt;Handles bot auth| ExternalBot[External Bot]
+    API --&gt;|Calls| GameEngine[yovi_game_engine]
+
+    classDef component fill:#f5f5f5,stroke:#666,color:#333
+    classDef external fill:#e1d5e7,stroke:#9673a6
+
+    class UI,API,Router,Service component
+    class UserInterface,ExternalBot,GameEngine external
+
+    style WebApp fill:#fff,stroke:#6c8ebf,stroke-width:2px</code></pre>
+</div>
 </div>
 <div class="paragraph">
-<p>You have to decide which building blocks of your system are important enough to justify such a detailed description.
-Please prefer relevance over completeness. Specify important, surprising, risky, complex or volatile building blocks.
-Leave out normal, simple, boring or standardized parts of your system</p>
+<p>The web application is decomposed into four main components:</p>
 </div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong><code>UI Layer (React Components)</code></strong>: Responsible for rendering all user interfaces, including the game board, user
+dashboard, and registration forms. Implements i18n and responsive design (aligned with ADR 1 &amp; 2).</p>
+</li>
+<li>
+<p><strong><code>API Client &amp; State Manager</code></strong>: Manages the application state (e.g., current game, user info) and handles all
+communication with the backend <code>Game Management API</code>. Transforms data between frontend models and YEN notation.</p>
+</li>
+<li>
+<p><strong><code>Public API Router</code></strong>: Implements and exposes the external <code>Public Bot API</code>. It authenticates requests, manages
+bot sessions, and translates between the public API calls and internal application logic.</p>
+</li>
+<li>
+<p><strong><code>User &amp; Session Service</code></strong>: Handles business logic for user authentication, registration, and persistence/retrieval
+of game history and statistics.</p>
+</li>
+</ul>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_white_box_building_block_1">5.2.1. White Box <em>&lt;building block 1&gt;</em></h4>
-<div class="sidebarblock arc42help">
+<h4 id="_white_box_yovi_game_engine">5.2.2. White Box <code>yovi_game_engine</code></h4>
+<div class="paragraph">
+<p><em><strong>Decomposition of the Game Engine</strong></em></p>
+</div>
+<div class="listingblock">
 <div class="content">
-<div class="paragraph">
-<p>&#8230;&#8203;describes the internal structure of <em>building block 1</em>.</p>
-</div>
-</div>
-</div>
-<div class="paragraph">
-<p><em>&lt;white box template&gt;</em></p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_white_box_building_block_2">5.2.2. White Box <em>&lt;building block 2&gt;</em></h4>
-<div class="paragraph">
-<p><em>&lt;white box template&gt;</em></p>
-</div>
-<div class="paragraph">
-<p>&#8230;&#8203;</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_white_box_building_block_m">5.2.3. White Box <em>&lt;building block m&gt;</em></h4>
-<div class="paragraph">
-<p><em>&lt;white box template&gt;</em></p>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_level_3">5.3. Level 3</h3>
-<div class="sidebarblock arc42help">
-<div class="content">
-<div class="paragraph">
-<p>Here you can specify the inner structure of (some) building blocks from level 2 as white boxes.</p>
-</div>
-<div class="paragraph">
-<p>When you need more detailed levels of your architecture please copy this
-part of arc42 for additional levels.</p>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_white_box_building_block_x_1">5.3.1. White Box &lt;_building block x.1_&gt;</h4>
-<div class="sidebarblock arc42help">
-<div class="content">
-<div class="paragraph">
-<p>Specifies the internal structure of <em>building block x.1</em>.</p>
-</div>
+<pre class="highlight"><code class="language-mermaid" data-lang="mermaid">flowchart LR
+    subgraph Engine[yovi_game_engine]
+        Parser[YEN Parser &amp; Validator]
+        Rules[Game Rules Core]
+        AI[AI Strategy Module]
+
+        Parser --&gt;|Validated game state| Rules
+        Rules --&gt;|Requests move| AI
+        AI --&gt;|Returns move| Rules
+    end
+
+    WebApp[yovi_web_app] --&gt;|Sends YEN JSON| Parser
+    Rules --&gt;|Returns YEN response| WebApp
+
+    classDef component fill:#f5f5f5,stroke:#666,color:#333
+    classDef external fill:#dae8fc,stroke:#6c8ebf
+
+    class Parser,Rules,AI component
+    class WebApp external
+
+    style Engine fill:#fff,stroke:#82b366,stroke-width:2px</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p><em>&lt;white box template&gt;</em></p>
+<p>The game engine is decomposed into three logical components:</p>
 </div>
-</div>
-<div class="sect3">
-<h4 id="_white_box_building_block_x_2">5.3.2. White Box &lt;_building block x.2_&gt;</h4>
-<div class="paragraph">
-<p><em>&lt;white box template&gt;</em></p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_white_box_building_block_y_1">5.3.3. White Box &lt;_building block y.1_&gt;</h4>
-<div class="paragraph">
-<p><em>&lt;white box template&gt;</em></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong><code>YEN Parser &amp; Validator</code></strong>: Responsible for parsing incoming YEN JSON, validating its syntactic and semantic
+correctness against the current board rules, and serializing outgoing YEN states.</p>
+</li>
+<li>
+<p><strong><code>Game Rules Core</code></strong>: The single source of truth for all Game Y variants. Contains the logic for board representation,
+move application, and win condition checking.</p>
+</li>
+<li>
+<p><strong><code>AI Strategy Module</code></strong>: Implements the pluggable strategy pattern (aligned with ADR 4). Contains different algorithms
+(e.g., Minimax, Random) and difficulty levels that can be selected via the API request.</p>
+</li>
+</ul>
 </div>
 <div style="page-break-after: always;"></div>
 </div>
@@ -1191,100 +1340,156 @@ part of arc42 for additional levels.</p>
 <div class="sect1">
 <h2 id="section-runtime-view">6. Runtime View</h2>
 <div class="sectionbody">
-<div class="sidebarblock arc42help">
-<div class="content">
-<div class="paragraph">
-<div class="title">Contents</div>
-<p>The runtime view describes concrete behavior and interactions of the system’s building blocks in form of scenarios from the following areas:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>important use cases or features: how do building blocks execute them?</p>
-</li>
-<li>
-<p>interactions at critical external interfaces: how do building blocks cooperate with users and neighboring systems?</p>
-</li>
-<li>
-<p>operation and administration: launch, start-up, stop</p>
-</li>
-<li>
-<p>error and exception scenarios</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Remark: The main criterion for the choice of possible scenarios (sequences, workflows) is their <strong>architectural relevance</strong>. It is <strong>not</strong> important to describe a large number of scenarios. You should rather document a representative selection.</p>
-</div>
-<div class="paragraph">
-<div class="title">Motivation</div>
-<p>You should understand how (instances of) building blocks of your system perform their job and communicate at runtime.
-You will mainly capture scenarios in your documentation to communicate your architecture to stakeholders that are less willing or able to read and understand the static models (building block view, deployment view).</p>
-</div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>There are many notations for describing scenarios, e.g.</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>numbered list of steps (in natural language)</p>
-</li>
-<li>
-<p>activity diagrams or flow charts</p>
-</li>
-<li>
-<p>sequence diagrams</p>
-</li>
-<li>
-<p>BPMN or EPCs (event process chains)</p>
-</li>
-<li>
-<p>state machines</p>
-</li>
-<li>
-<p>&#8230;&#8203;</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<div class="title">Further Information</div>
-<p>See <a href="https://docs.arc42.org/section-6/">Runtime View</a> in the arc42 documentation.</p>
-</div>
-</div>
-</div>
 <div class="sect2">
-<h3 id="_runtime_scenario_1">6.1. &lt;Runtime Scenario 1&gt;</h3>
-<div class="ulist">
-<ul>
-<li>
-<p><em>&lt;insert runtime diagram or textual description of the scenario&gt;</em></p>
-</li>
-<li>
-<p><em>&lt;insert description of the notable aspects of the interactions between the
-building block instances depicted in this diagram.&gt;</em></p>
-</li>
-</ul>
-</div>
+<h3 id="_runtime_scenario_1_playthgough_of_a_game_against_two_players">6.1. Runtime Scenario 1: Playthgough of a Game against two players</h3>
 <div class="paragraph">
-<p>It is possible to use a sequence diagram:</p>
+<p>The following diagram shows the flow of a normal playthrough of a game with two players going against eachother :</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="./images/Sequence%20diagram.png" alt="Sequence diagram" width="332" height="335">
+<img src="./images/User%20VS%20User%20Game%20Diagram.png" alt="User VS User Game Diagram" width="859" height="1351">
 </div>
+</div>
+<div class="paragraph">
+<p>As such the standard gameplay would be as follows:</p>
+</div>
+<div class="paragraph">
+<p>Initialization:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>User1 navigates to game initialization.</p>
+</li>
+<li>
+<p>The backend creates a new game session and stores it.</p>
+</li>
+<li>
+<p>User2 joins the session.</p>
+</li>
+<li>
+<p>The backend confirms that both players are connected.</p>
+</li>
+<li>
+<p>The game loop is initialized.</p>
+</li>
+<li>
+<p>Both users see the initialized game state.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Turns:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The active player makes a move.</p>
+</li>
+<li>
+<p>The move is sent to the backend.</p>
+</li>
+<li>
+<p>The backend validates and updates the game state.</p>
+</li>
+<li>
+<p>The updated state is sent to the opponent.</p>
+</li>
+<li>
+<p>The opponent’s GUI renders the updated game state.</p>
+</li>
+<li>
+<p>The turn switches to the other player.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Finalization:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The backend stores the result of the game in the database (User1 victory or User2 victory).</p>
+</li>
+<li>
+<p>The backend sends the final result to both GUIs.</p>
+</li>
+<li>
+<p>The winner sees a victory screen.</p>
+</li>
+<li>
+<p>The loser sees a defeat screen.</p>
+</li>
+<li>
+<p>The game session is closed and resources are released.</p>
+</li>
+</ol>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_runtime_scenario_2">6.2. &lt;Runtime Scenario 2&gt;</h3>
-
+<h3 id="_runtime_scenario_2_playthrough_of_a_game_against_a_bot">6.2. Runtime Scenario 2: Playthrough of a Game against a Bot</h3>
+<div class="paragraph">
+<p>The following diagram shows the flow of a normal playthrough of a game against a bot (initialization, turns, and finalization):</p>
 </div>
-<div class="sect2">
-<h3 id="">6.3. &#8230;&#8203;</h3>
-
+<div class="imageblock">
+<div class="content">
+<img src="./images/User%20VS%20Bot%20Game%20Diagram.png" alt="User VS Bot Game Diagram" width="711" height="943">
 </div>
-<div class="sect2">
-<h3 id="_runtime_scenario_n">6.4. &lt;Runtime Scenario n&gt;</h3>
+</div>
+<div class="paragraph">
+<p>As such, a standard playthrough would be:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>A user navigates to the game initialization</p>
+</li>
+<li>
+<p>The backend initializes a bot that is returned, therefore initializing the game</p>
+</li>
+<li>
+<p>The main loop of the game is initialized</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Then the loop of the turns would be:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The user makes a move</p>
+</li>
+<li>
+<p>The move is returned to the backend</p>
+</li>
+<li>
+<p>A bot move is requested</p>
+</li>
+<li>
+<p>The move of the bot is done and send to the GUI</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>It will continue until the game ends, and once that happens:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The result of the game is stored in the database (either user wins or user loses)</p>
+</li>
+<li>
+<p>The backend sends a signal to the GUI with the result of the game</p>
+</li>
+<li>
+<p>Depending on the result, either a victory or a defeated screen is shown (which could be the same screen with different information, but this is a design decision)</p>
+</li>
+<li>
+<p>The bot is released</p>
+</li>
+</ol>
+</div>
 <div style="page-break-after: always;"></div>
 </div>
 </div>
@@ -1292,266 +1497,93 @@ building block instances depicted in this diagram.&gt;</em></p>
 <div class="sect1">
 <h2 id="section-deployment-view">7. Deployment View</h2>
 <div class="sectionbody">
-<div class="sidebarblock arc42help">
+<div class="imageblock text-center">
 <div class="content">
-<div class="paragraph">
-<div class="title">Content</div>
-<p>The deployment view describes:</p>
+<img src="./images/deployment.png" alt="Deployment view diagram">
 </div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>technical infrastructure used to execute your system, with infrastructure elements like geographical locations, environments, computers, processors, channels and net topologies as well as other infrastructure elements and</p>
-</li>
-<li>
-<p>mapping of (software) building blocks to that infrastructure elements.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>Often systems are executed in different environments, e.g. development environment, test environment, production environment. In such cases you should document all relevant environments.</p>
-</div>
-<div class="paragraph">
-<p>Especially document a deployment view if your software is executed as distributed system with more than one computer, processor, server or container or when you design and construct your own hardware processors and chips.</p>
-</div>
-<div class="paragraph">
-<p>From a software perspective it is sufficient to capture only those elements of an infrastructure that are needed to show a deployment of your building blocks. Hardware architects can go beyond that and describe an infrastructure to any level of detail they need to capture.</p>
-</div>
-<div class="paragraph">
-<div class="title">Motivation</div>
-<p>Software does not run without hardware.
-This underlying infrastructure can and will influence a system and/or some
-cross-cutting concepts. Therefore, there is a need to know the infrastructure.</p>
-</div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>Maybe a highest level deployment diagram is already contained in section 3.2. as
-technical context with your own infrastructure as ONE black box. In this section one can
-zoom into this black box using additional deployment diagrams:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>UML offers deployment diagrams to express that view. Use it, probably with nested diagrams,
-when your infrastructure is more complex.</p>
-</li>
-<li>
-<p>When your (hardware) stakeholders prefer other kinds of diagrams rather than a deployment diagram, let them use any kind that is able to show nodes and channels of the infrastructure.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<div class="title">Further Information</div>
-<p>See <a href="https://docs.arc42.org/section-7/">Deployment View</a> in the arc42 documentation.</p>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_infrastructure_level_1">7.1. Infrastructure Level 1</h3>
-<div class="sidebarblock arc42help">
-<div class="content">
-<div class="paragraph">
-<p>Describe (usually in a combination of diagrams, tables, and text):</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>distribution of a system to multiple locations, environments, computers, processors, .., as well as physical connections between them</p>
-</li>
-<li>
-<p>important justifications or motivations for this deployment structure</p>
-</li>
-<li>
-<p>quality and/or performance features of this infrastructure</p>
-</li>
-<li>
-<p>mapping of software artifacts to elements of this infrastructure</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>For multiple environments or alternative deployments please copy and adapt this section of arc42 for all relevant environments.</p>
-</div>
-</div>
-</div>
-<div class="paragraph">
-<p><em><strong>&lt;Overview Diagram&gt;</strong></em></p>
 </div>
 <div class="dlist">
 <dl>
 <dt class="hdlist1">Motivation</dt>
 <dd>
-<p><em>&lt;explanation in text form&gt;</em></p>
+<p>The application is built to use Docker and a Virtual Machine as a host in such a way that it combines the portability of the containers with the security and isolation features of the VM.</p>
 </dd>
 <dt class="hdlist1">Quality and/or Performance Features</dt>
 <dd>
-<p><em>&lt;explanation in text form&gt;</em></p>
+<p>Some of the characteristics obtained by the use of the specified implementation would be:</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Isolation</strong>: Both thanks to the container isolation of Docker and the own security features of the Virtual Machine.</p>
+</li>
+<li>
+<p><strong>Portability and Compatibility</strong>: Thanks to the use of the Docker containers.</p>
+</li>
+<li>
+<p><strong>Security</strong>: If a container is compromised, the VM can act as another security layer.</p>
+</li>
+<li>
+<p><strong>Others</strong>: Scalability, easily maintainable, would be very simple to backup&#8230;&#8203;</p>
+</li>
+</ul>
+</div>
 </dd>
 <dt class="hdlist1">Mapping of Building Blocks to Infrastructure</dt>
 <dd>
-<p><em>&lt;description of the mapping&gt;</em></p>
+<p>The building blocks of the current infrastructure would be:</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Webapp</strong>: Located in port 80, it is the one the user will connect to and interact with. It is the GUI (Graphic User Interface), and as such the frontend of the aplication.</p>
+</li>
+<li>
+<p><strong>Gateway</strong>: This block has port 8080 assigned, and it is in charge of acting as a bridge between the rest of the building blocks of the application,</p>
+</li>
+<li>
+<p><strong>Users</strong>: It is in charge of the user management as well as the authentication feature, and its port is 3000.</p>
+</li>
+<li>
+<p><strong>Gamey</strong>: This service, writen in Rust, is the one containing the complete functionality of the Y Game. It uses port 4000.</p>
+</li>
+<li>
+<p><strong>Database</strong>: It is an external block containing all the information of the application (user data, game data&#8230;&#8203;).</p>
+</li>
+</ul>
+</div>
 </dd>
 </dl>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_infrastructure_level_2">7.2. Infrastructure Level 2</h3>
-<div class="sidebarblock arc42help">
-<div class="content">
 <div class="paragraph">
-<p>Here you can include the internal structure of (some) infrastructure elements from level 1.</p>
-</div>
-<div class="paragraph">
-<p>Please copy the structure from level 1 for each selected element.</p>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_infrastructure_element_1">7.2.1. <em>&lt;Infrastructure Element 1&gt;</em></h4>
-<div class="paragraph">
-<p><em>&lt;diagram + explanation&gt;</em></p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_infrastructure_element_2">7.2.2. <em>&lt;Infrastructure Element 2&gt;</em></h4>
-<div class="paragraph">
-<p><em>&lt;diagram + explanation&gt;</em></p>
-</div>
-<div class="paragraph">
-<p>&#8230;&#8203;</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_infrastructure_element_n">7.2.3. <em>&lt;Infrastructure Element n&gt;</em></h4>
-<div class="paragraph">
-<p><em>&lt;diagram + explanation&gt;</em></p>
+<p>Additionally, it is worth mentioning the presence of Prometheus and Grafana, located in ports 9090 and 9091 respectively, are external blocks that will be used to monitor and obtain metrics of the application and its usage.</p>
 </div>
 <div style="page-break-after: always;"></div>
-</div>
-</div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="section-concepts">8. Cross-cutting Concepts</h2>
 <div class="sectionbody">
-<div class="sidebarblock arc42help">
-<div class="content">
+<div class="sect2">
+<h3 id="_internationalization">8.1. Internationalization</h3>
 <div class="paragraph">
-<div class="title">Content</div>
-<p>This section describes overall, principal regulations and solution ideas that are relevant in multiple parts (= cross-cutting) of your system.
-Such concepts are often related to multiple building blocks.
-They can include many different topics, such as</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>models, especially domain models</p>
-</li>
-<li>
-<p>architecture or design patterns</p>
-</li>
-<li>
-<p>rules for using specific technology</p>
-</li>
-<li>
-<p>principal, often technical decisions of an overarching (= cross-cutting) nature</p>
-</li>
-<li>
-<p>implementation rules</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<div class="title">Motivation</div>
-<p>Concepts form the basis for <em>conceptual integrity</em> (consistency, homogeneity) of the architecture.
-Thus, they are an important contribution to achieve inner qualities of your system.</p>
-</div>
-<div class="paragraph">
-<p>Some of these concepts cannot be assigned to individual building blocks, e.g. security or safety.</p>
-</div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>The form can be varied:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>concept papers with any kind of structure</p>
-</li>
-<li>
-<p>cross-cutting model excerpts or scenarios using notations of the architecture views</p>
-</li>
-<li>
-<p>sample implementations, especially for technical concepts</p>
-</li>
-<li>
-<p>reference to typical usage of standard frameworks (e.g. using Hibernate for object/relational mapping)</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<div class="title">Structure</div>
-<p>A potential (but not mandatory) structure for this section could be:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Domain concepts</p>
-</li>
-<li>
-<p>User Experience concepts (UX)</p>
-</li>
-<li>
-<p>Safety and security concepts</p>
-</li>
-<li>
-<p>Architecture and design patterns</p>
-</li>
-<li>
-<p>"Under-the-hood"</p>
-</li>
-<li>
-<p>development concepts</p>
-</li>
-<li>
-<p>operational concepts</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Note: it might be difficult to assign individual concepts to one specific topic
-on this list.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="./images/08-concepts-EN.drawio.png" alt="Possible topics for crosscutting concepts">
-</div>
-</div>
-<div class="paragraph">
-<div class="title">Further Information</div>
-<p>See <a href="https://docs.arc42.org/section-8/">Concepts</a> in the arc42 documentation.</p>
-</div>
+<p>For the application to be more accessible to a wider range of uses, internationalization was implemented for the languages of english and spanish.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_concept_1">8.1. <em>&lt;Concept 1&gt;</em></h3>
+<h3 id="_testing">8.2. Testing</h3>
 <div class="paragraph">
-<p><em>&lt;explanation&gt;</em></p>
+<p>Testing every piece of code implemented is critical in order to achieve a sustainable system an lowering the risk of having errors and bugs. For this not only do we have mock tests for the source code, but the Github repository will also use sonarqube to ensure proper coverage.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_concept_2">8.2. <em>&lt;Concept 2&gt;</em></h3>
+<h3 id="_security">8.3. Security</h3>
 <div class="paragraph">
-<p><em>&lt;explanation&gt;</em></p>
-</div>
-<div class="paragraph">
-<p>&#8230;&#8203;</p>
+<p>The security features are heavily related to the previous point, as the lowerment of risks and possible breaches is reinforced by testing. Nevertheless, it is also worth adding that the use of a virtual machine and the isolation of the docker containers will also contribute to make the system safer overall, as well as the possible use of Github secrets in the deployment of the application.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_concept_n">8.3. <em>&lt;Concept n&gt;</em></h3>
+<h3 id="_gateway">8.4. Gateway</h3>
 <div class="paragraph">
-<p><em>&lt;explanation&gt;</em></p>
+<p>The gateway service is an architectural feature that works as a bridge between the different microservices implemented, being its main function connecting the gamey service (which is in charge of the functionality of the Game Y) and the webapp, which is the GUI that allows the user to interact with the game and play it.</p>
 </div>
 <div style="page-break-after: always;"></div>
 </div>
@@ -1560,56 +1592,74 @@ on this list.</p>
 <div class="sect1">
 <h2 id="section-design-decisions">9. Architecture Decisions</h2>
 <div class="sectionbody">
-<div class="sidebarblock arc42help">
-<div class="content">
 <div class="paragraph">
-<div class="title">Contents</div>
-<p>Important, expensive, large scale or risky architecture decisions including rationales.
-With "decisions" we mean selecting one alternative based on given criteria.</p>
+<p>This section documents the most significant architectural decisions made during the design and development of the YOVI
+platform. Each decision follows the ADR (Architecture Decision Record) format to provide context, rationale, and
+consequences.</p>
 </div>
-<div class="paragraph">
-<p>Please use your judgement to decide whether an architectural decision should be documented
-here in this central section or whether you better document it locally
-(e.g. within the white box template of one building block).</p>
-</div>
-<div class="paragraph">
-<p>Avoid redundancy.
-Refer to section 4, where you already captured the most important decisions of your architecture.</p>
-</div>
-<div class="paragraph">
-<div class="title">Motivation</div>
-<p>Stakeholders of your system should be able to comprehend and retrace your decisions.</p>
-</div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>Various options:</p>
-</div>
+<div class="sect2">
+<h3 id="_1_prioritize_early_internationalization_i18n">9.1. 1: Prioritize Early Internationalization (i18n)</h3>
 <div class="ulist">
 <ul>
 <li>
-<p>ADR (<a href="https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions">Documenting Architecture Decisions</a>) for every important decision</p>
+<p><strong>Status</strong>: Accepted</p>
 </li>
 <li>
-<p>List or table, ordered by importance and consequences or:</p>
+<p><strong>Context</strong>: One of the optional features for the YOVI platform is support for internationalization (i18n). The team
+recognized that implementing i18n later in the development cycle is often more complex and costly.</p>
 </li>
 <li>
-<p>more detailed in form of separate sections per decision</p>
+<p><strong>Decision</strong>: Internationalization will be integrated into the project&#8217;s foundation from the start. This includes
+structuring the codebase for easy text extraction, using a library, and
+designing the UI layout to accommodate variable text lengths.</p>
+</li>
+<li>
+<p><strong>Consequences</strong>:</p>
+</li>
+<li>
+<p><strong>Positive</strong>: Significantly reduces future integration effort, avoids major refactoring of the UI, and allows the
+optional feature to be completed with minimal friction.</p>
+</li>
+<li>
+<p><strong>Negative</strong>: Adds initial setup complexity and requires discipline from all developers to use the i18n framework for
+all user-facing text from day one.</p>
 </li>
 </ul>
 </div>
-<div class="paragraph">
-<div class="title">Further Information</div>
-<p>See <a href="https://docs.arc42.org/section-9/">Architecture Decisions</a> in the arc42 documentation.
-There you will find links and examples about ADR.</p>
-</div>
-</div>
-</div>
 <div style="page-break-after: always;"></div>
+</div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="section-quality-scenarios">10. Quality Requirements</h2>
 <div class="sectionbody">
+<div class="paragraph">
+<p>Quality requirements ensure that the code doesn&#8217;t just work, but that is works well. The quality requirements our game must meet are as follows:</p>
+</div>
+<div class="paragraph">
+<p>-Performance:
+The game must respond in time to player actions.</p>
+</div>
+<div class="paragraph">
+<p>-Usability:
+UI should be intuitive and players should be able to tell what to do either by the UI or by rules explaining the game.</p>
+</div>
+<div class="paragraph">
+<p>-Scalability:
+The game must be able to accept changes in the way of playing or accept new features added in the future.</p>
+</div>
+<div class="paragraph">
+<p>-Maintainability:
+The code should be easy to modify or extend and should have the proper comments and be structured to make it readable.</p>
+</div>
+<div class="paragraph">
+<p>-Reliability:
+Game can run and tackle exceptions without crashing.</p>
+</div>
+<div class="paragraph">
+<p>-Portability:
+The game should run on multiple platforms.</p>
+</div>
 <div class="sidebarblock arc42help">
 <div class="content">
 <div class="paragraph">
@@ -1634,6 +1684,11 @@ concrete and measurable.</p>
 </div>
 <div class="sect2">
 <h3 id="_quality_tree">10.1. Quality Tree</h3>
+<div class="imageblock">
+<div class="content">
+<img src="./images/10Tree.png" alt="Quality Tree">
+</div>
+</div>
 <div class="sidebarblock arc42help">
 <div class="content">
 <div class="paragraph">
@@ -1666,6 +1721,38 @@ concrete and measurable.</p>
 </div>
 <div class="sect2">
 <h3 id="_quality_scenarios">10.2. Quality Scenarios</h3>
+<div class="paragraph">
+<p>SCENARIO 1</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/10-Sceneriomove.png" alt="Scenario1">
+</div>
+</div>
+<div class="paragraph">
+<p>SCENARIO 2</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/10-Sceneriofeature.png" alt="Scenario2">
+</div>
+</div>
+<div class="paragraph">
+<p>SCENARIO 3</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/10-Scenerionewuser.png" alt="Scenario3">
+</div>
+</div>
+<div class="paragraph">
+<p>SCENARIO 4</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/10-Sceneriocrash" alt="Scenario3">
+</div>
+</div>
 <div class="sidebarblock arc42help">
 <div class="content">
 <div class="paragraph">
@@ -1711,71 +1798,80 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 <div class="sect1">
 <h2 id="section-technical-risks">11. Risks and Technical Debts</h2>
 <div class="sectionbody">
-<div class="sidebarblock arc42help">
-<div class="content">
 <div class="paragraph">
-<div class="title">Contents</div>
-<p>A list of identified technical risks or technical debts, ordered by priority</p>
+<p>This section identifies potential technical risks and anticipated technical debts for the YOVI project. Items are ordered by their estimated impact and probability. For each item, mitigation strategies are proposed.</p>
 </div>
-<div class="paragraph">
-<div class="title">Motivation</div>
-<p>“Risk management is project management for grown-ups” (Tim Lister, Atlantic Systems Guild.)</p>
-</div>
-<div class="paragraph">
-<p>This should be your motto for systematic detection and evaluation of risks and technical debts in the architecture, which will be needed by management stakeholders (e.g. project managers, product owners) as part of the overall risk analysis and measurement planning.</p>
-</div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>List of risks and/or technical debts, probably including suggested measures to minimize, mitigate or avoid risks or reduce technical debts.</p>
-</div>
-<div class="paragraph">
-<div class="title">Further Information</div>
-<p>See <a href="https://docs.arc42.org/section-11/">Risks and Technical Debt</a> in the arc42 documentation.</p>
-</div>
-</div>
-</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 42.8571%;">
+<col style="width: 28.5714%;">
+<col style="width: 28.5715%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Risk / Technical Debt</th>
+<th class="tableblock halign-left valign-top">Potential Impact</th>
+<th class="tableblock halign-left valign-top">Mitigation Strategy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Learning Curve for Rust</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dedicated learning sprint at project start. Use paired programming and focus on
+implementing the core game verification module first with extensive testing.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Integration Complexity between TypeScript and Rust</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Define a clear, versioned JSON interface using YEN
+notation early. Create integration tests and contract tests to ensure both modules adhere to the agreed protocol.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Incomplete Understanding of Game Y Rules and Variants</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Medium-High</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conduct a formal requirements analysis
+session focused solely on the game domain. Create a shared glossary and develop a "walking skeleton" to validate the
+core logic early.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Scope Creep from Optional Features</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Medium</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Prioritize the implementation of mandatory features first. Define
+clear "Definition of Done" criteria for each optional feature and only address them after the core system is stable.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Technical Debt from Rushed Frontend Decisions</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Medium</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopt an established component library to ensure
+consistency and responsiveness from the start. Enforce code reviews focused on UI structure.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Lack of Performance Benchmarking for AI Strategies</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Medium-Low</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Define performance budgets for AI move
+calculation. Profile the Rust module early with different board sizes and algorithm complexities.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>API Stability for External Bots</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Medium</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Version the public API from the first release. Provide comprehensive
+and maintained documentation. Consider implementing API deprecation policies early.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Deployment and DevOps Complexity</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Low-Medium</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use containerization (Docker) from the beginning to ensure
+environment parity. Automate the deployment pipeline (CI/CD) early to avoid manual deployment "debt."</p></td>
+</tr>
+</tbody>
+</table>
 <div style="page-break-after: always;"></div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="section-glossary">12. Glossary</h2>
 <div class="sectionbody">
-<div class="sidebarblock arc42help">
-<div class="content">
-<div class="paragraph">
-<div class="title">Contents</div>
-<p>The most important domain and technical terms that your stakeholders use when discussing the system.</p>
-</div>
-<div class="paragraph">
-<p>You can also see the glossary as source for translations if you work in multi-language teams.</p>
-</div>
-<div class="paragraph">
-<div class="title">Motivation</div>
-<p>You should clearly define your terms, so that all stakeholders</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>have an identical understanding of these terms</p>
-</li>
-<li>
-<p>do not use synonyms and homonyms</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>A table with columns &lt;Term&gt; and &lt;Definition&gt;.</p>
-</div>
-<div class="paragraph">
-<p>Potentially more columns in case you need translations.</p>
-</div>
-<div class="paragraph">
-<div class="title">Further Information</div>
-<p>See <a href="https://docs.arc42.org/section-12/">Glossary</a> in the arc42 documentation.</p>
-</div>
-</div>
-</div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 33.3333%;">
@@ -1789,12 +1885,56 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;Term-1&gt;</em></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;definition-1&gt;</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>YOVI</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Name of the system developed in this project. A web-based platform for playing Game Y, supporting human players and external bots.</em></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;Term-2&gt;</em></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;definition-2&gt;</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Game Y</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>An abstract strategy board game in which players aim to connect three different sides of the board.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Classic Game Y</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>The standard version of Game Y defined by the original rules, without additional variants or optional mechanics.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>YEN Notation</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>A JSON-based notation used to represent the state of a Game Y match, including board size, current turn, players, and board layout.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Game State</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>A complete representation of a Game Y match at a specific point in time, encoded using YEN notation.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>TypeScript</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>A statically typed programming language that extends JavaScript and is used to implement the web application.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Rust</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>A systems programming language focused on safety and performance, used to implement the game engine module.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>API</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>A public HTTP-based interface exposed by the web application that allows external clients and bots to interact with the system.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Bot</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>An external program that interacts with the system exclusively through the public API to retrieve information and play games automatically.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Player-versus-Machine</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>A game mode in which a human player competes against a computer-controlled opponent.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>JSON</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>A lightweight data-interchange format used for communication between the web application and the Rust game engine.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>HTTP</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>The application-layer protocol used for communication between clients, bots, and system services.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Microservice</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>An architectural style in which a system is composed of small, independent services that communicate over a network and can be developed, deployed, and scaled separately.</em></p></td>
 </tr>
 </tbody>
 </table>
@@ -1804,7 +1944,7 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 <div id="footer">
 <div id="footer-text">
 Version 8.2 EN<br>
-Last updated 2026-02-04 19:05:08 +0100
+Last updated 2026-02-15 18:09:15 +0100
 </div>
 </div>
 </body>
