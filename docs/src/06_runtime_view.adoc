@@ -261,20 +261,20 @@ Webapp -> Webapp: 27. Update local stats display
 
 *Game Loop:*
 
-4. Player makes a move (validated by game engine)
-5. If move invalid → error, player tries again
-6. If move valid → game engine updates state and checks win
-7. If player won → game ends, show victory
-8. If game continues → engine calculates bot move using selected strategy
-9. Bot move applied, win condition checked
-10. If bot won → game ends, show defeat
-11. If game continues → updated board shown to player
+1. Player makes a move (validated by game engine)
+2. If move invalid → error, player tries again
+3. If move valid → game engine updates state and checks win
+4. If player won → game ends, show victory
+5. If game continues → engine calculates bot move using selected strategy
+6. Bot move applied, win condition checked
+7. If bot won → game ends, show defeat
+8. If game continues → updated board shown to player
 
 *Finalization:*
 
-12. Game result sent to user service
-13. Match history updated in MongoDB
-14. UI updates local statistics
+1. Game result sent to user service
+2. Match history updated in MongoDB
+3. UI updates local statistics
 
 **Architectural significance:**
 - Shows **Rust engine** in action (move validation, AI calculation)
