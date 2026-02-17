@@ -1,49 +1,202 @@
-ifndef::imagesdir[:imagesdir: ../images]
+
 
 [[section-glossary]]
 == Glossary
 
-[cols="e,2e", options="header"]
+This glossary defines the most important **domain and technical terms** used throughout the YOVI project. It ensures that
+all stakeholders (developers, client, evaluators, bot developers) have an **identical understanding** of these terms.
+
+=== Domain Terms
+
+[cols="e,3e", options="header"]
 |===
-|Term |Definition
+| Term | Definition
 
 |YOVI
-|Name of the system developed in this project. A web-based platform for playing Game Y, supporting human players and external bots.
+|The name of the system developed in this project. A web-based platform for playing Game Y, supporting human players and external bots.
 
 |Game Y
-|An abstract strategy board game in which players aim to connect three different sides of the board.
+|An abstract strategy board game in which players aim to connect three different sides of the board. The game is played on a triangular or hexagonal grid.
 
 |Classic Game Y
-|The standard version of Game Y defined by the original rules, without additional variants or optional mechanics.
+|The standard version of Game Y defined by the original rules, without additional variants or optional mechanics. This is the mandatory implementation for the project.
 
-|YEN Notation
-|A JSON-based notation used to represent the state of a Game Y match, including board size, current turn, players, and board layout.
+|Game Variant
+|An alternative version of Game Y with modified rules, such as Poly-Y, Hex, Tabu Y, or Holey Y. These are optional features.
 
-|Game State
-|A complete representation of a Game Y match at a specific point in time, encoded using YEN notation.
-
-|TypeScript
-|A statically typed programming language that extends JavaScript and is used to implement the web application.
-
-|Rust
-|A systems programming language focused on safety and performance, used to implement the game engine module.
-
-|API
-|A public HTTP-based interface exposed by the web application that allows external clients and bots to interact with the system.
+|Player
+|A human user who interacts with the system through the web frontend to play games.
 
 |Bot
-|An external program that interacts with the system exclusively through the public API to retrieve information and play games automatically.
+|An external program that interacts with the system exclusively through the public API to retrieve information and play games automatically. Bots have no UI.
 
-|Player-versus-Machine
-|A game mode in which a human player competes against a computer-controlled opponent.
+|Player-versus-Machine (PvM)
+|A game mode in which a human player competes against a computer-controlled opponent (AI).
 
-|JSON
-|A lightweight data-interchange format used for communication between the web application and the Rust game engine.
+|Match / Game Session
+|A single instance of a game, from initialization to completion, including all moves and the final result.
 
-|HTTP
-|The application-layer protocol used for communication between clients, bots, and system services.
+|Move
+|A single action by a player placing a piece on the board. Represented in YEN notation.
+
+|Strategy
+|A specific algorithm or heuristic used by the AI to determine its next move. Examples: Random, Heuristic, Minimax.
+
+|Difficulty Level
+|A configuration of the AI strategy that affects its playing strength. Usually implemented by varying strategy parameters or search depth.
+
+|User Registration
+|The process of creating an account in the system, providing username, password, and optionally email.
+
+|Match History
+|A record of all games played by a user, including date, opponent (human/bot), result, and moves.
+
+|Statistics
+|Aggregated metrics about a user's performance, such as total games played, wins, losses, and win rate.
+
+|Leaderboard
+|An optional feature ranking users based on various metrics (win rate, games played, etc.).
+|===
+
+=== Technical Terms
+
+[cols="e,3e", options="header"]
+|===
+| Term | Definition
+
+|Architecture Decision Record (ADR)
+|A document that captures an important architectural decision, including context, rationale, alternatives considered, and consequences. ADRs are stored in the project wiki.
+
+|API Gateway
+|A service that acts as a single entry point for all external requests. Routes requests to the appropriate internal service (webapp, users, gamey) and handles SSL termination.
 
 |Microservice
-|An architectural style in which a system is composed of small, independent services that communicate over a network and can be developed, deployed, and scaled separately.
+|An architectural style in which a system is composed of small, independent services that communicate over a network and can be developed, deployed, and scaled separately. YOVI uses three microservices.
 
+|Web Frontend Service (`webapp/`)
+|The TypeScript/React service that provides the user interface for human players. Handles game rendering, user interaction, and API calls to backend services.
+
+|User Service (`users/`)
+|The Node.js/Express service responsible for user management: registration, authentication, profile storage, match history, and statistics.
+
+|Game Engine Service (`gamey/`)
+|The Rust service that implements all Game Y logic: move validation, win condition checking, and AI move calculation with multiple strategies.
+
+|MongoDB
+|The NoSQL database used by the User Service to persist user profiles, authentication data, and match history.
+
+|Docker
+|A containerization platform used to package each service with its dependencies, ensuring consistent execution across development, test, and production environments.
+
+|docker-compose
+|A tool for defining and running multi-container Docker applications. Used to orchestrate all YOVI services locally and in production.
+
+|CI/CD (Continuous Integration / Continuous Deployment)
+|An automated pipeline (using GitHub Actions) that builds, tests, and deploys the system whenever changes are pushed to the repository.
+
+|GitHub Actions
+|The CI/CD platform used for automated testing, building, and deployment of the YOVI system.
+
+|SonarQube
+|A code quality analysis tool integrated into the CI pipeline to monitor test coverage, code smells, bugs, and technical debt.
+
+|Prometheus
+|A monitoring and metrics collection tool used to gather performance data from all services.
+
+|Grafana
+|A visualization tool that creates dashboards from Prometheus metrics, used for monitoring system health.
+
+|JWT (JSON Web Token)
+|A compact, URL-safe token used for stateless authentication. Contains user identity and claims, signed with a secret key.
+
+|YEN Notation
+|A JSON-based notation used to represent the state of a Game Y match, including board size, current turn, players, and board layout. Mandated by the client.
+
+|REST API
+|An architectural style for designing networked applications. YOVI exposes RESTful APIs for all service-to-service and external communication.
+
+|HTTP / HTTPS
+|Hypertext Transfer Protocol (Secure). The application-layer protocol used for all communication between clients, bots, and services.
+
+|JSON
+|JavaScript Object Notation. A lightweight data-interchange format used for all API payloads, especially YEN notation.
+
+|TypeScript
+|A statically typed programming language that extends JavaScript, used to implement the web frontend.
+
+|Rust
+|A systems programming language focused on safety and performance, used to implement the game engine.
+
+|Node.js
+|A JavaScript runtime used to execute the User Service backend.
+
+|Express
+|A web framework for Node.js used to build the User Service REST API.
+
+|React
+|A JavaScript library for building user interfaces, used in the web frontend.
+|===
+
+=== Acronyms
+
+[cols="e,2e", options="header"]
+|===
+| Acronym | Definition
+
+|ADR
+|Architecture Decision Record
+
+|API
+|Application Programming Interface
+
+|CI/CD
+|Continuous Integration / Continuous Deployment
+
+|DoD
+|Definition of Done
+
+|HTTP
+|Hypertext Transfer Protocol
+
+|HTTPS
+|Hypertext Transfer Protocol Secure
+
+|i18n
+|Internationalization
+
+|JSON
+|JavaScript Object Notation
+
+|JWT
+|JSON Web Token
+
+|MVC
+|Model-View-Controller
+
+|ODM
+|Object Document Mapper
+
+|PvM
+|Player versus Machine
+
+|REST
+|Representational State Transfer
+
+|SSL
+|Secure Sockets Layer
+
+|TLS
+|Transport Layer Security
+
+|UI
+|User Interface
+
+|UX
+|User Experience
+
+|VM
+|Virtual Machine
+
+|YEN
+|Y Notation (specific to Game Y)
 |===
