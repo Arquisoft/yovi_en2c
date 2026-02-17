@@ -1,28 +1,273 @@
-ifndef::imagesdir[:imagesdir: ../images]
+
 
 [[section-deployment-view]]
 
 
 == Deployment View
-[.text-center]
-image::deployment.png["Deployment view diagram"]
 
-Motivation::
-The application is built to use Docker and a Virtual Machine as a host in such a way that it combines the portability of the containers with the security and isolation features of the VM.
+This section describes the **technical infrastructure** that executes the YOVI system and the **mapping of building blocks** (from Section 5) to infrastructure elements. Following arc42 guidelines, we present:
 
-Quality and/or Performance Features::
-Some of the characteristics obtained by the use of the specified implementation would be:
-- **Isolation**: Both thanks to the container isolation of Docker and the own security features of the Virtual Machine.
-- **Portability and Compatibility**: Thanks to the use of the Docker containers. 
-- **Security**: If a container is compromised, the VM can act as another security layer.
-- **Others**: Scalability, easily maintainable, would be very simple to backup... 
+* **Level 1**: Overall deployment environment (production)
+* **Level 2**: Internal structure of key infrastructure nodes
+* **Environment variations**: Development, test, and production differences
+The application is built to use Docker and a Virtual Machine as a host in such a way that it combines the portability of
+the containers with the security and isolation features of the VM.
 
-Mapping of Building Blocks to Infrastructure::
+=== Level 1: Production Deployment Overview
+
+The YOVI system is deployed as a **containerized application** running on a **cloud virtual machine**. All services run in Docker containers, orchestrated with docker-compose.
+
+[plantuml,"Production Deployment Level 1",png]
+----
+@startuml
+!define RECTANGLE node
+!define DATABASE database
+!define CLOUD cloud
+
+skinparam componentStyle rectangle
+skinparam backgroundColor #FEFEFE
+
+cloud "Internet" {
+  actor "Human Player" as User
+  actor "External Bot" as Bot
+}
+
+node "Cloud VM (Production)\nUbuntu 22.04 LTS\n4 vCPUs, 8GB RAM" as VM {
+  frame "Docker Host" {
+    component "Docker Engine\n(v24.0+)" as Docker
+
+    rectangle "Application Containers" {
+      component "gateway_container\nport 443 (HTTPS)" as GatewayCont
+      component "webapp_container\nport 80 (HTTP)" as WebappCont
+      component "users_container\nport 3000" as UsersCont
+      component "gamey_container\nport 4000" as GameyCont
+      database "mongodb_container\nport 27017" as DBCont
+
+      component "prometheus_container\nport 9090" as PromCont
+      component "grafana_container\nport 9091" as GrafCont
+    }
+  }
+}
+
+node "External Services" {
+  database "GitHub Container Registry" as Registry
+  database "MongoDB Atlas\n(Optional backup)" as Atlas
+}
+
+User --> VM : HTTPS (port 443)
+Bot --> VM : HTTPS (port 443)
+
+VM --> Registry : docker pull images
+
+GatewayCont --> WebappCont : internal HTTP
+GatewayCont --> UsersCont : internal HTTP
+GatewayCont --> GameyCont : internal HTTP
+
+UsersCont --> DBCont : MongoDB Wire Protocol
+
+PromCont --> GatewayCont : metrics scrape
+PromCont --> UsersCont : metrics scrape
+PromCont --> GameyCont : metrics scrape
+PromCont --> DBCont : metrics scrape
+GrafCont --> PromCont : query metrics
+
+
+
+note bottom of GatewayCont
+  **Routes:**
+  / → webapp:80
+  /api/users → users:3000
+  /api/game → gamey:4000
+  /metrics → prometheus:9090
+end note
+@enduml
+----
+
+==== Infrastructure Elements (Level 1)
+
+|===
+| Element | Description | Technology | Purpose
+| **Cloud VM** | Virtual machine hosting all containers | Ubuntu 22.04 LTS | Execution environment
+| **Docker Engine** | Container runtime | Docker v24.0+ | Container orchestration
+| **Gateway Container** | API Gateway service | Nginx / Express Gateway | Request routing, SSL termination
+| **Webapp Container** | Frontend service | Node.js + React (static files) | Serve UI to users
+| **Users Container** | User management service | Node.js + Express | User data & auth
+| **Gamey Container** | Game engine service | Rust | Game logic & AI
+| **MongoDB Container** | Database | MongoDB 7.x | Data persistence
+| **Prometheus Container** | Metrics collection | Prometheus latest | Monitoring
+| **Grafana Container** | Metrics visualization | Grafana latest | Dashboards
+| **GitHub Registry** | Container image registry | GitHub Container Registry | Image storage
+|===
+
+==== Communication Channels (Level 1)
+
+|===
+| Channel | Protocol | Source | Destination | Purpose
+| **External HTTPS** | HTTPS (TLS 1.3) | Internet | Gateway (port 443) | User/bot access
+| **Internal HTTP** | HTTP (plain) | Gateway | Webapp/Users/Gamey | Service communication
+| **MongoDB Wire** | MongoDB protocol | Users | MongoDB (27017) | Database access
+| **Docker Pull** | HTTPS | VM | GitHub Registry | Image download
+| **Metrics Scrape** | HTTP | Prometheus | All services | Monitoring data
+| **Grafana Query** | HTTP | Grafana | Prometheus | Dashboard queries
+|===
+
+=== Level 2: Internal Structure of Key Nodes
+
+==== Level 2: Cloud VM Internal Structure
+
+This diagram zooms into the Cloud VM, showing the container organization and internal networks.
+
+[plantuml,"Cloud VM Internal Structure",png]
+----
+@startuml
+!define RECTANGLE node
+!define DATABASE database
+
+node "Cloud VM (Production)" {
+
+  frame "Docker Networks" {
+    rectangle "frontend_network\n172.20.0.0/24" as NetFront
+    rectangle "backend_network\n172.20.1.0/24" as NetBack
+    rectangle "monitoring_network\n172.20.2.0/24" as NetMon
+  }
+
+  frame "Containers" {
+    component "gateway\n(port 443)" as G
+    component "webapp\n(port 80)" as W
+    component "users\n(port 3000)" as U
+    component "gamey\n(port 4000)" as Y
+    database "mongodb\n(port 27017)" as D
+    component "prometheus\n(port 9090)" as P
+    component "grafana\n(port 9091)" as Graf
+  }
+
+  frame "Volumes" {
+    database "mongodb_data\n/var/lib/docker/volumes/mongodb" as VolDB
+    database "grafana_data\n/var/lib/docker/volumes/grafana" as VolGraf
+    database "prometheus_data\n/var/lib/docker/volumes/prometheus" as VolProm
+  }
+
+  ' Network assignments (relationships to networks - these are notes, not connections)
+  note right of G : connected to frontend_network
+  note right of W : connected to frontend_network
+  note right of U : connected to backend_network
+  note right of Y : connected to backend_network
+  note right of D : connected to backend_network
+  note right of P : connected to monitoring_network
+  note right of Graf : connected to monitoring_network
+
+  ' Actual communication between containers
+  G --> W : "serves static files\n(HTTP)"
+
+  G --> U : "HTTP /api/users/*"
+  G --> Y : "HTTP /api/game/*"
+
+  U --> D : "MongoDB Wire Protocol"
+
+  P --> G : "scrape metrics (HTTP)"
+  P --> U : "scrape metrics (HTTP)"
+  P --> Y : "scrape metrics (HTTP)"
+  P --> D : "scrape metrics (HTTP)"
+
+  Graf --> P : "query metrics (HTTP)"
+
+  ' Volume persistence
+  D --> VolDB : "persists data"
+  P --> VolProm : "persists data"
+  Graf --> VolGraf : "persists data"
+
+  note top of NetFront
+    **frontend_network:**
+    * gateway
+    * webapp
+  end note
+
+  note top of NetBack
+    **backend_network:**
+    * users
+    * gamey
+    * mongodb
+  end note
+
+  note top of NetMon
+    **monitoring_network:**
+    * prometheus
+    * grafana
+  end note
+}
+
+@enduml
+----
+
+
+
+==== Production Environment
+
+[options="header",cols="1,2,2"]
+|===
+| Aspect | Configuration | Justification
+| **Location** | Cloud VM (AWS EC2 / DigitalOcean) | Public accessibility
+| **Orchestration** | docker-compose + systemd | Simple, sufficient for scale
+| **Networking** | Public IP + domain | User access
+| **Data** | Persistent volumes | Data durability
+| **Monitoring** | Prometheus + Grafana | Observability
+| **Backup** | Daily automated backups | Disaster recovery
+| **SSL** | Let's Encrypt auto-renew | Security
+|===
+
+=== Mapping of Building Blocks to Infrastructure
+
+This table maps the **building blocks** from Section 5 to the **infrastructure elements** described above.
+
+[options="header",cols="1,1,1,1,1,1"]
+|===
+| Building Block | Deployed As | Environment | Node | Container | Network
+| **Web Frontend Service** | Static files + Node server | Production | Cloud VM | webapp_container | frontend_network
+| **User Service** | Node.js application | Production | Cloud VM | users_container | backend_network
+| **Game Engine Service** | Rust binary | Production | Cloud VM | gamey_container | backend_network
+| **API Gateway** | Nginx configuration | Production | Cloud VM | gateway_container | frontend_network
+| **MongoDB Database** | MongoDB instance | Production | Cloud VM | mongodb_container | backend_network
+| **Prometheus** | Prometheus server | Production | Cloud VM | prometheus_container | monitoring_network
+| **Grafana** | Grafana server | Production | Cloud VM | grafana_container | monitoring_network
+|===
+
+=== Deployment Decisions and Rationale
+
+[options="header",cols="1,2,2,2"]
+|===
+| Decision | Rationale | Alternatives Considered | Trade-offs
+| **Single VM with docker-compose** | Simplicity, cost-effective for expected load (10 concurrent users) | Kubernetes (overkill), separate VMs (costly) | Limited horizontal scaling, but simpler operations
+| **Separate networks** | Security isolation between frontend and backend | Single flat network | More complex config, but better security
+| **Monitoring stack included** | Required for observability and course evaluation | External monitoring service | Additional resource usage, but integrated
+| **Persistent volumes** | Data durability across container restarts | Ephemeral storage | Requires backup strategy
+| **Let's Encrypt SSL** | Free, automated certificates | Paid certificates, self-signed | Auto-renewal complexity, but free
+|===
+
+=== Deployment Scripts and Configuration
+
+The deployment is automated via:
+
+* **`docker-compose.yml`** – at repository root. Defines all services.
+* **`deploy.sh`** – script for production deployment.
+* **GitHub Actions workflow** – CI/CD pipeline for testing and deployment.
+
+=== Quality and Performance Features
+
+Some of the characteristics obtained by the use of the specified implementation:
+
+* **Isolation**: Both thanks to the container isolation of Docker and the own security features of the Virtual Machine.
+* **Portability and Compatibility**: Thanks to the use of the Docker containers.
+* **Security**: If a container is compromised, the VM can act as another security layer.
+* **Others**: Scalability, easily maintainable, would be very simple to backup...
+
+=== Mapping of Building Blocks to Infrastructure
+
 The building blocks of the current infrastructure would be:
-- **Webapp**: Located in port 80, it is the one the user will connect to and interact with. It is the GUI (Graphic User Interface), and as such the frontend of the aplication.
-- **Gateway**: This block has port 8080 assigned, and it is in charge of acting as a bridge between the rest of the building blocks of the application, 
-- **Users**: It is in charge of the user management as well as the authentication feature, and its port is 3000. 
-- **Gamey**: This service, writen in Rust, is the one containing the complete functionality of the Y Game. It uses port 4000.
-- **Database**: It is an external block containing all the information of the application (user data, game data...).
 
-Additionally, it is worth mentioning the presence of Prometheus and Grafana, located in ports 9090 and 9091 respectively, are external blocks that will be used to monitor and obtain metrics of the application and its usage.
+* **Webapp**: Located in port 80, it is the one the user will connect to and interact with. It is the GUI (Graphic User Interface), and as such the frontend of the application.
+* **Gateway**: This block has port 8080 assigned, and it is in charge of acting as a bridge between the rest of the building blocks of the application.
+* **Users**: It is in charge of the user management as well as the authentication feature, and its port is 3000.
+* **Gamey**: This service, written in Rust, is the one containing the complete functionality of the Y Game. It uses port 4000.
+* **Database**: It is an external block containing all the information of the application (user data, game data...).
+
+Additionally, it is worth mentioning the presence of **Prometheus** and **Grafana**, located in ports 9090 and 9091 respectively, are external blocks that will be used to monitor and obtain metrics of the application and its usage.
