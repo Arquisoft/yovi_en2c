@@ -3,8 +3,76 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-runtime-view]]
 == Runtime View
 
+This section describes the **dynamic behavior** of the YOVI system. Following arc42 guidelines, we present a representative selection of **architecturally significant scenarios**:
 
-=== Runtime Scenario 1: Playthgough of a Game against two players
+* **Critical use cases**: User registration, gameplay against bot, bot API usage
+* **Key interactions**: How building blocks cooperate
+* **Error scenarios**: How the system handles failures* **Operation scenarios**: System startup and shutdown
+
+These scenarios demonstrate how the building blocks defined in Section 5 collaborate at runtime.
+
+=== Runtime Scenario 1: User Registration (In development)
+
+This scenario shows how a new user creates an account in the system. This is one of the main objective of the prject,
+at the moment the user only needs username to register but the verifications works in the same way.
+
+[plantuml,"User Registration Sequence",png]
+----
+@startuml
+actor "Human Player" as User
+participant "Web Frontend\n(webapp/)" as Webapp
+participant "API Gateway\n(gateway/)" as Gateway
+participant "User Service\n(users/)" as Users
+database "MongoDB" as DB
+
+User -> Webapp: 1. Fill registration form\n(username, password, email)
+Webapp -> Webapp: 2. Validate input format\n(client-side validation)
+
+Webapp -> Gateway: 3. POST /api/users/register\n{username, password, email}
+Gateway -> Users: 4. Forward request to users service\n(HTTP internal)
+
+Users -> Users: 5. Hash password (bcrypt)
+Users -> Users: 6. Validate uniqueness\n(check if username exists)
+
+alt User already exists
+    Users --> Gateway: 7a. 409 Conflict\n"Username already taken"
+    Gateway --> Webapp: 8a. Forward error
+    Webapp --> User: 9a. Display error message
+else New user
+    Users -> DB: 7b. INSERT new user document
+    DB --> Users: 8b. Confirm insertion
+
+    Users -> Users: 9b. Generate JWT token
+    Users --> Gateway: 10b. 201 Created\n{token, user profile}
+    Gateway --> Webapp: 11b. Forward response
+    Webapp --> User: 12b. Show success & redirect to dashboard
+end
+
+note right of Users
+  **Quality Goals:**
+  * Response < 200ms
+  * Password never stored in plain text
+  * JWT for stateless auth
+end note
+@enduml
+----
+
+**Steps:**
+
+1. User fills registration form in the web frontend
+2. Frontend performs basic validation (format)
+3. Frontend sends registration request to API Gateway
+4. Gateway routes request to User Service
+5. User Service hashes the password (never stored in plain text)
+6. Service checks if username already exists
+7. **Alternative 1 (user exists)**: Returns 409 Conflict, UI shows error
+8. **Alternative 2 (new user)**: Inserts user document in MongoDB
+9. Generates JWT token for automatic login
+10. Returns success response with token
+11. Gateway forwards to frontend
+12. Frontend stores token and redirects user to dashboard
+
+=== Runtime Scenario 2: Playthgough of a Game against two players
 
 The following diagram shows the flow of a normal playthrough of a game with two players going against eachother :
 
@@ -107,61 +175,203 @@ Finalization:
 
 5. The game session is closed and resources are released.
 
-=== Runtime Scenario 2: Playthrough of a Game against a Bot
+=== Runtime Scenario 3: Play Game vs. AI Bot
 
-The following diagram shows the flow of a normal playthrough of a game against a bot (initialization, turns, and finalization):
+This scenario shows a complete game session between a human player and the AI, using the Rust game engine.
 
-[plantuml,"User VS Bot Game Diagram",png]
+[plantuml,"Game vs Bot Sequence",png]
 ----
-actor User
-actor GUI
-actor Backend
-actor Bot
-database Database as "Database"
-== Initialization ==
-User -> GUI: Navigate to Game Initialization
-GUI -> Backend: Request for game against a Bot
-Backend -> Bot: Initialize Bot
-Bot --> Backend: Return Bot
-Backend --> GUI: Game is initialized
-GUI --> User: Render initialized Game
-== Turns ==
-loop Each turn until game ends
-    User -> GUI: Perform move
-    GUI -> Backend: Send user move
-    Backend -> Bot: Request bot move
-    Bot --> Backend: Bot move
-    Backend --> GUI: Updated game state
-    GUI --> User: Render updated game state
+@startuml
+actor "Human Player" as User
+participant "Web Frontend\n(webapp/)" as Webapp
+participant "API Gateway\n(gateway/)" as Gateway
+participant "User Service\n(users/)" as Users
+participant "Game Engine\n(gamey/)" as Gamey
+database "MongoDB" as DB
+
+== Game Initialization ==
+User -> Webapp: 1. Select "Play vs Bot"\nchoose board size & strategy
+Webapp -> Gateway: 2. POST /api/game/init
+Gateway -> Gamey: 3. Forward to game engine
+
+Gamey -> Gamey: 4. Create new game state\n(empty board, turn = player)
+Gamey --> Gateway: 5. Return gameId, initial state
+Gateway --> Webapp: 6. Forward response
+Webapp --> User: 7. Render empty board
+
+== Game Loop (until game ends) ==
+loop Each turn
+    User -> Webapp: 8. Place piece on board
+    Webapp -> Gateway: 9. POST /api/game/move\n{gameId, position}
+    Gateway -> Gamey: 10. Forward move request
+
+    Gamey -> Gamey: 11. Validate move\n(check rules)
+
+    alt Invalid move
+        Gamey --> Gateway: 12a. 400 Bad Request
+        Gateway --> Webapp: 13a. Forward error
+        Webapp --> User: 14a. Show error, ask again
+    else Valid move
+        Gamey -> Gamey: 12b. Apply move to game state
+        Gamey -> Gamey: 13b. Check win condition
+
+        alt Game over (player won)
+            Gamey --> Gateway: 14b. Return {gameState, winner: "player"}
+            Gateway --> Webapp: 15b. Forward
+            Webapp --> User: 16b. Show victory screen
+            break Game loop ends
+        else Game continues
+            Gamey -> Gamey: 14c. Request bot move from AI strategy
+            Gamey -> Gamey: 15c. Calculate bot move
+            Gamey -> Gamey: 16c. Apply bot move
+            Gamey -> Gamey: 17c. Check win condition
+
+            alt Game over (bot won)
+                Gamey --> Gateway: 18c. Return {gameState, winner: "bot"}
+                Gateway --> Webapp: 19c. Forward
+                Webapp --> User: 20c. Show defeat screen
+                break Game loop ends
+            else Game continues
+                Gamey --> Gateway: 18d. Return updated state\n(turn = player)
+                Gateway --> Webapp: 19d. Forward
+                Webapp --> User: 20d. Render updated board
+            end
+        end
+    end
 end
-== Finalization ==
-alt User wins
-    Backend -> Database: Store game result (User victory)
-    Backend --> GUI: Game finished (User wins)
-    GUI --> User: Show victory screen
-else Bot wins
-    Backend -> Database: Store game result (Bot victory)
-    Backend --> GUI: Game finished (Bot wins)
-    GUI --> User: Show defeat screen
-end
+
+== Game Finalization ==
+Webapp -> Gateway: 21. POST /api/users/game-result\n{userId, result, moves}
+Gateway -> Users: 22. Forward to user service
+Users -> DB: 23. Update match history\n(increment games, update wins/losses)
+DB --> Users: 24. Confirm update
+Users --> Gateway: 25. 200 OK
+Gateway --> Webapp: 26. Forward
+Webapp -> Webapp: 27. Update local stats display
+@enduml
 ----
 
-As such, a standard playthrough would be:
+**Steps Summary:**
 
-1. A user navigates to the game initialization
-2. The backend initializes a bot that is returned, therefore initializing the game
-3. The main loop of the game is initialized
+*Initialization:*
 
-Then the loop of the turns would be:
+1. User selects game mode, board size, and AI strategy
+2. Frontend requests new game session
+3. Game engine creates initial state and returns game ID
 
-1. The user makes a move
-2. The move is returned to the backend
-3. A bot move is requested
-4. The move of the bot is done and send to the GUI
+*Game Loop:*
 
-It will continue until the game ends, and once that happens:
+4. Player makes a move (validated by game engine)
+5. If move invalid → error, player tries again
+6. If move valid → game engine updates state and checks win
+7. If player won → game ends, show victory
+8. If game continues → engine calculates bot move using selected strategy
+9. Bot move applied, win condition checked
+10. If bot won → game ends, show defeat
+11. If game continues → updated board shown to player
 
-1. The result of the game is stored in the database (either user wins or user loses)
-2. The backend sends a signal to the GUI with the result of the game
-3. Depending on the result, either a victory or a defeated screen is shown (which could be the same screen with different information, but this is a design decision)
-4. The bot is released  
+*Finalization:*
+
+12. Game result sent to user service
+13. Match history updated in MongoDB
+14. UI updates local statistics
+
+**Architectural significance:**
+- Shows **Rust engine** in action (move validation, AI calculation)
+- Demonstrates **strategy pattern** for bot behavior
+- Illustrates **YEN notation** for game state (implicit in API calls)
+- Shows **complete flow** from UI → gateway → engine → database
+
+=== Runtime Scenario 4: Error and Exception Handling
+
+This scenario shows how the system handles various failure conditions.
+
+==== Scenario 4.1: Game Engine Unavailable
+
+[plantuml,"Game Engine Down",png]
+----
+@startuml
+actor "User" as User
+participant "Web Frontend" as Webapp
+participant "Gateway" as Gateway
+participant "Game Engine" as Gamey
+
+User -> Webapp: 1. Attempt to make move
+Webapp -> Gateway: 2. POST /api/game/move
+Gateway -> Gamey: 3. Forward request
+
+note over Gamey: Gamey service is down\n(container crashed, network issue)
+
+Gateway --> Gateway: 4. Timeout / Connection refused
+Gateway --> Webapp: 5. 503 Service Unavailable
+Webapp --> Webapp: 6. Show friendly error message\n"Game service temporarily unavailable"
+Webapp --> User: 7. Display "Try again later" with retry button
+
+User -> Webapp: 8. Click retry
+Webapp -> Gateway: 9. Retry request
+note over Gateway,Gamey: (repeat with circuit breaker pattern)
+
+
+@enduml
+----
+
+==== Scenario 4.2: Invalid Move (Business Rule Violation) (In development)
+
+[plantuml,"Invalid Move",png]
+----
+@startuml
+actor "User" as User
+participant "Web Frontend" as Webapp
+participant "Gateway" as Gateway
+participant "Game Engine" as Gamey
+
+User -> Webapp: 1. Click on occupied cell
+Webapp -> Gateway: 2. POST /api/game/move\n{position: occupied}
+Gateway -> Gamey: 3. Forward
+
+Gamey -> Gamey: 4. Validate move
+Gamey -> Gamey: 5. Detect invalid move\n(cell already occupied)
+
+Gamey --> Gateway: 6. 400 Bad Request\n{error: "Cell already occupied"}
+Gateway --> Webapp: 7. Forward error
+Webapp --> User: 8. Show  "Cell not valid" to user
+@enduml
+----
+
+==== Scenario 4.3: Database Connection Lost
+
+[plantuml,"Database Down",png]
+----
+@startuml
+participant "Web Frontend" as Webapp
+participant "Gateway" as Gateway
+participant "User Service" as Users
+database "MongoDB" as DB
+
+Webapp -> Gateway: 1. GET /api/users/profile/123
+Gateway -> Users: 2. Forward
+
+Users -> DB: 3. Find user by ID
+note over DB: MongoDB connection lost
+
+Users --> Users: 4. Database error
+Users --> Gateway: 5. 500 Internal Server Error\n{error: "Database unavailable"}
+Gateway --> Webapp: 6. Forward error
+
+
+@enduml
+----
+
+=== Summary of Runtime Scenarios
+
+|===
+| Scenario | Architectural Relevance | Building Blocks Involved | Quality Goals Demonstrated
+| **User Registration** | Stateless auth, data persistence | Webapp, Gateway, Users, MongoDB | Usability, Reliability
+| **Player 1 vs Player 2** | Core game loop between two real users | Webapp, Gateway, Gamey, Users, MongoDB | Functionality, Performance
+| **Game vs Bot** | Core game loop, AI strategies | Webapp, Gateway, Gamey, Users, MongoDB | Functionality, Performance
+| **Error Handling** | Resilience, fault tolerance | All services | Reliability, Availability
+|===
+
+These scenarios represent the most architecturally significant runtime behaviors of the YOVI system. They demonstrate
+how the static building blocks from Section 5 collaborate to deliver the required functionality while satisfying the
+quality goals from Section 1.
