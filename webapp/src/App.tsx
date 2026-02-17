@@ -1,14 +1,19 @@
-import './App.css'
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import RegisterForm from './RegisterForm';
-import Game from './Game';
+import "./App.css";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import LoginPage from "./LoginPage.jsx";
+import RegisterPage from "./RegisterPage.jsx";
+import HomePage from "./HomePage.jsx";
+import PlayPage from "./PlayPage.jsx";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<RegisterForm />} />
-        <Route path="/game" element={<Game />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/play" element={<PlayPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
