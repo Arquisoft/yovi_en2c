@@ -3,113 +3,594 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-quality-scenarios]]
 == Quality Requirements
 
-Quality requirements ensure that the code doesn't just work, but that is works well. The quality requirements our game must meet are as follows:
+This section details the **quality requirements** for the YOVI system. While Section 1.2 introduced the high-level
+quality goals, this section makes them **concrete, measurable, and testable** through a quality tree and specific
+scenarios.
 
--Performance: 
-The game must respond in time to player actions.
+Quality requirements are critical because they influence architectural decisions and determine whether stakeholders
+consider the system a success.
 
--Usability:
-UI should be intuitive and players should be able to tell what to do either by the UI or by rules explaining the game.
-
--Scalability:
-The game must be able to accept changes in the way of playing or accept new features added in the future.
-
--Maintainability:
-The code should be easy to modify or extend and should have the proper comments and be structured to make it readable.
-
--Reliability:
-Game can run and tackle exceptions without crashing.
-
--Portability:
-The game should run on multiple platforms.
-ifdef::arc42help[]
-[role="arc42help"]
-****
-
-.Content
-This section contains all quality requirements as quality tree with scenarios. The most important ones have already been described in section 1.2. (quality goals)
-
-Here you can also capture quality requirements with lesser priority,
-which will not create high risks when they are not fully achieved.
-
-.Motivation
-Since quality requirements will have a lot of influence on architectural
-decisions you should know for every stakeholder what is really important to them,
-concrete and measurable.
-
-
-.Further Information
-
-See https://docs.arc42.org/section-10/[Quality Requirements] in the arc42 documentation.
-
-****
-endif::arc42help[]
 
 === Quality Tree
 
-image::10Tree.png["Quality Tree"]
+The following quality tree organizes our quality requirements hierarchically, following the ATAM (Architecture Tradeoff
+Analysis Method) approach. The tree shows the decomposition of "Quality" into categories and subcategories, with each
+leaf linked to a measurable scenario.
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-.Content
-The quality tree (as defined in ATAM – Architecture Tradeoff Analysis Method) with quality/evaluation scenarios as leafs.
+[plantuml,"Quality Tree",png]
+----
+@startuml
+!define RECTANGLE rectangle
+!define ROUNDRECT rectangle
 
-.Motivation
-The tree structure with priorities provides an overview for a sometimes large number of quality requirements.
+' Estilo para legibilidad en pantalla
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor #2E4053
+  FontColor #1C2833
+  FontSize 10
+  FontStyle bold
+  RoundCorner 8
+}
 
-.Form
-The quality tree is a high-level overview of the quality goals and requirements:
+skinparam note {
+  BackgroundColor #F8F9F9
+  BorderColor #7F8C8D
+  FontSize 9
+}
 
-* tree-like refinement of the term "quality". Use "quality" or "usefulness" as a root
-* a mind map with quality categories as main branches
+skinparam arrow {
+  Color #566573
+  Thickness 1
+}
 
-In any case the tree should include links to the scenarios of the following section.
+left to right direction
+' Raíz del árbol
+ROUNDRECT "Quality" as QUALITY
+
+' Nivel 1 - Categorías principales
+ROUNDRECT "Performance" as PERF
+ROUNDRECT "Usability" as USE
+ROUNDRECT "Maintainability" as MAIN
+ROUNDRECT "Reliability" as REL
+ROUNDRECT "Portability" as PORT
+ROUNDRECT "Security" as SEC
+
+' Conexiones raíz → nivel 1
+QUALITY --> PERF
+QUALITY --> USE
+QUALITY --> MAIN
+QUALITY --> REL
+QUALITY --> PORT
+QUALITY --> SEC
+
+' Nivel 2 - Subcategorías de Performance
+ROUNDRECT "Response Time" as RESP
+ROUNDRECT "Throughput" as THR
+ROUNDRECT "Resource Usage" as RES
+
+PERF --> RESP
+PERF --> THR
+PERF --> RES
+
+' Nivel 2 - Subcategorías de Usability
+ROUNDRECT "Learnability" as LEARN
+ROUNDRECT "Operability" as OPER
+ROUNDRECT "Accessibility (i18n)" as I18N
+
+USE --> LEARN
+USE --> OPER
+USE --> I18N
+
+' Nivel 2 - Subcategorías de Maintainability
+ROUNDRECT "Modularity" as MOD
+ROUNDRECT "Testability" as TEST
+ROUNDRECT "Extensibility" as EXT
+
+MAIN --> MOD
+MAIN --> TEST
+MAIN --> EXT
+
+' Nivel 2 - Subcategorías de Reliability
+ROUNDRECT "Availability" as AVAIL
+ROUNDRECT "Fault Tolerance" as FAULT
+ROUNDRECT "Recoverability" as REC
+
+REL --> AVAIL
+REL --> FAULT
+REL --> REC
+
+' Nivel 2 - Subcategorías de Portability
+ROUNDRECT "Browser Support" as BROWSER
+ROUNDRECT "Platform Independence" as PLAT
+
+PORT --> BROWSER
+PORT --> PLAT
+
+' Nivel 2 - Subcategorías de Security
+ROUNDRECT "Authentication" as AUTH
+ROUNDRECT "Data Protection" as DATA
+
+SEC --> AUTH
+SEC --> DATA
+
+' Notas con escenarios - debajo de cada hoja
+note right of RESP
+  **QS-01: Move calc**
+  < 2 sec
+end note
+
+note right of LEARN
+  **QS-02: New user**
+  Start w/o help
+end note
+
+note right of EXT
+  **QS-03: New feature**
+  < 2 days
+end note
+
+note right of FAULT
+  **QS-04: Crash recovery**
+  < 30 sec
+end note
+
+note right of AVAIL
+  **QS-05: Concurrent**
+  10+ users
+end note
+
+note right of BROWSER
+  **QS-06: Browser**
+  Chrome, FF, Edge
+end note
+
+note right of I18N
+  **QS-07: i18n**
+  EN + ES
+end note
+
+note right of AUTH
+  **QS-08: Unauthorized**
+  100% blocked
+end note
+
+note right of DATA
+  **QS-09: Data**
+  Zero loss
+end note
+
+note right of TEST
+  **QS-10: Coverage**
+  > 80%
+end note
+
+@enduml
+----
+
+=== Quality Scenarios (In development)
 
 
-****
-endif::arc42help[]
+==== Scenario QS-01: Move Calculation Performance
 
-=== Quality Scenarios
-SCENARIO 1
+This scenario measures the response time of the game engine when calculating a bot move.
 
-image::10-Sceneriomove.png["Scenario1"]
+[plantuml,"QS-01 Move Calculation Performance",png]
+----
+@startuml
+actor "Human Player" as User
+participant "Web Frontend" as Webapp
+participant "API Gateway" as Gateway
+participant "Game Engine" as Gamey
 
-SCENARIO 2
+User -> Webapp: Make move
+Webapp -> Gateway: POST /api/game/move
+Gateway -> Gamey: Forward request
 
-image::10-Sceneriofeature.png["Scenario2"]
+note over Gamey: Start timer
+Gamey -> Gamey: Calculate bot move
+note over Gamey: Stop timer
+Gamey --> Gateway: Return move
+Gateway --> Webapp: Forward response
+Webapp --> User: Update board
 
-SCENARIO 3
+note right of Gamey: **Measurement:** < 2 seconds
+@enduml
+----
 
-image::10-Scenerionewuser.png["Scenario3"]
+|===
+| Aspect | Description
+| **ID** | QS-01
+| **Related Goal** | Performance / Response Time
+| **Stimulus** | User makes a move in a game vs. bot
+| **Source** | Human player
+| **Environment** | Normal operation, standard board size (11x11)
+| **Artifact** | Game Engine Service (`gamey/`)
+| **Response** | System calculates and returns bot move
+| **Response Measure** | 95% of moves calculated in **< 2 seconds**
+| **Priority** | High
+| **Verification** | Automated performance tests with timing metrics
+|===
 
-SCENARIO 4
+==== Scenario QS-02: New User Learnability
 
-image::10-Sceneriocrash["Scenario3"]
+This scenario tests whether a new user can start playing without external instructions.
+
+[plantuml,"QS-02 New User Learnability",png]
+----
+@startuml
+actor "New User" as User
+participant "Web Frontend" as Webapp
+
+User -> Webapp: First visit
+Webapp --> User: Show game interface
+
+note over User: User explores UI
+User -> Webapp: Clicks on board
+Webapp --> User: Visual feedback
+
+User -> Webapp: Makes first valid move
+Webapp --> User: Board updates
+
+note right of User: **Measurement:** < 2 minutes to first move
+@enduml
+----
+
+|===
+| Aspect | Description
+| **ID** | QS-02
+| **Related Goal** | Usability / Learnability
+| **Stimulus** | New user wants to play a game
+| **Source** | First-time player
+| **Environment** | User has never seen Game Y before
+| **Artifact** | Web Frontend (`webapp/`)
+| **Response** | User can start a valid game without external instructions
+| **Response Measure** | 80% of new users in usability test complete first move within 2 minutes
+| **Priority** | High
+| **Verification** | Usability testing with 5 new users; task success rate tracking
+|===
+
+==== Scenario QS-03: Feature Extensibility
+
+This scenario measures how easily a new game variant can be added.
+
+[plantuml,"QS-03 Feature Extensibility",png]
+----
+@startuml
+actor "Developer" as Dev
+participant "Game Engine\nCodebase" as Code
+
+Dev -> Code: Create new strategy class
+Dev -> Code: Implement variant rules
+Dev -> Code: Register variant
+
+note over Dev,Code: Changes isolated to\nspecific extension points
+
+Dev -> Code: Run tests
+Code --> Dev: All tests pass
+
+note right of Dev: **Measurement:** < 2 days implementation
+@enduml
+----
+
+|===
+| Aspect | Description
+| **ID** | QS-03
+| **Related Goal** | Maintainability / Extensibility
+| **Stimulus** | Developer needs to add a new game variant (e.g., Hex)
+| **Source** | Development team
+| **Environment** | Development environment, existing codebase
+| **Artifact** | Game Engine Service (`gamey/`)
+| **Response** | New variant can be added with minimal changes
+| **Response Measure** | Implementation takes **< 2 developer-days** and requires changes only to specific extension points
+| **Priority** | Medium
+| **Verification** | Code review and time tracking; demonstration of adding a sample variant
+|===
+
+==== Scenario QS-04: Crash Recovery (Fault Tolerance)
+
+This scenario tests the system's ability to recover from a service failure.
+
+[plantuml,"QS-04 Crash Recovery",png]
+----
+@startuml
+actor "User" as User
+participant "Web Frontend" as Webapp
+participant "Gateway" as Gateway
+participant "Game Engine" as Gamey
+participant "Docker" as Docker
+
+User -> Webapp: Make move
+Webapp -> Gateway: POST /api/game/move
+Gateway -> Gamey: Forward request
+
+note over Gamey: Service CRASHES
+Gamey --> Gateway: Connection refused
+Gateway --> Webapp: 503 Service Unavailable
+Webapp --> User: Show "Reconnecting..." message
+
+note over Docker: Detects failure
+Docker -> Gamey: Restart container
+Gamey --> Docker: Ready
+
+User -> Webapp: Retry move
+Webapp -> Gateway: POST /api/game/move
+Gateway -> Gamey: Forward request
+Gamey --> Gateway: Return move
+Gateway --> Webapp: Forward response
+Webapp --> User: Update board
+
+note right of Docker: **Measurement:** < 30 seconds total downtime
+@enduml
+----
+
+|===
+| Aspect | Description
+| **ID** | QS-04
+| **Related Goal** | Reliability / Fault Tolerance
+| **Stimulus** | Game Engine service crashes
+| **Source** | Internal failure (memory leak, panic)
+| **Environment** | Production, during active game
+| **Artifact** | Game Engine Service (`gamey/`)
+| **Response** | System detects failure, restarts service, and allows user to continue
+| **Response Measure** | Downtime **< 30 seconds**; game state recoverable
+| **Priority** | High
+| **Verification** | Chaos engineering: kill container during test game and measure recovery time
+|===
+
+==== Scenario QS-05: Concurrent Users
+
+This scenario tests system performance under load.
+
+[plantuml,"QS-05 Concurrent Users",png]
+----
+@startuml
+actor "User 1" as U1
+actor "User 2" as U2
+actor "User 3" as U3
+actor "User 10" as U10
+participant "System" as System
+
+U1 -> System: Make move
+U2 -> System: Make move
+U3 -> System: Make move
+U10 -> System: Make move
+
+note over System: Processes all requests
+System --> U1: Response
+System --> U2: Response
+System --> U3: Response
+System --> U10: Response
+
+note right of System: **Measurement:** Response time < 3x single user
+@enduml
+----
+
+|===
+| Aspect | Description
+| **ID** | QS-05
+| **Related Goal** | Performance / Throughput, Reliability / Availability
+| **Stimulus** | Multiple users play simultaneously
+| **Source** | Human players
+| **Environment** | Production deployment
+| **Artifact** | All services
+| **Response** | All users experience normal response times
+| **Response Measure** | Support **10+ concurrent users** with response time degradation < 50% compared to single user
+| **Priority** | Medium
+| **Verification** | Load testing with 10 concurrent sessions; monitor response times
+|===
+
+==== Scenario QS-06: Browser Compatibility
+
+This scenario tests the frontend across different browsers.
+
+[plantuml,"QS-06 Browser Compatibility",png]
+----
+@startuml
+actor "User" as User
+participant "Chrome" as Chrome
+participant "Firefox" as FF
+participant "Edge" as Edge
+participant "Web Frontend" as Webapp
+
+User -> Chrome: Access game
+Chrome -> Webapp: Request page
+Webapp --> Chrome: Render game
+
+User -> FF: Access game (different browser)
+FF -> Webapp: Request page
+Webapp --> FF: Render game
+
+User -> Edge: Access game (different browser)
+Edge -> Webapp: Request page
+Webapp --> Edge: Render game
+
+note right of Webapp: **Measurement:** Same functionality in all browsers
+@enduml
+----
+
+|===
+| Aspect | Description
+| **ID** | QS-06
+| **Related Goal** | Portability / Browser Support
+| **Stimulus** | User accesses the game from different browsers
+| **Source** | Human player
+| **Environment** | Latest versions of major browsers
+| **Artifact** | Web Frontend (`webapp/`)
+| **Response** | Game renders correctly and is playable
+| **Response Measure** | All core functionality works in **Chrome, Firefox, and Edge** (latest versions)
+| **Priority** | Medium
+| **Verification** | Cross-browser testing in CI; manual verification
+|===
+
+==== Scenario QS-07: Internationalization
+
+This scenario tests language switching.
+
+[plantuml,"QS-07 Internationalization",png]
+----
+@startuml
+actor "Spanish User" as User
+participant "Web Frontend" as Webapp
+participant "i18n Module" as I18n
+
+User -> Webapp: Select Spanish language
+Webapp -> I18n: Load ES strings
+I18n --> Webapp: Spanish translations
+Webapp --> User: UI in Spanish
+
+note right of Webapp: **Measurement:** 100% of strings translated
+@enduml
+----
+
+|===
+| Aspect | Description
+| **ID** | QS-07
+| **Related Goal** | Usability / Accessibility (i18n)
+| **Stimulus** | User selects Spanish language
+| **Source** | Spanish-speaking player
+| **Environment** | Normal operation
+| **Artifact** | Web Frontend (`webapp/`)
+| **Response** | All UI text appears in Spanish
+| **Response Measure** | 100% of user-facing strings translated to **English and Spanish**; no hardcoded English text
+| **Priority** | Low (optional feature)
+| **Verification** | Automated check for missing translations; language switch test
+|===
+
+==== Scenario QS-08: Unauthorized Access Prevention
+
+This scenario tests authentication and authorization.
+
+[plantuml,"QS-08 Unauthorized Access",png]
+----
+@startuml
+actor "User A" as UserA
+actor "User B" as UserB
+participant "Gateway" as Gateway
+participant "User Service" as Users
+
+UserA -> Gateway: GET /api/users/B/data (with A's token)
+Gateway -> Users: Forward request
+
+Users -> Users: Validate token belongs to A
+Users -> Users: Check if A can access B's data
+
+Users --> Gateway: 403 Forbidden
+Gateway --> UserA: Error response
+
+note right of Users: **Measurement:** 100% of cross-user attempts blocked
+@enduml
+----
+
+|===
+| Aspect | Description
+| **ID** | QS-08
+| **Related Goal** | Security / Authentication
+| **Stimulus** | User attempts to access another user's data
+| **Source** | Malicious or curious user
+| **Environment** | Production
+| **Artifact** | User Service (`users/`), API Gateway
+| **Response** | System rejects access with 403 Forbidden
+| **Response Measure** | **100%** of cross-user access attempts blocked
+| **Priority** | High
+| **Verification** | Security tests in CI; penetration testing attempts
+|===
+
+==== Scenario QS-09: Data Persistence
+
+This scenario tests data durability after system restart.
+
+[plantuml,"QS-09 Data Persistence",png]
+----
+@startuml
+actor "User" as User
+participant "System" as System
+database "MongoDB" as DB
+
+User -> System: Register and play games
+System -> DB: Store user data and history
+
+note over System: System restarts
+
+User -> System: Login and request history
+System -> DB: Query user data
+DB --> System: Return all data
+System --> User: Show complete history
+
+note right of DB: **Measurement:** Zero data loss
+@enduml
+----
+
+|===
+| Aspect | Description
+| **ID** | QS-09
+| **Related Goal** | Reliability / Recoverability, Security / Data Protection
+| **Stimulus** | System restarts after shutdown
+| **Source** | Maintenance or crash
+| **Environment** | Post-restart
+| **Artifact** | MongoDB, User Service
+| **Response** | All user data and match history are intact
+| **Response Measure** | **Zero data loss**; 100% of records recoverable
+| **Priority** | High
+| **Verification** | Backup and restore tests; simulate crash and verify data integrity
+|===
+
+==== Scenario QS-10: Code Maintainability
+
+This scenario tests code quality and maintainability.
+
+[plantuml,"QS-10 Code Maintainability",png]
+----
+@startuml
+actor "New Developer" as Dev
+participant "Codebase" as Code
+participant "SonarQube" as SQ
+
+Dev -> Code: Clone repository
+Dev -> Code: Read documentation
+Dev -> Code: Locate feature to modify
+Dev -> Code: Make change
+Dev -> Code: Run tests
+
+Code --> Dev: Tests pass
+
+SQ -> Code: Analyze code quality
+SQ --> Dev: Report metrics
+
+note right of SQ: **Measurement:** Coverage > 80%, complexity < 10
+@enduml
+----
+
+|===
+| Aspect | Description
+| **ID** | QS-10
+| **Related Goal** | Maintainability / Testability
+| **Stimulus** | New developer joins the team and needs to understand the codebase
+| **Source** | Onboarding
+| **Environment** | Development
+| **Artifact** | All services
+| **Response** | Developer can locate and modify a simple feature within a day
+| **Response Measure** | Code coverage **> 80%**; cyclomatic complexity < 10 per function
+| **Priority** | Medium
+| **Verification** | SonarQube metrics; onboarding test with new team member
+|===
+
+=== Traceability to Quality Goals
+
+This table maps the quality scenarios back to the quality goals defined in Section 1.2.
+
+|===
+| Quality Goal (Section 1.2) | Related Scenarios | Key Metrics
+| **Functionality** | QS-01, QS-03 | Correct game rules, multiple AI strategies
+| **Usability** | QS-02, QS-07 | Learnability (80% success), i18n support (EN+ES)
+| **Modularity & Maintainability** | QS-03, QS-10 | Extensibility (< 2 days), code coverage (> 80%)
+| **Deployability & Availability** | QS-04, QS-05 | Recovery time (< 30 sec), concurrent users (10+)
+| **Testability** | QS-10 (indirect) | Test coverage > 80%
+| **Interoperability** | (covered in Section 6) | API works for external bots
+|===
 
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-.Contents
-Concretization of (sometimes vague or implicit) quality requirements using (quality) scenarios.
 
-These scenarios describe what should happen when a stimulus arrives at the system.
 
-For architects, two kinds of scenarios are important:
 
-* Usage scenarios (also called application scenarios or use case scenarios) describe the system’s runtime reaction to a certain stimulus. This also includes scenarios that describe the system’s efficiency or performance. Example: The system reacts to a user’s request within one second.
-* Change scenarios describe a modification of the system or of its immediate environment. Example: Additional functionality is implemented or requirements for a quality attribute change.
 
-.Motivation
-Scenarios make quality requirements concrete and allow to
-more easily measure or decide whether they are fulfilled.
-
-Especially when you want to assess your architecture using methods like
-ATAM you need to describe your quality goals (from section 1.2)
-more precisely down to a level of scenarios that can be discussed and evaluated.
-
-.Form
-Tabular or free form text.
-****
-endif::arc42help[]

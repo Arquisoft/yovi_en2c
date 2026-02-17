@@ -1,163 +1,336 @@
-ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-building-block-view]]
 == Building Block View
 
-This section describes the static decomposition of the YOVI system into its main building blocks and their dependencies.
+This section describes the static decomposition of the YOVI system into building blocks. Following arc42 guidelines,
+we present a **hierarchical view**:
 
-=== Whitebox Overall System
+* **Level 1**: White box description of the overall system, with black box descriptions of each top-level building block
+* **Level 2**: White box descriptions of selected building blocks, showing their internal structure
 
-_**Context Diagram: YOVI High-Level Components**_
+This abstraction allows understanding the system structure without drowning in implementation details.
 
-[source,mermaid]
-....
-flowchart TD
-    User["Human User"] -->|Uses Web Interface| WebApp
-    Bot["External Bot"] -->|Calls Public Bot API| WebApp
+=== Level 1: Overall System White Box
 
-    WebApp["yovi_web_app<br/>TypeScript/React"] -->|Game Management API<br/><i>YEN/JSON over HTTP</i>| Engine
-    Engine["yovi_game_engine<br/>Rust Service"]
+The YOVI system is decomposed into **four top-level building blocks**: three services and an API gateway, plus an external database.
 
-    classDef frontend fill:#dae8fc,stroke:#6c8ebf
-    classDef backend fill:#d5e8d4,stroke:#82b366
-    classDef actor fill:#f5f5f5,stroke:#666
+[plantuml,"Level 1 System White Box",png]
+----
+@startuml
+!define RECTANGLE node
 
-    class WebApp frontend
-    class Engine backend
-    class User,Bot actor
-....
+skinparam componentStyle rectangle
+skinparam backgroundColor #FEFEFE
 
-The diagram above illustrates the top-level decomposition of the YOVI system and its external actors (Users and Bots).
+package "YOVI System (Level 1)" {
 
-Motivation::
+  component "API Gateway (gateway/)" as Gateway <<gateway>>
 
-The architecture is decomposed based on the core technical requirement to separate the user interface and game management
-logic (suited for TypeScript/Web) from the core game rule verification and AI strategy computation (suited for Rust).
-This separation aligns with the specified subsystems and promotes modularity, independent scalability, and clear
-responsibility boundaries.
+  component "Web Frontend Service (webapp/)" as Webapp <<frontend>>
 
-Contained Building Blocks::
+  component "User Service (users/)" as Users <<backend>>
 
-*   **`yovi_web_app`**: The main web application that provides the user interface, manages game sessions, and handles
-user data.
-*   **`yovi_game_engine`**: A standalone service responsible for validating game states, determining winners, and
-calculating AI moves.
+  component "Game Engine Service (gamey/)" as Gamey <<backend>>
 
-Important Interfaces::
+  database "MongoDB (database)" as DB <<database>>
 
-*   **`Game Management API`**: The RESTful interface exposed by the `yovi_web_app` to the `yovi_game_engine` to request
-move validation and AI suggestions. This interface uses **YEN notation** over JSON.
-*   **`Public Bot API`**: The external RESTful API exposed by the `yovi_web_app` to allow programmatic bots to play the
-game.
+  Gateway --> Webapp : "serves static files\n(HTTP)"
+  Gateway --> Users : "routes /api/users/*\n(HTTP)"
+  Gateway --> Gamey : "routes /api/game/*\n(HTTP)"
 
-==== yovi_web_app
+  Users --> DB : "MongoDB Wire Protocol\n(persistence)"
 
-*   **Purpose/Responsibility**: Serves as the primary interface for human users and the gateway for external bots. It is
-responsible for user management (registration, history), session state, rendering the game UI, and orchestrating calls
-to the game engine.
-*   **Interface(s)**:
-*   **Provided**: Public REST API (`/api/v1/*`) for bots, Web Interface (HTML/JS) for users.
-*   **Required**: Consumes the `Game Management API` from the `yovi_game_engine`.
-*   **Quality/Performance Characteristics**: Must be highly available and responsive for a good user experience. Stateless
-to allow horizontal scaling.
-*   **Directory/File Location**: `/web-app/` (Contains React/TypeScript source code).
-*   **Fulfilled Requirements**: User registration/history, web frontend, public bot API, strategy selection.
-*   **Open Issues/Problems/Risks**: Complexity in managing real-time updates for potential multiplayer features. See
-technical risks (Section 11).
+  Webapp --> Gateway : "API calls to backend\n(HTTP, internal)"
 
-==== yovi_game_engine
+  note top of Gateway
+    **Provided Interfaces:**
+    * Public Web UI (port 443)
+    * Public Bot API (port 443)
+    **Responsibilities:**
+    * SSL termination
+    * Request routing
+    * Rate limiting
+  end note
 
-*   **Purpose/Responsibility**: Encapsulates the definitive rules of Game Y and its variants. Its core functions are to
-validate moves, check for a winning condition, and calculate the next move for the AI based on a selected strategy.
-*   **Interface(s)**:
-*   **Provided**: `Game Management API` (Web Service, e.g., over HTTP). Accepts and returns game states in YEN notation.
-*   **Required**: None (it's a terminal building block for core logic).
-*   **Quality/Performance Characteristics**: Must have low latency for AI calculations to not hinder gameplay. High
-correctness is critical.
-*   **Directory/File Location**: `/game-engine/` (Contains Rust source code, Cargo.toml).
-*   **Fulfilled Requirements**: Game rule verification, AI move suggestion with multiple strategies.
-*   **Open Issues/Problems/Risks**: Performance of complex AI strategies on large boards. Learning curve for Rust (See ADR 3 and Section 11).
+  note bottom of Webapp
+    **Provided:**
+    * Web UI for humans
+    **Required:**
+    * User Service API
+    * Game Engine API
+  end note
 
-=== Level 2
+  note bottom of Users
+    **Provided:**
+    * User Management API
+    **Required:**
+    * MongoDB
+  end note
 
-Here we detail the internal structure of the two main building blocks.
+  note bottom of Gamey
+    **Provided:**
+    * Game Logic API (YEN)
+    * Bot Strategy API
+    **Required:**
+    * None
+  end note
+}
 
-==== White Box `yovi_web_app`
+actor "Human Player" as Human
+actor "External Bot" as Bot
 
-_**Decomposition of the Web Application**_
+Human --> Gateway : "HTTPS"
+Bot --> Gateway : "HTTPS (API calls)"
 
-[source,mermaid]
-....
-flowchart TD
-    subgraph WebApp[yovi_web_app]
-        UI[UI Layer<br/><i>React Components</i>]
-        API[API Client & State Manager]
-        Router[Public API Router]
-        Service[User & Session Service]
+@enduml
+----
 
-        UI --> API
-        API --> Router
-        Router --> Service
-    end
+==== Black Box Descriptions
 
-    UI -->|Renders game board<br/>Implements i18n & responsive| UserInterface[Web Browser]
-    Router -->|Exposes /api/v1/*<br/>Handles bot auth| ExternalBot[External Bot]
-    API -->|Calls| GameEngine[yovi_game_engine]
+===== API Gateway
 
-    classDef component fill:#f5f5f5,stroke:#666,color:#333
-    classDef external fill:#e1d5e7,stroke:#9673a6
+* **Purpose/Responsibility**: Acts as the single entry point to the system. Routes external requests to the appropriate internal service, handles SSL termination, and provides a security layer.
+* **Interface(s)**:
+** *Provided*:
+*** Public Web UI endpoint
+*** Public Bot API endpoint
+** *Required*:
+*** Web Frontend Service (internal HTTP)
+*** User Service (internal HTTP)
+*** Game Engine Service (internal HTTP)
+* **Quality/Performance Characteristics**: Must handle all external traffic; availability is critical. Stateless, can be scaled horizontally.
+* **Directory/File Location**: `/gateway/` (nginx config or Express Gateway config)
+* **Fulfilled Requirements**: Public deployment, single entry point
+* **Open Issues**: SSL certificate management in production
 
-    class UI,API,Router,Service component
-    class UserInterface,ExternalBot,GameEngine external
+===== Web Frontend Service
 
-    style WebApp fill:#fff,stroke:#6c8ebf,stroke-width:2px
-....
+* **Purpose/Responsibility**: Provides the user interface for human players. Handles game rendering, user interaction, and orchestrates calls to backend services.
+* **Interface(s)**:
+** *Provided*: Web UI (HTML/CSS/JS) served to browsers
+** *Required*:
+*** User Service API
+*** Game Engine API
+* **Quality/Performance Characteristics**: Responsive UI (< 100ms for interactions). Must support i18n. Stateless for scalability.
+* **Directory/File Location**: `/webapp/` (React + TypeScript source)
+* **Fulfilled Requirements**: Web frontend, game visualization, strategy selection UI
+* **Open Issues**: Real-time updates for future multiplayer features
 
-The web application is decomposed into four main components:
+===== User Service
 
-* **`UI Layer (React Components)`**: Responsible for rendering all user interfaces, including the game board, user
-dashboard, and registration forms. Implements i18n and responsive design (aligned with ADR 1 & 2).
-* **`API Client & State Manager`**: Manages the application state (e.g., current game, user info) and handles all
-communication with the backend `Game Management API`. Transforms data between frontend models and YEN notation.
-* **`Public API Router`**: Implements and exposes the external `Public Bot API`. It authenticates requests, manages
-bot sessions, and translates between the public API calls and internal application logic.
-* **`User & Session Service`**: Handles business logic for user authentication, registration, and persistence/retrieval
-of game history and statistics.
+* **Purpose/Responsibility**: Manages all user-related data: registration, authentication, profile information, match history, and statistics.
+* **Interface(s)**:
+** *Provided*: REST API  with endpoints for register, login, profile, stats
+** *Required*: MongoDB for data persistence
+* **Quality/Performance Characteristics**: Must persist data reliably. Response time < 200ms for typical operations.
+* **Directory/File Location**: `/users/` (Node.js + Express)
+* **Fulfilled Requirements**: User registration, match history, statistics
+* **Open Issues**: Authentication token expiration and refresh strategy
 
-==== White Box `yovi_game_engine`
+===== Game Engine Service
 
-_**Decomposition of the Game Engine**_
+* **Purpose/Responsibility**: Encapsulates all Game Y logic: move validation, win condition checking, and AI move calculation with multiple strategies.
+* **Interface(s)**:
+** *Provided*: REST API (`/api/game/*`) using YEN notation for game states
+** *Required*: None (stateless, no external dependencies)
+* **Quality/Performance Characteristics**: Low latency (< 500ms for move calculation). High correctness (100% rule compliance). Memory safety critical.
+* **Directory/File Location**: `/gamey/` (Rust)
+* **Fulfilled Requirements**: Game rule verification, AI move suggestion, multiple strategies, YEN notation
+* **Open Issues**: Performance optimization for large boards
 
-[source,mermaid]
-....
-flowchart LR
-    subgraph Engine[yovi_game_engine]
-        Parser[YEN Parser & Validator]
-        Rules[Game Rules Core]
-        AI[AI Strategy Module]
+===== MongoDB Database
 
-        Parser -->|Validated game state| Rules
-        Rules -->|Requests move| AI
-        AI -->|Returns move| Rules
-    end
+* **Purpose/Responsibility**: Persists user data, including profiles, authentication credentials, match history, and statistics.
+* **Interface(s)**:
+** *Provided*: MongoDB Wire Protocol
+** *Required*: None (data storage only)
+* **Quality/Performance Characteristics**: Durable storage, backup capability. Must handle concurrent connections.
+* **Directory/File Location**: Managed via Docker (not in repo)
+* **Fulfilled Requirements**: User data persistence
+* **Open Issues**: Backup and recovery strategy
 
-    WebApp[yovi_web_app] -->|Sends YEN JSON| Parser
-    Rules -->|Returns YEN response| WebApp
+=== Level 2: Building Block Internals
 
-    classDef component fill:#f5f5f5,stroke:#666,color:#333
-    classDef external fill:#dae8fc,stroke:#6c8ebf
+==== White Box: Web Frontend Service (`webapp/`)
 
-    class Parser,Rules,AI component
-    class WebApp external
+The web frontend is structured following a **component-based architecture** with clear separation of concerns.
 
-    style Engine fill:#fff,stroke:#82b366,stroke-width:2px
-....
+[plantuml,"Webapp Internal Structure",png]
+----
+@startuml
+!define RECTANGLE component
 
-The game engine is decomposed into three logical components:
+package "Web Frontend Service (Level 2)" {
 
-* **`YEN Parser & Validator`**: Responsible for parsing incoming YEN JSON, validating its syntactic and semantic
-correctness against the current board rules, and serializing outgoing YEN states.
-* **`Game Rules Core`**: The single source of truth for all Game Y variants. Contains the logic for board representation,
-move application, and win condition checking.
-* **`AI Strategy Module`**: Implements the pluggable strategy pattern (aligned with ADR 4). Contains different algorithms
-(e.g., Minimax, Random) and difficulty levels that can be selected via the API request.
+  component "UI Components (React)" as UI <<frontend>>
+
+  component "State Management (Context/Redux)" as State <<frontend>>
+
+  component "API Client (axios)" as APIClient <<frontend>>
+
+  component "Routing (React Router)" as Router <<frontend>>
+
+  component "i18n Module" as I18n <<frontend>>
+
+  UI --> State : "reads/updates"
+  UI --> Router : "navigation"
+  UI --> I18n : "translations"
+
+  State --> APIClient : "fetches data"
+
+  APIClient --> "External Services" : "HTTP calls"
+
+  note right of UI
+    **Contained Building Blocks:**
+    * GameBoard
+    * RegisterForm
+    * UserProfile
+  end note
+}
+
+@enduml
+----
+
+===== Black Box Descriptions (Webapp Internals) (In development)
+
+|===
+| Building Block | Responsibility | Key Interfaces | Location
+| **UI Components** | Render all user interfaces; handle user input events | Props/State callbacks | `webapp/src/components/`
+| **State Management** | Maintain application state (user, game, UI) | Context API / Redux store | `webapp/src/store/`
+| **API Client** | Communicate with backend services | HTTP methods (GET, POST) | `webapp/src/services/`
+| **Routing** | Handle navigation between views | URL paths | `webapp/src/routes/`
+| **i18n Module** | Provide internationalization support | Translation keys → strings | `webapp/src/i18n/`
+|===
+
+==== White Box: Game Engine Service (`gamey/`)
+
+The game engine is structured in layers, with clear separation between parsing, core logic, and AI strategies.
+
+[plantuml,"Game Engine Internal Structure",png]
+----
+@startuml
+!define RECTANGLE component
+
+package "Game Engine Service (Level 2)" {
+
+  component "HTTP Server (web/)" as HTTP <<backend>>
+
+  component "YEN Parser (notation/)" as Parser <<backend>>
+
+  component "Game Core (core/)" as Core <<backend>>
+
+  component "AI Strategies (bot/)" as AI <<backend>>
+
+  component "Board Model (core/board)" as Board <<backend>>
+
+  HTTP --> Parser : "parse YEN"
+  Parser --> Core : "validated game state"
+  Core --> Board : "manipulates"
+  Core --> AI : "requests move"
+  AI --> Core : "returns move"
+
+
+
+  note right of AI
+    **Strategies:**
+    * Random (implemented)
+    * Heuristic (discussing)
+    * Minimax (discussing)
+  end note
+}
+
+@enduml
+----
+
+===== Black Box Descriptions (Game Engine Internals)
+
+|===
+| Building Block | Responsibility | Key Interfaces | Location
+| **HTTP Server** | Expose REST endpoints; handle requests/responses | `POST /move`, `GET /strategies` | `gamey/src/web/`
+| **YEN Parser** | Parse and validate YEN notation; serialize to YEN | `parse()`, `serialize()` | `gamey/src/notation/`
+| **Game Core** | Implement Game Y rules; validate moves; check wins | `apply_move()`, `is_game_over()` | `gamey/src/core/`
+| **Board Model** | Represent board state; manage cells | `get_cell()`, `set_cell()` | `gamey/src/core/board.rs`
+| **AI Strategies** | Implement different bot behaviors | `calculate_move()` (trait) | `gamey/src/bot/`
+|===
+
+==== White Box: User Service (`users/`)
+
+The user service follows a typical **layered architecture** for REST APIs.
+
+[plantuml,"User Service Internal Structure",png]
+----
+@startuml
+!define RECTANGLE component
+
+package "User Service (Level 2)" {
+
+  component "API Routes (routes/)" as Routes <<backend>>
+
+  component "Controllers (controllers/)" as Controllers <<backend>>
+
+  component "Services (services/)" as Services <<backend>>
+
+  component "Repositories (repositories/)" as Repos <<backend>>
+
+  component "Models (models/)" as Models <<backend>>
+
+  Routes --> Controllers : "route → controller"
+  Controllers --> Services : "business logic"
+  Services --> Repos : "data access"
+  Repos --> Models : "data mapping"
+  Repos --> "MongoDB" : "database"
+
+  note right of Routes
+    **Endpoints:**
+    * POST /register
+    * POST /login
+    * GET /profile/:id (in process)
+    * GET /:id/stats (in process)
+  end note
+}
+
+@enduml
+----
+
+===== Black Box Descriptions (User Service Internals) (In development)
+
+|===
+| Building Block | Responsibility | Key Interfaces | Location
+| **API Routes** | Define HTTP endpoints and HTTP methods | Express route handlers | `users/src/routes/`
+| **Controllers** | Handle requests, validate input, format responses | Controller functions | `users/src/controllers/`
+| **Services** | Implement business logic (password hashing, etc.) | Service methods | `users/src/services/`
+| **Repositories** | Abstract database operations | CRUD operations | `users/src/repositories/`
+| **Models** | Define data schemas and validation | Mongoose schemas | `users/src/models/`
+|===
+
+
+=== Interface Overview
+
+This table summarizes the key interfaces between building blocks, showing the **provided** and **required** relationships.
+
+|===
+| Interface | Provider | Consumer | Protocol | Data Format | Purpose
+| **Public Web UI** | Gateway | Browser | HTTPS | HTML/CSS/JS | Serve frontend to users
+| **Public Bot API** | Gateway | External Bot | HTTPS | JSON (YEN) | Bot integration
+| **User API** | Users Service | Webapp | HTTP (internal) | JSON | User management
+| **Game API** | Gamey Service | Webapp | HTTP (internal) | JSON (YEN) | Game logic
+| **Database Interface** | MongoDB | Users Service | MongoDB Wire | BSON | Data persistence
+| **Internal Gateway Calls** | Gateway | Webapp/Users/Gamey | HTTP (internal) | JSON | Service communication
+|===
+
+=== Mapping to Requirements
+
+This table shows how the building blocks fulfill the key requirements from section 1.
+
+|===
+| Requirement | Primary Building Block | Supporting Building Blocks
+| Web frontend (TypeScript/React) | Web Frontend Service | Gateway
+| Rust game engine | Game Engine Service | (none)
+| JSON + YEN communication | Game Engine Service | Webapp (client), Gateway (routing)
+| Public API for bots | Gateway | Game Engine Service
+| User registration | User Service | MongoDB
+| Match history | User Service | MongoDB, Webapp (UI)
+| Multiple AI strategies | Game Engine Service | (none)
+| Docker deployment | All services | docker-compose
+| CI/CD | GitHub Actions | All services
+|===

@@ -1,22 +1,183 @@
-ifndef::imagesdir[:imagesdir: ../images]
+
 
 [[section-design-decisions]]
 == Architecture Decisions
 
 This section documents the most significant architectural decisions made during the design and development of the YOVI
-platform. Each decision follows the ADR (Architecture Decision Record) format to provide context, rationale, and
+platform.
+Each decision follows the ADR (Architecture Decision Record) format to provide context, rationale, and
 consequences.
+These decisions complement the solution strategy outlined in Section 4, providing deeper rationale for key choices.
 
-=== 1: Prioritize Early Internationalization (i18n)
+=== ADR-001: Game Modes Available to the User
 
-* **Status**: Accepted
-* **Context**: One of the optional features for the YOVI platform is support for internationalization (i18n). The team
-recognized that implementing i18n later in the development cycle is often more complex and costly.
-* **Decision**: Internationalization will be integrated into the project's foundation from the start. This includes
-structuring the codebase for easy text extraction, using a library, and
-designing the UI layout to accommodate variable text lengths.
-* **Consequences**:
-* **Positive**: Significantly reduces future integration effort, avoids major refactoring of the UI, and allows the
-optional feature to be completed with minimal friction.
-* **Negative**: Adds initial setup complexity and requires discipline from all developers to use the i18n framework for
-all user-facing text from day one.
+* **Status**: Implemented
+* **Date**: 2026-01-15
+* **Deciders**: Development Team
+
+**Context**:
+The platform needs to offer users different ways to play Game Y. The initial requirements specify player-versus-machine mode, but the architecture should be extensible to support additional modes in the future (multiplayer, different variants, etc.).
+
+**Decision**:
+We will design the game mode system with **extensibility as a core principle**. The architecture will separate game mode logic from core game rules, allowing new modes to be added by:
+
+* Defining new mode types in the webapp UI
+* Extending the game engine to support mode-specific rules
+* Keeping mode state separate from core game state
+
+**Alternatives Considered**:
+
+* **Hard-code only PvM mode**: Rejected - would require major refactoring for future modes
+* **Configuration-driven modes**: Considered but deferred - adds complexity for current requirements
+* **Plugin architecture**: Rejected - overkill for project scope
+
+**Consequences**:
+
+*  Positive: New game modes can be added without modifying core game logic
+*  Positive: Clear separation between "how game is played" and "game rules"
+*  Positive: Meets current requirements while preparing for future
+*  Negative: Slightly more complex initial implementation
+*  Negative: Requires careful design to avoid over-engineering
+* ️ Mitigation: Focus on PvM mode first, ensure extension points are clean
+
+---
+=== ADR-002: MongoDB for User Data Persistence
+
+* **Status**: Implemented
+* **Date**: 2026-01-20
+* **Deciders**: Development Team
+
+**Context**:
+The users service needs to persist user profiles, authentication data, and match history. The team needed to choose a database technology that balances development speed with future flexibility.
+
+**Decision**:
+We will use **MongoDB** for user data persistence. The schema will be designed to accommodate:
+
+* User profiles (username, password hash, email)
+* Authentication data (tokens, sessions)
+* Match history (games played, results, moves)
+
+**Alternatives Considered**:
+
+* **PostgreSQL**: Rejected - schema changes for evolving requirements would be slower
+* **MySQL**: Rejected - similar concerns
+* **In-memory storage**: Rejected - data must persist
+* **SQLite**: Rejected - not suitable for concurrent access
+
+**Consequences**:
+
+*  Positive: Flexible schema allows easy addition of user fields
+*  Positive: Excellent integration with Node.js via Mongoose ODM
+*  Positive: Fast prototyping and iteration on data models
+*  Negative: No built-in relations (handled in application code)
+*  Negative: Eventual consistency (not critical for this domain)
+*  Mitigation: Use atomic operations for critical updates (e.g., game statistics)
+
+---
+=== ADR-003: Three-Service Microservices Architecture
+
+* **Status**: Implemented
+* **Date**: 2026-01-15
+* **Deciders**: Development Team
+
+**Context**:
+The lab assignment requires a web application in TypeScript and a game engine in Rust. These technologies cannot run in the same process. Additionally, user management (registration, history) is a distinct responsibility that could be separated.
+
+**Decision**:
+
+We will implement a **microservices architecture** with three independent services:
+
+* `webapp/` - TypeScript/React frontend
+* `users/` - Node.js/Express user management service
+* `gamey/` - Rust game engine service
+
+All services will communicate via REST APIs and be orchestrated with an API gateway.
+
+**Consequences**:
+
+*  Positive: Clear separation of concerns
+*  Positive: Each service can be developed and tested independently
+*  Positive: Technology-specific optimizations possible
+*  Negative: Increased operational complexity (multiple services to deploy)
+*  Negative: Network latency between services
+*  Mitigation: docker-compose simplifies local development and deployment
+
+---
+=== ADR-004: API Gateway as Single Entry Point
+
+* **Status**: Implemented
+* **Date**: 2026-01-20
+* **Deciders**: Development Team
+
+**Context**:
+With three independent services, external clients (human users and bots) would need to know multiple endpoints. This increases complexity and exposes internal service topology.
+
+**Decision**:
+
+We will implement an **API Gateway** (`gateway/`) as the single entry point for all external requests. The gateway will:
+
+* Route `/` → webapp service (static files)
+* Route `/users/*` → users service
+* Route `/game/*` → gamey service
+* Handle SSL termination
+* Provide a security layer
+
+**Alternatives Considered**:
+
+* **Direct client-to-service communication**: Rejected - exposes internal services, complicates client logic
+* **Load balancer only**: Rejected - doesn't provide routing based on paths
+* **No gateway**: Rejected - security concerns
+
+**Consequences**:
+
+*  Positive: Single URL for all clients simplifies access
+*  Positive: Internal services remain hidden from external clients
+*  Positive: Centralized SSL and security policies
+*  Negative: Additional component to deploy and maintain
+*  Negative: Potential performance bottleneck
+*  Mitigation: Gateway is stateless and can be scaled horizontally
+
+---
+=== ADR-005: Strategy Pattern for AI Bot Behaviors
+
+* **Status**: In Progress
+* **Date**: 2026-01-25
+* **Deciders**: Development Team
+
+**Context**:
+The system must support multiple AI strategies and difficulty levels. New strategies may be added in the future without modifying existing code. The requirement states "more than one strategy" must be available.
+
+**Decision**:
+We will implement the **Strategy Pattern** in the `gamey` service. Each AI strategy will be a separate module implementing a common trait (`BotStrategy`). The game engine will select the appropriate strategy based on user input. Initial strategies will include:
+
+* Random move (implemented)
+* Heuristic-based (in discussion)
+* Minimax (in discussion)
+
+**Alternatives Considered**:
+
+* **Conditional logic** (if/else or switch): Rejected - violates Open/Closed principle, hard to extend
+* **Configuration flags with hard-coded algorithms**: Rejected - similar concerns
+* **Machine learning model**: Rejected - overkill for requirements, unpredictable performance
+
+**Consequences**:
+
+*  Positive: New strategies can be added without modifying core game logic
+*  Positive: Each strategy can be tested independently
+*  Positive: Clear separation of concerns
+*  Negative: Slight indirection overhead (negligible)
+*  Negative: Requires understanding of trait/interface design
+*  Mitigation: Well-documented strategy trait and example implementations
+
+---
+
+=== Summary of Architectural Decisions
+
+|===
+| ID | Decision | Key Rationale | Status
+| **ADR-001** | Game Modes | Extensibility for future modes | Implemented
+| **ADR-002** | MongoDB for User Data | Schema flexibility, Node.js integration | Implemented
+| **ADR-003** | Three-Service Architecture | Technology constraints (TypeScript + Rust) | Implemented
+| **ADR-004** | API Gateway | Security, single entry point | Implemented
+| **ADR-005** | Strategy Pattern for AI | Extensibility for multiple strategies | In Progress
+|===

@@ -3,14 +3,143 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-concepts]]
 == Cross-cutting Concepts
 
+=== Game State Representation
+
+All game state across the system is represented using **YEN notation**, as mandated by the client.
+
+[source,json]
+----
+{
+  "size": 11,
+  "turn": "R",
+  "board": {
+    "cells": [
+      ["R", "B", "R", "B"]
+    ]
+  }
+}
+----
+
+* **Usage**:
+** `gamey/` service: Parses and validates YEN, returns moves in YEN
+** `webapp/`: Converts UI interactions to YEN for API calls
+** Public API: Accepts and returns YEN exclusively
+
+* **Rationale**: Standardization ensures interoperability with external bots and consistency across services.
+
+
 === Internationalization
-For the application to be more accessible to a wider range of uses, internationalization was implemented for the languages of english and spanish.
+For the application to be more accessible to a wider range of users, internationalization was implemented for the
+languages of english and spanish, with architecture designed for easy addition of new languages.
 
-=== Testing
-Testing every piece of code implemented is critical in order to achieve a sustainable system an lowering the risk of having errors and bugs. For this not only do we have mock tests for the source code, but the Github repository will also use sonarqube to ensure proper coverage.
+* **Implementation**:
+** All UI strings externalized to JSON files
+** Language selection in user preferences
+** URL-based language (optional): `/en/play`, `/es/play`
 
-=== Security
-The security features are heavily related to the previous point, as the lowerment of risks and possible breaches is reinforced by testing. Nevertheless, it is also worth adding that the use of a virtual machine and the isolation of the docker containers will also contribute to make the system safer overall, as well as the possible use of Github secrets in the deployment of the application.
+[source,javascript]
+----
+// i18n file structure
+/locales/
+  en/
+    common.json
+    game.json
+    user.json
+  es/
+    common.json
+    game.json
+    user.json
+----
+* **Fallback**: English as default if translation missing
 
-=== Gateway
-The gateway service is an architectural feature that works as a bridge between the different microservices implemented, being its main function connecting the gamey service (which is in charge of the functionality of the Game Y) and the webapp, which is the GUI that allows the user to interact with the game and play it.
+
+==== Network Security
+
+|===
+| Layer | Measure | Purpose
+| **Transport** | HTTPS with TLS 1.3 | Encrypt all external traffic
+| **Network isolation** | Docker networks (frontend/backend) | Prevent direct backend access
+| **Firewall** | Only ports 22(SSH) and 443(HTTPS) exposed | Minimize attack surface
+| **API Gateway** | Single entry point | Hide internal service topology
+|===
+
+==== Secrets Management
+
+* **Development**: `.env` files (gitignored)
+* **CI/CD**: GitHub Secrets for all credentials
+* **Production**: Environment variables in docker-compose (never committed)
+
+Example secrets:
+
+* JWT_SECRET
+* MONGODB_URI
+* GITHUB_TOKEN
+
+=== Architecture and Design Patterns
+
+Already documented in Section 4, but summarized here for cross-cutting relevance:
+
+|===
+| Pattern | Application | Cross-cutting Concern
+| **Strategy Pattern** | Bot AI strategies | Extensibility (new strategies = new classes)
+| **Repository Pattern** | Data access in `users` service | Testability (mock repositories)
+| **Gateway/Router** | API Gateway | Security, routing, monitoring
+| **Observer/Reactive** | UI updates via React state | Consistent UI across state changes
+|===
+
+==== Error Handling Strategy
+
+Consistent error handling across all services:
+
+API errors always return appropriate HTTP status codes:
+
+|===
+| Status Code | When | Example
+| 400 Bad Request | Invalid input format | Malformed YEN
+| 401 Unauthorized | Missing/invalid token | No JWT
+| 403 Forbidden | Valid token but insufficient permissions | User accessing another's data
+| 404 Not Found | Resource doesn't exist | Invalid game ID
+| 409 Conflict | Business rule violation | Username already exists
+| 500 Internal Error | Unexpected server error | Database connection lost
+| 503 Unavailable | Service temporarily down | Game engine unreachable
+|===
+
+==== Code Organization
+
+All services follow consistent structure:
+
+----
+
+/service-name/
+    src/            # Production code
+    test/           # Unit tests
+    integration/    # Integration tests
+package.json/Cargo.toml
+Dockerfile
+README.md
+----
+
+==== Testing Strategy
+
+|===
+| Test Type | Tool | Location | Coverage Target
+| Unit tests | Jest (Node), cargo test (Rust) | */.test.ts, *_test.rs | 80%+
+| Integration tests | Supertest (Node), custom (Rust) | /test/integration/ | Key paths
+| End-to-end tests | Playwright | webapp/e2e/ | Critical user journeys
+| API tests | Postman/Newman | /api-tests/ | All endpoints
+|===
+
+CI Integration: All tests run on every PR via GitHub Actions
+
+==== Quality Assurance
+
+* **SonarQube** is integrated into the GitHub repository to:
+** Ensure proper code coverage
+** Detect code smells and potential bugs
+** Enforce coding standards
+** Monitor technical debt
+
+* **CI Integration**: All tests run on every pull request via GitHub Actions. The pipeline fails if:
+** Any test fails
+** Code coverage drops below threshold (80%)
+** SonarQube detects critical issues
