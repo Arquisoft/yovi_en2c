@@ -8,6 +8,7 @@
 //! - [`RandomBot`] - A simple bot that makes random valid moves
 
 pub mod random;
+pub mod heuristic_bot;
 pub mod ybot;
 pub mod ybot_registry;
 pub use random::*;

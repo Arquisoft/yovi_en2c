@@ -306,6 +306,52 @@ impl GameY {
         }
         result
     }
+
+    /// Returns the positions (as indices) of the current player's pieces
+    pub fn get_player_positions(&self) -> Vec<u32> {
+        let current_player = match self.next_player() {
+            Some(player) => player,
+            None => return Vec::new(), // if game id over there is no opponent
+        };
+
+        self.board_map
+            .iter()
+            .filter_map(|(coords, &(_, player))| {
+                if player == current_player {
+                    Some(coords.to_index(self.board_size))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Returns the positions (as indices) of the opponent's pieces
+    pub fn get_opponent_positions(&self) -> Vec<u32> {
+        let current_player = match self.next_player() {
+            Some(player) => player,
+            None => return Vec::new(), // if game id over there is no opponent
+        };
+
+        self.board_map
+            .iter()
+            .filter_map(|(coords, &(_, player))| {
+                if player != current_player {
+                    Some(coords.to_index(self.board_size))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Calculates manhattan distance for the bots
+    pub fn manhattan_distance(&self, a: Coordinates, b: Coordinates) -> u32 {
+        ((a.x() as i32 - b.x() as i32).abs() +
+            (a.y() as i32 - b.y() as i32).abs() +
+            (a.z() as i32 - b.z() as i32).abs()) as u32 / 2
+    }
+
     /*pub fn render(&self, options: &RenderOptions) -> String {
         let mut result = String::new();
         let coords_size = self.board_size.to_string().len() as u32;
