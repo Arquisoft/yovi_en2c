@@ -39,14 +39,14 @@ const Game: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Username desde state o localStorage (para no perderlo al refrescar)
+  // Username from state or localstate -> to not lose it when refreshing
   const username = useMemo(() => {
     const st = (location.state as { username?: string } | null) ?? null;
     return st?.username ?? localStorage.getItem("username") ?? "";
   }, [location.state]);
 
   useEffect(() => {
-    // si no hay usuario, vuelta a register
+    // if no user -> back to register
     if (!username) navigate("/", { replace: true });
   }, [username, navigate]);
 
@@ -157,7 +157,7 @@ const Game: React.FC = () => {
     }
   };
 
-  // Mientras redirige, no renderiza nada
+  // Do not render until redirected
   if (!username) return null;
 
   return (
