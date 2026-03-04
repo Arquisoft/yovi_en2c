@@ -11,14 +11,6 @@ type GatewayResponse =
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
-function pretty(obj: any) {
-  try {
-    return JSON.stringify(obj, null, 2);
-  } catch {
-    return String(obj);
-  }
-}
-
 function parseLayout(layout: string) {
   if (!layout) return [];
   return layout.split("/").map((row) => [...row]);
@@ -48,7 +40,6 @@ function useWindowSize() {
   return size;
 }
 
-/* Returns the winner if someone connected all 3 sides */
 function computeWinner(layoutMatrix: string[][], token: string): string | null {
   const n = layoutMatrix.length;
   if (n === 0) return null;
@@ -58,7 +49,6 @@ function computeWinner(layoutMatrix: string[][], token: string): string | null {
   const inBounds = (r: number, c: number) =>
     r >= 0 && r < n && c >= 0 && c < (layoutMatrix[r]?.length ?? 0);
 
-  // Triangular adjacency -> 6 neighbours
   const neighbors = (r: number, c: number) => {
     const cand: Array<[number, number]> = [
       [r, c - 1],
@@ -79,7 +69,6 @@ function computeWinner(layoutMatrix: string[][], token: string): string | null {
       const k = key(r, c);
       if (visited.has(k)) continue;
 
-      // BFS for one connected component
       let touchesLeft = false;
       let touchesRight = false;
       let touchesBottom = false;
@@ -90,12 +79,8 @@ function computeWinner(layoutMatrix: string[][], token: string): string | null {
       while (queue.length > 0) {
         const [rr, cc] = queue.shift()!;
 
-        // Sides of the BIG triangle:
-        // left side -> col == 0
-        // right side -> col == row_len - 1
-        // bottom -> row == n - 1
         if (cc === 0) touchesLeft = true;
-        if (cc === (layoutMatrix[rr].length - 1)) touchesRight = true;
+        if (cc === layoutMatrix[rr].length - 1) touchesRight = true;
         if (rr === n - 1) touchesBottom = true;
 
         if (touchesLeft && touchesRight && touchesBottom) return token;
@@ -114,7 +99,6 @@ function computeWinner(layoutMatrix: string[][], token: string): string | null {
   return null;
 }
 
-/* Returns { finished, winnerToken|null } */
 function computeGameResult(layoutMatrix: string[][], players: string[]) {
   const p0 = players?.[0] ?? "B";
   const p1 = players?.[1] ?? "R";
@@ -125,7 +109,6 @@ function computeGameResult(layoutMatrix: string[][], players: string[]) {
   const w1 = computeWinner(layoutMatrix, p1);
   if (w1) return { finished: true, winner: w1 };
 
-  // No winner -> consider finished if no empty cells remain
   const anyEmpty = layoutMatrix.some((row) => row.some((cell) => cell === "."));
   return { finished: !anyEmpty, winner: null as string | null };
 }
@@ -155,18 +138,22 @@ const Game: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [healthStatus, setHealthStatus] = useState<string | null>(null);
-  const [healthError, setHealthError] = useState<string | null>(null);
-
   const { w: winW, h: winH } = useWindowSize();
 
-  const reservedVerticalPx = 280;
+  const headerRef = React.useRef<HTMLDivElement | null>(null);
+  const [headerH, setHeaderH] = useState(0);
 
-  const boardPx = useMemo(() => {
-    const byWidth = Math.floor(winW * 0.92);
-    const byHeight = Math.floor(winH - reservedVerticalPx);
-    return Math.max(240, Math.min(560, byWidth, byHeight));
-  }, [winW, winH]);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+
+    const update = () => setHeaderH(el.getBoundingClientRect().height);
+    update();
+
+    const ro = new ResizeObserver(() => update());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const boardSize = yen?.size ?? 7;
 
@@ -175,7 +162,6 @@ const Game: React.FC = () => {
     return parseLayout(yen.layout);
   }, [yen]);
 
-  // Use tokens from YEN to avoid frontend and backend desync
   const humanToken = useMemo(() => (yen?.players?.[0] ? String(yen.players[0]) : "B"), [yen]);
   const botToken = useMemo(() => (yen?.players?.[1] ? String(yen.players[1]) : "R"), [yen]);
 
@@ -185,12 +171,27 @@ const Game: React.FC = () => {
   const cellSpacing = boardSize > 1 ? usableWidth / (boardSize - 1) : 0;
   const rowHeight = cellSpacing * 0.85;
 
+  const r = useMemo(() => {
+    const rr = cellSpacing * 0.12;
+    return Math.max(5.5, Math.min(8.5, rr));
+  }, [cellSpacing]);
+
+  const padPx = useMemo(() => Math.round(Math.max(12, Math.min(28, winW * 0.03))), [winW]);
+
+  const bottomGutter = 28;
+  const extraSafety = 10;
+
+  const boardPx = useMemo(() => {
+    const byWidth = Math.floor(winW - padPx * 2);
+    const byHeight = Math.floor(winH - headerH - padPx * 3 - bottomGutter - extraSafety - 20);
+    return Math.max(220, Math.min(680, byWidth, byHeight));
+  }, [winW, winH, headerH, padPx]);
+
   const isEmptyCell = (row: number, col: number) => {
-    const r = layoutMatrix[row];
-    return !!r && r[col] === ".";
+    const rrow = layoutMatrix[row];
+    return !!rrow && rrow[col] === ".";
   };
 
-  // Navigate to finished screen if the game is over
   const goFinishedIfNeeded = (nextYen: any) => {
     const nextLayout = nextYen?.layout ? parseLayout(nextYen.layout) : [];
     const players = (nextYen?.players ?? [humanToken, botToken]).map((x: any) => String(x));
@@ -198,12 +199,10 @@ const Game: React.FC = () => {
 
     if (!finished) return;
 
-    const youWin = winner === String(players[0]); // human is players[0]
+    const youWin = winner === String(players[0]);
     navigate("/game/finished", {
       replace: true,
-      state: {
-        result: winner ? (youWin ? "win" : "lost") : "draw",
-      },
+      state: { result: winner ? (youWin ? "win" : "lost") : "draw" },
     });
   };
 
@@ -220,9 +219,7 @@ const Game: React.FC = () => {
 
       const data = await readGatewayResponse(res);
 
-      if (!res.ok || !data.ok) {
-        throw new Error(!data.ok ? data.error : "Game creation failed");
-      }
+      if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Game creation failed");
 
       setYen(data.yen);
       setSelected(null);
@@ -237,7 +234,6 @@ const Game: React.FC = () => {
   const sendMove = async (override?: { row: number; col: number } | null) => {
     const target = override ?? selected;
     if (!target || !yen || busy) return;
-
     if (!isEmptyCell(target.row, target.col)) return;
 
     setBusy(true);
@@ -247,19 +243,12 @@ const Game: React.FC = () => {
       const res = await fetch(`${API_URL}/game/pvb/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          yen,
-          bot: botId,
-          row: target.row,
-          col: target.col,
-        }),
+        body: JSON.stringify({ yen, bot: botId, row: target.row, col: target.col }),
       });
 
       const data = await readGatewayResponse(res);
 
-      if (!res.ok || !data.ok) {
-        throw new Error(!data.ok ? data.error : "Backend error");
-      }
+      if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Backend error");
 
       setYen(data.yen);
       setSelected(null);
@@ -271,86 +260,92 @@ const Game: React.FC = () => {
     }
   };
 
-  const checkConnection = async () => {
-    setHealthStatus(null);
-    setHealthError(null);
-
-    try {
-      const res = await fetch(`${API_URL}/game/status`);
-      const data = await readGatewayResponse(res);
-
-      if (!res.ok || !data.ok) {
-        throw new Error(!data.ok ? data.error : "Connection failed");
-      }
-
-      setHealthStatus(data.message ?? "OK");
-    } catch (e: any) {
-      setHealthError(e?.message ?? "Connection failed");
-    }
-  };
-
   if (!username) return null;
 
   return (
-    <div className="page">
+    <div className="page" style={{ height: "100dvh", overflow: "auto", display: "flex", flexDirection: "column" }}>
       <Navbar username={username} onLogout={logout} />
 
-      <div style={{ padding: "clamp(12px, 3vw, 30px)", fontFamily: "system-ui" }}>
-        <h1 style={{ textAlign: "center" }}>{t("app.brand")}</h1>
+      <main
+        style={{
+          flex: "1 1 auto",
+          minHeight: 0,
+          padding: `${padPx}px`,
+          paddingBottom: `${padPx}px`,
+          fontFamily: "system-ui",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 12,
+          overflow: "auto",
+          boxSizing: "border-box",
+        }}
+      >
+        <div
+          ref={headerRef}
+          style={{ width: "100%", maxWidth: 980, display: "flex", flexDirection: "column", alignItems: "center" }}
+        >
+          <h1 style={{ margin: 0, textAlign: "center" }}>{t("app.brand")}</h1>
 
-        <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 15, flexWrap: "wrap" }}>
-          <button
-            onClick={newGame}
-            disabled={busy}
-            style={{
-              padding: "8px 14px",
-              borderRadius: 12,
-              background: "#A52019",
-              color: "white",
-              border: "none",
-              opacity: busy ? 0.7 : 1,
-              cursor: busy ? "not-allowed" : "pointer",
-            }}
-          >
-            {t("game.new")}
-          </button>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 10 }}>
+            <button
+              onClick={newGame}
+              disabled={busy}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 12,
+                background: "#A52019",
+                color: "white",
+                border: "none",
+                opacity: busy ? 0.7 : 1,
+                cursor: busy ? "not-allowed" : "pointer",
+              }}
+            >
+              {t("game.new")}
+            </button>
 
-          <button
-            onClick={() => sendMove(null)}
-            disabled={!selected || busy || !yen}
-            style={{
-              padding: "8px 14px",
-              borderRadius: 12,
-              background: "#FF681F",
-              color: "white",
-              border: "none",
-              opacity: !selected || busy || !yen ? 0.5 : 1,
-              cursor: !selected || busy || !yen ? "not-allowed" : "pointer",
-            }}
-          >
-            {busy ? t("game.sending") : t("game.send")}
-          </button>
+            <button
+              onClick={() => sendMove(null)}
+              disabled={!selected || busy || !yen}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 12,
+                background: "#FF681F",
+                color: "white",
+                border: "none",
+                opacity: !selected || busy || !yen ? 0.5 : 1,
+                cursor: !selected || busy || !yen ? "not-allowed" : "pointer",
+              }}
+            >
+              {busy ? t("game.sending") : t("game.send")}
+            </button>
+          </div>
+
+          {error && <div style={{ color: "red", textAlign: "center", fontWeight: 600, marginTop: 10 }}>{error}</div>}
         </div>
 
-        {error && (
-          <div style={{ color: "red", textAlign: "center", marginBottom: 10, fontWeight: 600 }}>
-            {error}
-          </div>
-        )}
-
-        <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-            <svg
+        <div
+          style={{
+            width: `${boardPx}px`,
+            height: `${boardPx}px`,
+            maxWidth: "100%",
+            maxHeight: "100%",
+            borderRadius: 18,
+            background: "linear-gradient(135deg, #FCF5E3, #F5F5F5)",
+            overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flex: "0 0 auto",
+            marginBottom: 0,
+          }}
+        >
+          <svg
             viewBox={`0 0 ${boardWidth} ${boardWidth}`}
-            width={boardPx}
-            height={boardPx}
+            width="100%"
+            height="100%"
             preserveAspectRatio="xMidYMid meet"
-            style={{
-              background: "linear-gradient(135deg, #FCF5E3, #F5F5F5)",
-              borderRadius: 18,
-              display: "block",
-              touchAction: "manipulation",
-              maxWidth: "100%",
-            }}
+            style={{ display: "block", touchAction: "manipulation" }}
           >
             {layoutMatrix.map((row, rowIndex) => {
               const offsetX = padding + ((boardSize - row.length) * cellSpacing) / 2;
@@ -364,9 +359,7 @@ const Game: React.FC = () => {
                 if (cell === botToken) fill = "#d32f2f";
 
                 const isSelected = !!selected && selected.row === rowIndex && selected.col === colIndex;
-                if (isSelected && cell === ".") {
-                  fill = "#FF681F";
-                }
+                if (isSelected && cell === ".") fill = "#FF681F";
 
                 const clickable = cell === "." && !busy && !!yen;
 
@@ -375,15 +368,13 @@ const Game: React.FC = () => {
                     key={`${rowIndex}-${colIndex}`}
                     cx={x}
                     cy={y}
-                    r={7}
+                    r={r}
                     fill={fill}
                     stroke="#3B3B3B"
                     strokeWidth={1.5}
                     onClick={() => {
                       if (!clickable) return;
                       setSelected({ row: rowIndex, col: colIndex });
-                      // Optional: auto-send move on click
-                      // void sendMove({ row: rowIndex, col: colIndex });
                     }}
                     style={{ cursor: clickable ? "pointer" : "default" }}
                   />
@@ -392,54 +383,7 @@ const Game: React.FC = () => {
             })}
           </svg>
         </div>
-
-        <div style={{ marginTop: 20 }}>
-          <strong>{t("game.debug")}</strong>
-          <pre
-            style={{
-              background: "#f0f0f0",
-              padding: 12,
-              borderRadius: 12,
-              color: "#111",
-              overflow: "auto",
-              maxWidth: "100%",
-              maxHeight: "30vh",
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-            }}
-          >
-            {yen ? pretty(yen) : "∅"}
-          </pre>
-        </div>
-
-        <div style={{ marginTop: 30, textAlign: "center" }}>
-          <button
-            onClick={checkConnection}
-            style={{
-              padding: "8px 14px",
-              borderRadius: 12,
-              background: "#2e7d32",
-              color: "white",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            {t("game.check")}
-          </button>
-
-          {healthStatus && (
-            <div style={{ marginTop: 10, color: "green", fontWeight: 600 }}>
-              {t("game.ok", { msg: healthStatus })}
-            </div>
-          )}
-
-          {healthError && (
-            <div style={{ marginTop: 10, color: "red", fontWeight: 600 }}>
-              {t("game.fail", { msg: healthError })}
-            </div>
-          )}
-        </div>
-      </div>
+      </main>
     </div>
   );
 };
