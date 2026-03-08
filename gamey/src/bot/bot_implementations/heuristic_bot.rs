@@ -1,6 +1,6 @@
 use crate::{Coordinates, GameY};
 use crate::bot::YBot;
-use rand::seq::IteratorRandom;
+use std::collections::HashSet;
 
 pub struct HeuristicBot;
 
@@ -16,7 +16,6 @@ impl YBot for HeuristicBot {
             return None;
         }
 
-        // gets the best cell iterating over all the available ones
         let best_cell = my_cells
             .iter()
             .max_by_key(|&&cell| self.evaluate_cell(board, cell as usize))
@@ -34,8 +33,30 @@ impl HeuristicBot {
 
         let mut score = 0;
 
-        // As closer to the center better
-        let n = board_size as i32 - 1; // Maximum sum of coordinates
+        score += self.calculate_center_balance_score(board_size, coords);
+        score += self.calculate_proximity_to_bot_cells(board, coords);
+        score += self.calculate_blocking_score(board, coords);
+        score += self.calculate_edge_bonus(coords);
+        score += self.calculate_winning_potential(board, coords);
+        score += self.calculate_edge_connection_bonus(board, coords);
+        score -= self.calculate_opponent_threat_penalty(board, coords);
+
+        score += self.calculate_side_connection_bonus(board, coords) * 3;
+        score += self.calculate_bridge_potential(board, coords);
+        score += self.calculate_central_control(board_size, coords);
+
+        if self.check_side_connection_completed(board, coords) {
+            score += 200;
+        }
+
+        score += self.calculate_block_opponent_connection(board, coords) * 4;
+        score += self.calculate_winning_block_bonus(board, coords);
+
+        score
+    }
+
+    fn calculate_center_balance_score(&self, board_size: u32, coords: Coordinates) -> i32 {
+        let n = board_size as i32 - 1;
 
         let balance_score = 100 - (
             (coords.x() as i32 - coords.y() as i32).abs() +
@@ -43,41 +64,47 @@ impl HeuristicBot {
                 (coords.z() as i32 - coords.x() as i32).abs()
         ) * 2;
 
-        score += balance_score.max(0);
-
-        // Also prefer cells closer to the geometric center
         let target = (n as f32 / 3.0).round() as i32;
         let center_distance = (coords.x() as i32 - target).abs() +
             (coords.y() as i32 - target).abs() +
             (coords.z() as i32 - target).abs();
 
-        score += (n * 3 - center_distance) * 3;
+        balance_score.max(0) + (n * 3 - center_distance) * 3
+    }
 
-        // If it is connected to our pieces better
-        let our_positions = board.get_player_positions_coords();
-        for our_pos in &our_positions {  // Prestamo en lugar de mover
-            let dist = board.manhattan_distance(coords, *our_pos);
+    fn calculate_proximity_to_bot_cells(&self, board: &GameY, coords: Coordinates) -> i32 {
+        let mut score = 0;
+        let bot_cells = board.get_player_positions_coords();
+
+        for &bot_cell in &bot_cells {
+            let dist = board.manhattan_distance(coords, bot_cell);
             match dist {
-                1 => score += 15,  // Adjacent to our pieces (very good)
-                2 => score += 5,   // Two away (potential connection)
+                1 => score += 15,
+                2 => score += 5,
                 _ => {}
             }
         }
 
+        score
+    }
 
+    fn calculate_blocking_score(&self, board: &GameY, coords: Coordinates) -> i32 {
+        let mut score = 0;
+        let opponent_cells = board.get_opponent_positions_coords();
 
-        // If it blocks the opponent better
-        let opponent_positions = board.get_opponent_positions_coords();
-        for opp_pos in &opponent_positions {  // Prestamo en lugar de mover
-            let dist = board.manhattan_distance(coords, *opp_pos);
+        for &opp_cell in &opponent_cells {
+            let dist = board.manhattan_distance(coords, opp_cell);
             if dist == 1 {
-                score += 8;  // Adjacent to opponent (good for blocking)
+                score += 8;
             } else if dist == 2 {
-                score += 2;  // Close to opponent
+                score += 2;
             }
         }
 
-        // Prefers the corners of the board or edge
+        score
+    }
+
+    fn calculate_edge_bonus(&self, coords: Coordinates) -> i32 {
         let sides_touched = [
             coords.touches_side_a(),
             coords.touches_side_b(),
@@ -85,35 +112,266 @@ impl HeuristicBot {
         ].iter().filter(|&&b| b).count();
 
         match sides_touched {
-            2 => score += 10,  // Corner (touches two sides) - increased bonus
-            1 => score += 5,   // Edge (touches one side) - increased bonus
-            _ => score += 0,   // Interior
+            2 => 10,
+            1 => 5,
+            _ => 0,
         }
+    }
 
-        // BONUS for cells that are part of potential winning lines
-        // This is a simple check for lines of 2 in a row
-        for our_pos in &our_positions {  // Prestamo, no movimiento
-            let dist = board.manhattan_distance(coords, *our_pos);
+    fn calculate_winning_potential(&self, board: &GameY, coords: Coordinates) -> i32 {
+        let mut score = 0;
+        let bot_cells = board.get_player_positions_coords();
+
+        for &bot_cell in &bot_cells {
+            let dist = board.manhattan_distance(coords, bot_cell);
             if dist == 1 {
-                // Check if this would create a line of 2
                 score += 5;
             }
         }
 
-        // Penalize cells that are too close to opponent's clusters
+        score
+    }
+
+    fn calculate_edge_connection_bonus(&self, board: &GameY, coords: Coordinates) -> i32 {
+        let mut score = 0;
+        let bot_cells = board.get_player_positions_coords();
+
+        let touches_a = coords.touches_side_a();
+        let touches_b = coords.touches_side_b();
+        let touches_c = coords.touches_side_c();
+
+        let mut covered_edges = HashSet::new();
+        for &bot_cell in &bot_cells {
+            if bot_cell.touches_side_a() {
+                covered_edges.insert('A');
+            }
+            if bot_cell.touches_side_b() {
+                covered_edges.insert('B');
+            }
+            if bot_cell.touches_side_c() {
+                covered_edges.insert('C');
+            }
+        }
+
+        if touches_a && !covered_edges.contains(&'A') {
+            score += 20;
+        }
+        if touches_b && !covered_edges.contains(&'B') {
+            score += 20;
+        }
+        if touches_c && !covered_edges.contains(&'C') {
+            score += 20;
+        }
+
+        let is_connected_to_bot = bot_cells.iter().any(|&bot_cell| {
+            board.manhattan_distance(coords, bot_cell) == 1
+        });
+
+        if is_connected_to_bot {
+            if touches_a || touches_b || touches_c {
+                score += 15;
+            }
+        }
+
+        score
+    }
+
+    fn calculate_opponent_threat_penalty(&self, board: &GameY, coords: Coordinates) -> i32 {
         let mut opponent_threat = 0;
-        for opp_pos in &opponent_positions {  // Prestamo, no movimiento
-            let dist = board.manhattan_distance(coords, *opp_pos);
+        let opponent_cells = board.get_opponent_positions_coords();
+
+        for &opp_cell in &opponent_cells {
+            let dist = board.manhattan_distance(coords, opp_cell);
             if dist == 1 {
                 opponent_threat += 3;
             }
         }
-        // If there are multiple opponent pieces adjacent, it's dangerous
+
         if opponent_threat > 5 {
-            score -= opponent_threat * 2;
+            opponent_threat * 2
+        } else {
+            0
+        }
+    }
+
+    fn calculate_winning_block_bonus(&self, board: &GameY, coords: Coordinates) -> i32 {
+        let mut score = 0;
+        let opponent_cells = board.get_opponent_positions_coords();
+        let bot_cells = board.get_player_positions_coords();
+
+        for &_opp_cell in &opponent_cells {
+            let mut temp_opponent_cells = opponent_cells.clone();
+            temp_opponent_cells.push(coords);
+
+            if self.check_winning_line(board, &temp_opponent_cells) {
+                score += 50;
+            }
+        }
+
+        let mut temp_bot_cells = bot_cells.clone();
+        temp_bot_cells.push(coords);
+
+        if self.check_winning_line(board, &temp_bot_cells) {
+            score += 100;
         }
 
         score
+    }
+
+    fn calculate_side_connection_bonus(&self, board: &GameY, coords: Coordinates) -> i32 {
+        let mut score = 0;
+
+        if coords.touches_side_a() { score += 30; }
+        if coords.touches_side_b() { score += 30; }
+        if coords.touches_side_c() { score += 30; }
+
+        let bot_cells = board.get_player_positions_coords();
+        for &bot_cell in &bot_cells {
+            if board.manhattan_distance(coords, bot_cell) == 1 {
+                if coords.touches_side_a() { score += 20; }
+                if coords.touches_side_b() { score += 20; }
+                if coords.touches_side_c() { score += 20; }
+            }
+        }
+
+        let sides_touched = [
+            coords.touches_side_a(),
+            coords.touches_side_b(),
+            coords.touches_side_c()
+        ].iter().filter(|&&b| b).count();
+
+        if sides_touched >= 2 {
+            score += 25;
+        }
+
+        score
+    }
+
+    fn calculate_bridge_potential(&self, board: &GameY, coords: Coordinates) -> i32 {
+        let mut score = 0;
+        let bot_cells = board.get_player_positions_coords();
+
+        for &bot_cell in &bot_cells {
+            let dist = board.manhattan_distance(coords, bot_cell);
+            if dist == 2 {
+                score += 10;
+
+                let dx = (coords.x() as i32 - bot_cell.x() as i32).abs();
+                let dy = (coords.y() as i32 - bot_cell.y() as i32).abs();
+                let dz = (coords.z() as i32 - bot_cell.z() as i32).abs();
+
+                if (dx == 1 && dy == 1 && dz == 0) ||
+                    (dx == 1 && dy == 0 && dz == 1) ||
+                    (dx == 0 && dy == 1 && dz == 1) {
+                    score += 15;
+                }
+            }
+        }
+
+        score
+    }
+
+    fn calculate_central_control(&self, board_size: u32, coords: Coordinates) -> i32 {
+        let n = board_size as i32 - 1;
+        let center = n as f32 / 3.0;
+        let center_rounded = center.round() as i32;
+
+        let dx = (coords.x() as i32 - center_rounded).abs();
+        let dy = (coords.y() as i32 - center_rounded).abs();
+        let dz = (coords.z() as i32 - center_rounded).abs();
+
+        (n * 3 - (dx + dy + dz)) * 5
+    }
+
+    fn check_side_connection_completed(&self, board: &GameY, coords: Coordinates) -> bool {
+        let bot_cells = board.get_player_positions_coords();
+        let mut temp_cells = bot_cells.clone();
+        temp_cells.push(coords);
+
+        let touches_a = temp_cells.iter().any(|c| c.touches_side_a());
+        let touches_b = temp_cells.iter().any(|c| c.touches_side_b());
+        let touches_c = temp_cells.iter().any(|c| c.touches_side_c());
+
+        touches_a && touches_b && touches_c
+    }
+
+    fn calculate_block_opponent_connection(&self, board: &GameY, coords: Coordinates) -> i32 {
+        let mut score = 0;
+        let opponent_cells = board.get_opponent_positions_coords();
+
+        if opponent_cells.is_empty() {
+            return 0;
+        }
+
+        let opp_touches_a = opponent_cells.iter().any(|c| c.touches_side_a());
+        let opp_touches_b = opponent_cells.iter().any(|c| c.touches_side_b());
+        let opp_touches_c = opponent_cells.iter().any(|c| c.touches_side_c());
+
+        let sides_touched = [opp_touches_a, opp_touches_b, opp_touches_c]
+            .iter().filter(|&&b| b).count();
+
+        if sides_touched >= 2 {
+            for &opp_cell in &opponent_cells {
+                let dist = board.manhattan_distance(coords, opp_cell);
+                if dist <= 2 {
+                    score += 40;
+
+                    if !opp_touches_a && coords.touches_side_a() {
+                        score += 30;
+                    }
+                    if !opp_touches_b && coords.touches_side_b() {
+                        score += 30;
+                    }
+                    if !opp_touches_c && coords.touches_side_c() {
+                        score += 30;
+                    }
+                }
+            }
+        } else if sides_touched == 1 {
+            for &opp_cell in &opponent_cells {
+                let dist = board.manhattan_distance(coords, opp_cell);
+                if dist <= 2 {
+                    score += 15;
+
+                    if !opp_touches_a && coords.touches_side_a() {
+                        score += 20;
+                    }
+                    if !opp_touches_b && coords.touches_side_b() {
+                        score += 20;
+                    }
+                    if !opp_touches_c && coords.touches_side_c() {
+                        score += 20;
+                    }
+                }
+            }
+        }
+
+        score
+    }
+
+    fn check_winning_line(&self, board: &GameY, cells: &[Coordinates]) -> bool {
+        if cells.is_empty() {
+            return false;
+        }
+
+        let mut visited = HashSet::new();
+        let mut stack = vec![cells[0]];
+        visited.insert(cells[0]);
+
+        while let Some(current) = stack.pop() {
+            for &other in cells {
+                if !visited.contains(&other) && board.manhattan_distance(current, other) == 1 {
+                    visited.insert(other);
+                    stack.push(other);
+                }
+            }
+        }
+
+        let touches_a = visited.iter().any(|c| c.touches_side_a());
+        let touches_b = visited.iter().any(|c| c.touches_side_b());
+        let touches_c = visited.iter().any(|c| c.touches_side_c());
+
+        touches_a && touches_b && touches_c
     }
 }
 
@@ -121,13 +379,11 @@ impl HeuristicBot {
 mod tests {
     use super::*;
     use crate::{Movement, PlayerId};
-    use std::collections::HashSet;
 
-    // Helper function to create a game with some predefined moves
     fn create_test_game(size: u32, moves: Vec<(u32, u32, u32, u32)>) -> GameY {
         let mut game = GameY::new(size);
-        for (player_x, player_y, player_z, player_id) in moves {
-            let coords = Coordinates::new(player_x, player_y, player_z);
+        for (x, y, z, player_id) in moves {
+            let coords = Coordinates::new(x, y, z);
             let movement = Movement::Placement {
                 player: PlayerId::new(player_id),
                 coords,
@@ -135,11 +391,6 @@ mod tests {
             game.add_move(movement).unwrap();
         }
         game
-    }
-
-    // Helper to get coordinates from indices
-    fn coords_from_index(index: u32, board_size: u32) -> Coordinates {
-        Coordinates::from_index(index, board_size)
     }
 
     #[test]
@@ -157,9 +408,8 @@ mod tests {
         assert!(chosen_move.is_some());
 
         let coords = chosen_move.unwrap();
-        // Verify it's a valid coordinate within board bounds
         assert!(coords.x() < 3 && coords.y() < 3 && coords.z() < 3);
-        assert_eq!(coords.x() + coords.y() + coords.z(), 2); // For size 3, sum should be 2
+        assert_eq!(coords.x() + coords.y() + coords.z(), 2);
     }
 
     #[test]
@@ -167,11 +417,10 @@ mod tests {
         let bot = HeuristicBot;
         let mut game = GameY::new(2);
 
-        // Fill all cells (size 2 has 3 cells)
         let moves = vec![
-            (1, 0, 0, 0), // Top
-            (0, 1, 0, 1), // Left
-            (0, 0, 1, 0), // Right
+            (1, 0, 0, 0),
+            (0, 1, 0, 1),
+            (0, 0, 1, 0),
         ];
 
         for (x, y, z, player) in moves {
@@ -188,151 +437,103 @@ mod tests {
     }
 
     #[test]
-    fn test_evaluate_cell_adjacent_to_our_pieces() {
+    fn test_calculate_center_balance_score() {
+        let bot = HeuristicBot;
+        let board_size = 5;
+
+        let center = Coordinates::new(1, 1, 2);
+        let corner = Coordinates::new(4, 0, 0);
+        let edge = Coordinates::new(2, 0, 2);
+
+        let center_score = bot.calculate_center_balance_score(board_size, center);
+        let corner_score = bot.calculate_center_balance_score(board_size, corner);
+        let edge_score = bot.calculate_center_balance_score(board_size, edge);
+
+        assert!(center_score > edge_score);
+        assert!(edge_score > corner_score);
+    }
+
+    #[test]
+    fn test_calculate_side_connection_bonus() {
         let bot = HeuristicBot;
 
-        // Create game with our piece at (2,0,0) and opponent at (0,2,0)
-        let game = create_test_game(3, vec![
-            (2, 0, 0, 0), // Player 0's piece
-            (0, 2, 0, 1), // Player 1's piece
+        let game = create_test_game(4, vec![
+            (3, 0, 0, 0),
         ]);
 
-        // Evaluate cell adjacent to player 0's piece (2,0,0)
-        let adjacent_to_player0 = Coordinates::new(1, 1, 0); // Adjacent to (2,0,0)
-        let adjacent_idx = adjacent_to_player0.to_index(3) as usize;
+        let side_b = Coordinates::new(0, 3, 0);
+        let side_a = Coordinates::new(3, 0, 1);
+        let interior = Coordinates::new(1, 1, 1);
 
-        // Evaluate cell far from any pieces
-        let far_cell = Coordinates::new(0, 0, 2); // Far corner
-        let far_idx = far_cell.to_index(3) as usize;
+        let side_b_score = bot.calculate_side_connection_bonus(&game, side_b);
+        let side_a_score = bot.calculate_side_connection_bonus(&game, side_a);
+        let interior_score = bot.calculate_side_connection_bonus(&game, interior);
 
-        let adjacent_score = bot.evaluate_cell(&game, adjacent_idx);
-        let far_score = bot.evaluate_cell(&game, far_idx);
-
-        println!("Adjacent to player0 score: {}", adjacent_score);
-        println!("Far cell score: {}", far_score);
-
-        // The cell adjacent to any piece should have a bonus
-        assert!(adjacent_score > far_score,
-                "Adjacent to piece should have bonus ({} > {})",
-                adjacent_score, far_score);
+        assert!(side_b_score > interior_score);
+        assert!(side_a_score > interior_score);
     }
 
     #[test]
-    fn test_evaluate_cell_adjacent_to_opponent_pieces() {
+    fn test_calculate_central_control() {
+        let bot = HeuristicBot;
+        let board_size = 5;
+
+        let center = Coordinates::new(1, 1, 2);
+        let corner = Coordinates::new(4, 0, 0);
+        let edge = Coordinates::new(2, 0, 2);
+
+        let center_score = bot.calculate_central_control(board_size, center);
+        let corner_score = bot.calculate_central_control(board_size, corner);
+        let edge_score = bot.calculate_central_control(board_size, edge);
+
+        assert!(center_score > edge_score);
+        assert!(edge_score > corner_score);
+    }
+
+    #[test]
+    fn test_calculate_block_opponent_connection() {
         let bot = HeuristicBot;
 
-        // Create game with our piece and opponent piece
-        let game = create_test_game(3, vec![
-            (2, 0, 0, 0), // Player 0's piece
-            (0, 2, 0, 1), // Player 1's piece
+        let game = create_test_game(5, vec![
+            (4, 0, 0, 1),
+            (0, 4, 0, 1),
+            (2, 2, 0, 1),
         ]);
 
-        // Evaluate cell adjacent to player 1's piece (0,2,0)
-        let adjacent_to_player1 = Coordinates::new(0, 1, 1); // Adjacent to (0,2,0)
-        let adjacent_idx = adjacent_to_player1.to_index(3) as usize;
+        let blocking = Coordinates::new(1, 1, 2);
+        let far = Coordinates::new(0, 0, 4);
 
-        // Evaluate cell far from opponent
-        let far_cell = Coordinates::new(2, 0, 0); // Where player 0's piece is
-        let far_idx = far_cell.to_index(3) as usize;
+        let blocking_score = bot.calculate_block_opponent_connection(&game, blocking);
+        let far_score = bot.calculate_block_opponent_connection(&game, far);
 
-        let adjacent_score = bot.evaluate_cell(&game, adjacent_idx);
-        let far_score = bot.evaluate_cell(&game, far_idx);
-
-        println!("Adjacent to player1 score: {}", adjacent_score);
-        println!("Far cell score: {}", far_score);
-
-        // The cell adjacent to opponent should have blocking bonus
-        assert!(adjacent_score > far_score,
-                "Adjacent to opponent should have blocking bonus ({} > {})",
-                adjacent_score, far_score);
+        assert!(blocking_score > far_score);
     }
 
     #[test]
-    fn test_evaluate_cell_distance_calculation() {
-        let bot = HeuristicBot;
-        let game = GameY::new(5);
-
-        // Test cells at different distances from center
-        let center_like = Coordinates::new(1, 1, 2); // Near center
-        let mid_distance = Coordinates::new(2, 0, 2); // Mid-distance (edge)
-        let far_corner = Coordinates::new(4, 0, 0); // Far corner
-
-        let center_idx = center_like.to_index(5) as usize;
-        let mid_idx = mid_distance.to_index(5) as usize;
-        let far_idx = far_corner.to_index(5) as usize;
-
-        let center_score = bot.evaluate_cell(&game, center_idx);
-        let mid_score = bot.evaluate_cell(&game, mid_idx);
-        let far_score = bot.evaluate_cell(&game, far_idx);
-
-        println!("Center score: {}", center_score);
-        println!("Mid score: {}", mid_score);
-        println!("Far score: {}", far_score);
-
-        // Center should be better than far corner
-        assert!(center_score > far_score,
-                "Center should score higher than far corner");
-
-        // Center should be at least as good as mid
-        assert!(center_score >= mid_score,
-                "Center should score at least as high as mid-distance");
-    }
-
-
-    #[test]
-    fn test_choose_move_selects_highest_scoring_cell() {
+    fn test_check_winning_line() {
         let bot = HeuristicBot;
         let game = GameY::new(3);
 
-        // Manually compute scores for all available cells
-        let available: Vec<u32> = game.available_cells().iter().copied().collect();
-        let scores: Vec<(u32, i32)> = available
-            .iter()
-            .map(|&cell| (cell, bot.evaluate_cell(&game, cell as usize)))
-            .collect();
+        let winning_line = vec![
+            Coordinates::new(2, 0, 0),
+            Coordinates::new(1, 1, 0),
+            Coordinates::new(0, 2, 0),
+        ];
 
-        // Print all scores for debugging
-        for (cell, score) in &scores {
-            let coords = coords_from_index(*cell, 3);
-            println!("Cell {} ({:?}) score: {}", cell, coords, score);
-        }
+        let line_of_2 = vec![
+            Coordinates::new(2, 0, 0),
+            Coordinates::new(1, 1, 0),
+        ];
 
-        // Find the cell with maximum score
-        let (max_cell, max_score) = scores.iter()
-            .max_by_key(|(_, score)| *score)
-            .map(|(cell, score)| (*cell, *score))
-            .unwrap();
+        let scattered = vec![
+            Coordinates::new(2, 0, 0),
+            Coordinates::new(0, 2, 0),
+            Coordinates::new(0, 0, 2),
+        ];
 
-        // Bot should choose that cell
-        let chosen = bot.choose_move(&game).unwrap();
-        let chosen_idx = chosen.to_index(3);
-
-        assert_eq!(chosen_idx, max_cell,
-                   "Bot should choose cell with highest score ({}, score={}) but chose {}",
-                   max_cell, max_score, chosen_idx);
-    }
-
-    #[test]
-    fn test_choose_move_with_complex_board_state() {
-        let bot = HeuristicBot;
-
-        // Create a more complex board state
-        let game = create_test_game(4, vec![
-            (3, 0, 0, 0), // Player 0 at top
-            (2, 1, 0, 0), // Player 0
-            (1, 1, 1, 0), // Player 0
-            (0, 3, 0, 1), // Player 1 at left corner
-            (0, 0, 3, 1), // Player 1 at right corner
-        ]);
-
-        let chosen = bot.choose_move(&game);
-        assert!(chosen.is_some());
-
-        let coords = chosen.unwrap();
-        println!("Bot chose: {:?}", coords);
-
-        // Verify it's a valid empty cell
-        assert!(game.available_cells().contains(&coords.to_index(4)));
+        assert!(bot.check_winning_line(&game, &winning_line));
+        assert!(!bot.check_winning_line(&game, &line_of_2));
+        assert!(!bot.check_winning_line(&game, &scattered));
     }
 
     #[test]
@@ -340,75 +541,12 @@ mod tests {
         let bot = HeuristicBot;
         let game = GameY::new(3);
 
-        // Evaluate same cell multiple times - should get same score
-        let cell_idx = 2; // Some cell
+        let cell_idx = 2;
         let score1 = bot.evaluate_cell(&game, cell_idx);
         let score2 = bot.evaluate_cell(&game, cell_idx);
         let score3 = bot.evaluate_cell(&game, cell_idx);
 
         assert_eq!(score1, score2);
         assert_eq!(score2, score3);
-    }
-
-    #[test]
-    fn test_evaluate_cell_with_no_pieces() {
-        let bot = HeuristicBot;
-        let game = GameY::new(3);
-
-        // All positions should evaluate without panicking
-        for i in 0..game.total_cells() {
-            let score = bot.evaluate_cell(&game, i as usize);
-            // Score should be consistent
-            assert!(score >= 0);
-        }
-    }
-
-    #[test]
-    fn test_manhattan_distance_consistency() {
-        let game = GameY::new(5);
-
-        let a = Coordinates::new(2, 1, 1);
-        let b = Coordinates::new(2, 1, 1); // Same point
-
-        // Distance to self should be 0
-        assert_eq!(game.manhattan_distance(a, b), 0);
-
-        // Test symmetry
-        let c = Coordinates::new(4, 0, 0);
-        let d = Coordinates::new(0, 2, 0);
-
-        assert_eq!(game.manhattan_distance(c, d),
-                   game.manhattan_distance(d, c));
-    }
-
-    #[test]
-    fn test_get_player_positions_integration() {
-        let game = create_test_game(3, vec![
-            (2, 0, 0, 0), // Player 0
-            (0, 2, 0, 1), // Player 1
-        ]);
-
-        let player_positions = game.get_player_positions_coords();
-        let opponent_positions = game.get_opponent_positions_coords();
-
-        println!("Player positions: {:?}", player_positions);
-        println!("Opponent positions: {:?}", opponent_positions);
-
-        // The union of both sets should contain all pieces
-        let mut all_pieces = HashSet::new();
-        all_pieces.extend(player_positions.iter().cloned());
-        all_pieces.extend(opponent_positions.iter().cloned());
-
-        assert_eq!(all_pieces.len(), 2, "Should have 2 total pieces");
-
-        // Both pieces should be in the board
-        assert!(all_pieces.contains(&Coordinates::new(2, 0, 0)));
-        assert!(all_pieces.contains(&Coordinates::new(0, 2, 0)));
-
-        // The two sets should be disjoint
-        for pos in &player_positions {
-            assert!(!opponent_positions.contains(pos),
-                    "Player and opponent positions should be disjoint");
-        }
     }
 }
