@@ -9,6 +9,7 @@ const JWT_EXPIRES = process.env.JWT_EXPIRES || '24h';
 const USERS_SERVICE_URL = process.env.USERS_SERVICE_URL;
 
 
+
 // ================= REGISTER =================
 
 const register = async (req, res) => {
@@ -46,7 +47,7 @@ const register = async (req, res) => {
 
         await user.save();
 
-        // create user profile in users-service
+        // 🔗 CALL USERS SERVICE
         await axios.post(`${USERS_SERVICE_URL}/createuser`, {
             username,
             email
