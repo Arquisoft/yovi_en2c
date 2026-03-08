@@ -1,30 +1,38 @@
-import { Given, When, Then } from '@cucumber/cucumber';
+import { Given, When, Then } from "@cucumber/cucumber";
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
+const BASE_URL = process.env.BASE_URL || "http://localhost:5173";
 
-Given('the register page is open', async function () {
+Given("the register page is open", async function () {
   const page = this.page;
-  if (!page) throw new Error('Page not initialized');
-  await page.goto(BASE_URL);
-  await page.waitForSelector('#username', { timeout: 5000 });
+  if (!page) throw new Error("Page not initialized");
+
+  await page.goto(`${BASE_URL}/register`);
+  await page.waitForSelector("#register-username", { timeout: 5000 });
 });
 
-When('I enter {string} as the username and submit', async function (username) {
-  const page = this.page;
-  if (!page) throw new Error('Page not initialized');
-  
-  await page.fill('#username', username);
-  await page.click('.submit-button');
-});
+When(
+  'I enter {string} as the username, {string} as the email and {string} as the password and submit',
+  async function (username, email, password) {
+    const page = this.page;
+    if (!page) throw new Error("Page not initialized");
 
-Then('I should be redirected to the game page', async function () {
-  const page = this.page;
-  if (!page) throw new Error('Page not initialized');
+    await page.fill("#register-username", username);
+    await page.fill("#register-email", email);
+    await page.fill("#register-password", password);
+    await page.click(".submit-button");
+  }
+);
 
-  await page.waitForURL('**/game', { timeout: 10000 });
-  
+Then("I should be redirected to the login page", async function () {
+  const page = this.page;
+  if (!page) throw new Error("Page not initialized");
+
+  await page.waitForURL("**/", { timeout: 10000 });
+
   const url = page.url();
-  if (!url.includes('/game')) {
-    throw new Error(`Expected URL to contain '/game', but got: ${url}`);
+  const normalized = new URL(url).pathname;
+
+  if (normalized !== "/") {
+    throw new Error(`Expected path to be "/", but got: ${normalized}`);
   }
 });

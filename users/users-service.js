@@ -23,13 +23,19 @@ const PORT = process.env.PORT || 3000; // use port from env or 3000 by default
  */
 app.post('/createuser', async (req, res) => {
     try {
-        const { username, email } = req.body;
+        const { username, email, password } = req.body;
 
-        // Validación básica
         if (!username) {
             return res.status(400).json({
                 success: false,
                 error: 'Username is a mandatory field'
+            });
+        }
+
+        if (!password) {
+            return res.status(400).json({
+                success: false,
+                error: 'Password is a mandatory field'
             });
         }
 
@@ -40,30 +46,26 @@ app.post('/createuser', async (req, res) => {
 
         const userData = {
             username,
-            email: processedEmail
+            email: processedEmail,
+            password
         };
 
-        // new user model
         const newUser = new User(userData);
-
-        // save the user in db
         const savedUser = await newUser.save();
-        // check message
+
         res.status(201).json({
             success: true,
             message: `User ${savedUser.username} created`,
             user: {
                 id: savedUser._id,
                 username: savedUser.username,
-                email: savedUser.email || null, // NUll if not email is insert
+                email: savedUser.email || null,
                 createdAt: savedUser.createdAt
             }
         });
 
     } catch (error) {
-        // ERROR : duplicated field (code 11000 in MongoDB)
         if (error.code === 11000) {
-            // Check the duplicated field
             const field = Object.keys(error.keyPattern)[0];
             return res.status(400).json({
                 success: false,
@@ -71,7 +73,6 @@ app.post('/createuser', async (req, res) => {
             });
         }
 
-        // ERROR : validation
         if (error.name === 'ValidationError') {
             const errors = Object.values(error.errors).map(e => e.message);
             return res.status(400).json({
@@ -80,11 +81,59 @@ app.post('/createuser', async (req, res) => {
             });
         }
 
-        // ERROR : generic error
         console.error('Error en POST /createuser:', error);
         res.status(500).json({
             success: false,
             error: 'Internal sevrer error'
+        });
+    }
+});
+
+/**
+ * POST /login
+ * Logs in an existing user to the app
+ */
+app.post('/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({
+                success: false,
+                error: 'Username and password are mandatory'
+            });
+        }
+
+        const user = await User.findOne({ username: username.toString() });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+
+        if (user.password !== password) {
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid credentials'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: `Welcome ${user.username}`,
+            user: {
+                id: user._id,
+                username: user.username,
+                email: user.email || null
+            }
+        });
+    } catch (error) {
+        console.error('Error in POST /login:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
         });
     }
 });
@@ -243,7 +292,7 @@ module.exports = app;
 
 // =============================== START THE SERVER   ======================================
 
-if (require.main === module) {
+if (require.main == module) {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
         console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);

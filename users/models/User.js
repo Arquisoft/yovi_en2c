@@ -1,12 +1,11 @@
-//  usa db.js - Conexión a MongoDB Atlas
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-    username : {
+    username: {
         type: String,
         required: [true, 'Username name is mandatory'],
         unique: true,
-        trim: true, // e
+        trim: true,
         minlength: [3, 'Username must be at least 3 characters long']
     },
     email: {
@@ -18,7 +17,6 @@ const userSchema = new mongoose.Schema({
                 if (!v) return true;
 
                 const parts = v.split('@');
-
                 if (parts.length !== 2) return false;
 
                 const localPart = parts[0];
@@ -27,7 +25,6 @@ const userSchema = new mongoose.Schema({
                 if (localPart.length === 0 || domainPart.length === 0) return false;
 
                 const domainParts = domainPart.split('.');
-
                 if (domainParts.length < 2) return false;
 
                 for (const part of domainParts) {
@@ -39,13 +36,19 @@ const userSchema = new mongoose.Schema({
             message: 'Please insert a valid email'
         }
     },
+    password: {
+        type: String,
+        required: [true, 'Password is mandatory'],
+        minlength: [4, 'Password must be at least 4 characters long']
+    },
     createdAt: {
         type: Date,
-        default: Date.now // auto
+        default: Date.now
     }
-    }, {
-    timestamps: true // create at and update at are automatically generated
+}, {
+    timestamps: true
 });
+
 const User = mongoose.model('User', userSchema);
 
 module.exports = User;

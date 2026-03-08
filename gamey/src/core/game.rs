@@ -507,14 +507,17 @@ impl TryFrom<YEN> for GameY {
     fn try_from(game: YEN) -> Result<Self> {
         let mut ygame = GameY::new(game.size());
         let rows: Vec<&str> = game.layout().split('/').collect();
+
         if rows.len() as u32 != game.size() {
             return Err(GameYError::InvalidYENLayout {
                 expected: game.size(),
                 found: rows.len() as u32,
             });
         }
+
         for (row, row_str) in rows.iter().enumerate() {
             let cells: Vec<char> = row_str.chars().collect();
+
             if cells.len() as u32 != row as u32 + 1 {
                 return Err(GameYError::InvalidYENLayoutLine {
                     expected: row as u32 + 1,
@@ -522,23 +525,33 @@ impl TryFrom<YEN> for GameY {
                     line: row as u32,
                 });
             }
+
             for (col, cell) in cells.iter().enumerate() {
                 let x = game.size() - 1 - (row as u32);
                 let y = col as u32;
                 let z = game.size() - 1 - x - y;
                 let coords = Coordinates::new(x, y, z);
+
                 match cell {
                     'B' => {
-                        ygame.add_move(Movement::Placement {
-                            player: PlayerId::new(0),
-                            coords,
-                        })?;
+                        let set_idx = ygame.register_piece(PlayerId::new(0), coords);
+                        let won =
+                            ygame.connect_neighbors_and_check_win(coords, PlayerId::new(0), set_idx);
+                        if won {
+                            ygame.status = GameStatus::Finished {
+                                winner: PlayerId::new(0),
+                            };
+                        }
                     }
                     'R' => {
-                        ygame.add_move(Movement::Placement {
-                            player: PlayerId::new(1),
-                            coords,
-                        })?;
+                        let set_idx = ygame.register_piece(PlayerId::new(1), coords);
+                        let won =
+                            ygame.connect_neighbors_and_check_win(coords, PlayerId::new(1), set_idx);
+                        if won {
+                            ygame.status = GameStatus::Finished {
+                                winner: PlayerId::new(1),
+                            };
+                        }
                     }
                     '.' => {}
                     _ => {
@@ -551,6 +564,24 @@ impl TryFrom<YEN> for GameY {
                 }
             }
         }
+
+        if !ygame.check_game_over() {
+            let next_player = match game.turn() {
+                0 => PlayerId::new(0),
+                1 => PlayerId::new(1),
+                other => {
+                    return Err(GameYError::SerdeError {
+                        error: serde_json::Error::io(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            format!("Invalid turn value in YEN: {}", other),
+                        )),
+                    });
+                }
+            };
+
+            ygame.status = GameStatus::Ongoing { next_player };
+        }
+
         Ok(ygame)
     }
 }
@@ -833,5 +864,168 @@ mod tests {
             }
             _ => panic!("Game should be ongoing"),
         }
+    }
+
+    #[test]
+    fn test_total_cells_and_available_cells_for_new_game() {
+        let game = GameY::new(4);
+        assert_eq!(game.total_cells(), 10);
+        assert_eq!(game.available_cells().len(), 10);
+    }
+
+    #[test]
+    fn test_available_cells_decrease_after_move() {
+        let mut game = GameY::new(3);
+        assert_eq!(game.available_cells().len(), 6);
+
+        game.add_move(Movement::Placement {
+            player: PlayerId::new(0),
+            coords: Coordinates::new(2, 0, 0),
+        })
+        .unwrap();
+
+        assert_eq!(game.available_cells().len(), 5);
+    }
+
+    #[test]
+    fn test_check_player_turn_returns_error_for_wrong_player() {
+        let game = GameY::new(3);
+
+        let result = game.check_player_turn(&Movement::Placement {
+            player: PlayerId::new(1),
+            coords: Coordinates::new(2, 0, 0),
+        });
+
+        assert!(matches!(
+            result,
+            Err(GameYError::InvalidPlayerTurn {
+                expected,
+                found
+            }) if expected == PlayerId::new(0) && found == PlayerId::new(1)
+        ));
+    }
+
+    #[test]
+    fn test_add_move_returns_error_for_occupied_cell() {
+        let mut game = GameY::new(3);
+        let coords = Coordinates::new(2, 0, 0);
+
+        game.add_move(Movement::Placement {
+            player: PlayerId::new(0),
+            coords,
+        })
+        .unwrap();
+
+        let result = game.add_move(Movement::Placement {
+            player: PlayerId::new(1),
+            coords,
+        });
+
+        assert!(matches!(result, Err(GameYError::Occupied { .. })));
+    }
+
+    #[test]
+    fn test_next_player_changes_after_valid_move() {
+        let mut game = GameY::new(3);
+
+        assert_eq!(game.next_player(), Some(PlayerId::new(0)));
+
+        game.add_move(Movement::Placement {
+            player: PlayerId::new(0),
+            coords: Coordinates::new(2, 0, 0),
+        })
+        .unwrap();
+
+        assert_eq!(game.next_player(), Some(PlayerId::new(1)));
+    }
+
+    #[test]
+    fn test_resign_action_finishes_game() {
+        let mut game = GameY::new(3);
+
+        game.add_move(Movement::Action {
+            player: PlayerId::new(0),
+            action: GameAction::Resign,
+        })
+        .unwrap();
+
+        match game.status() {
+            GameStatus::Finished { winner } => {
+                assert_eq!(*winner, PlayerId::new(1));
+            }
+            _ => panic!("Game should be finished after resign"),
+        }
+    }
+
+    #[test]
+    fn test_swap_action_changes_next_player() {
+        let mut game = GameY::new(3);
+
+        game.add_move(Movement::Action {
+            player: PlayerId::new(0),
+            action: GameAction::Swap,
+        })
+        .unwrap();
+
+        assert_eq!(game.next_player(), Some(PlayerId::new(1)));
+    }
+
+    #[test]
+    fn test_render_returns_header() {
+        let game = GameY::new(3);
+        let options = RenderOptions {
+            show_3d_coords: false,
+            show_idx: false,
+            show_colors: false,
+        };
+
+        let rendered = game.render(&options);
+
+        assert!(rendered.contains("--- Game of Y (Size 3) ---"));
+    }
+
+    #[test]
+    fn test_try_from_invalid_layout_line_length() {
+        let yen_str = r#"{
+            "size": 3,
+            "turn": 0,
+            "players": ["B","R"],
+            "layout": "B/BB/.."
+        }"#;
+
+        let yen: YEN = serde_json::from_str(yen_str).unwrap();
+        let result = GameY::try_from(yen);
+
+        assert!(matches!(result, Err(GameYError::InvalidYENLayoutLine { .. })));
+    }
+
+    #[test]
+    fn test_try_from_invalid_char_in_layout() {
+        let yen_str = r#"{
+            "size": 3,
+            "turn": 0,
+            "players": ["B","R"],
+            "layout": "B/BX/..."
+        }"#;
+
+        let yen: YEN = serde_json::from_str(yen_str).unwrap();
+        let result = GameY::try_from(yen);
+
+        assert!(matches!(result, Err(GameYError::InvalidCharInLayout { .. })));
+    }
+
+    #[test]
+    fn test_try_from_invalid_turn_value() {
+        let yen_str = r#"{
+            "size": 3,
+            "turn": 5,
+            "players": ["B","R"],
+            "layout": "./../..."
+        }"#;
+
+        let yen: YEN = serde_json::from_str(yen_str).unwrap();
+        let result = GameY::try_from(yen);
+
+        assert!(matches!(result, Err(GameYError::SerdeError { .. })));
     }
 }

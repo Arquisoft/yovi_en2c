@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest' // <-- IMPORTANTE: añadir vi
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest'
 import request from 'supertest'
 import app from '../users-service.js'
 import mongoose from 'mongoose'
@@ -9,7 +9,7 @@ describe('POST /createuser', () => {
 
     beforeAll(async () => {
         if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI ;
+            const TEST_URI = process.env.MONGODB_URI;
             await mongoose.connect(TEST_URI);
             isConnected = true;
         }
@@ -20,7 +20,6 @@ describe('POST /createuser', () => {
     });
 
     afterAll(async () => {
-        // conexion it not closed here so the other describes can use it
 
     });
 
@@ -33,7 +32,8 @@ describe('POST /createuser', () => {
             .post('/createuser')
             .send({
                 username: 'Pablo',
-                email: 'pablo@uniovi.es'
+                email: 'pablo@uniovi.es',
+                password: '123456'
             })
             .set('Accept', 'application/json')
 
@@ -50,7 +50,8 @@ describe('POST /createuser', () => {
         const res = await request(app)
             .post('/createuser')
             .send({
-                username: 'UsuarioWithoutEmail'
+                username: 'UsuarioWithoutEmail',
+                password: '123456'
             })
             .set('Accept', 'application/json')
 
@@ -58,16 +59,16 @@ describe('POST /createuser', () => {
         expect(res.body).toHaveProperty('success', true)
         expect(res.body.message).toMatch(/User UsuarioWithoutEmail created/i)
         expect(res.body.user).toHaveProperty('username', 'UsuarioWithoutEmail')
-        expect(res.body.user).toHaveProperty('email', null) // CAMBIO: email debe ser null
+        expect(res.body.user).toHaveProperty('email', null)
     })
-
 
     it('should create a new user with empty email', async () => {
         const res = await request(app)
             .post('/createuser')
             .send({
                 username: 'UsuarEmailEmpty',
-                email: ''
+                email: '',
+                password: '123456'
             })
             .set('Accept', 'application/json')
 
@@ -82,23 +83,23 @@ describe('POST /createuser', () => {
             .post('/createuser')
             .send({
                 username: 'UserEmailSpaces',
-                email: '   '
+                email: '   ',
+                password: '123456'
             })
             .set('Accept', 'application/json')
 
-        // CAMBIO: El servidor debe tratar el email con espacios como undefined
-        // y crear el usuario correctamente
         expect(res.status).toBe(201)
         expect(res.body).toHaveProperty('success', true)
         expect(res.body.user).toHaveProperty('username', 'UserEmailSpaces')
-        expect(res.body.user).toHaveProperty('email', null) // CAMBIO: email debe ser null
+        expect(res.body.user).toHaveProperty('email', null)
     })
 
     it('should gave error 400 if there is not username', async () => {
         const res = await request(app)
             .post('/createuser')
             .send({
-                email: 'pablo@uniovi.es'
+                email: 'pablo@uniovi.es',
+                password: '123456'
             })
             .set('Accept', 'application/json')
 
@@ -107,12 +108,27 @@ describe('POST /createuser', () => {
         expect(res.body.error).toMatch(/Username is a mandatory field/i)
     })
 
+    it('should gave error 400 if password is missing', async () => {
+        const res = await request(app)
+            .post('/createuser')
+            .send({
+                username: 'Pablo',
+                email: 'pablo@uniovi.es'
+            })
+            .set('Accept', 'application/json')
+
+        expect(res.status).toBe(400)
+        expect(res.body).toHaveProperty('success', false)
+        expect(res.body.error).toMatch(/Password is a mandatory field/i)
+    })
+
     it('should gave error 400 if the email is not valid', async () => {
         const res = await request(app)
             .post('/createuser')
             .send({
                 username: 'Pablo',
-                email: 'email-invalido'
+                email: 'email-invalido',
+                password: '123456'
             })
             .set('Accept', 'application/json')
 
@@ -122,26 +138,25 @@ describe('POST /createuser', () => {
     })
 
     it('should gave error 400 if the user already exists', async () => {
-        // Primero limpiamos el usuario si existe
         await mongoose.connection.collections['users']?.deleteMany({ username: 'duplicado' });
 
-        // Crear primer usuario
         const res1 = await request(app)
             .post('/createuser')
             .send({
                 username: 'duplicado',
-                email: 'duplicado@uniovi.es'
+                email: 'duplicado@uniovi.es',
+                password: '123456'
             })
             .set('Accept', 'application/json')
 
         expect(res1.status).toBe(201)
 
-        // Intentar crear el mismo usuario
         const res2 = await request(app)
             .post('/createuser')
             .send({
                 username: 'duplicado',
-                email: 'duplicado@uniovi.es'
+                email: 'duplicado@uniovi.es',
+                password: '123456'
             })
             .set('Accept', 'application/json')
 
@@ -164,48 +179,40 @@ describe('POST /createuser', () => {
         })
 
         it('should return 500 when a generic database error occurs', async () => {
-            // Mock the save method to throw a generic error (not validation, not duplicate)
             const mockError = new Error('Unexpected MongoDB connection error');
-            mockError.code = 12345; // Different code from 11000 (duplicate)
-            mockError.name = 'MongoNetworkError'; // Different name from 'ValidationError'
+            mockError.code = 12345;
+            mockError.name = 'MongoNetworkError';
 
             const saveSpy = vi.spyOn(mongoose.Model.prototype, 'save')
                 .mockRejectedValueOnce(mockError)
 
-            // Spy on console.error to verify it's called
             const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
             const res = await request(app)
                 .post('/createuser')
                 .send({
                     username: 'test_generic_error',
-                    email: 'test@uniovi.es'
+                    email: 'test@uniovi.es',
+                    password: '123456'
                 })
                 .set('Accept', 'application/json')
 
-            // Verify 500 response
             expect(res.status).toBe(500)
             expect(res.body).toHaveProperty('success', false)
 
-            // Verify the exact message from line 95: 'Internal sevrer error'
-            // Note: there's a typo in the original code "sevrer" instead of "server"
             expect(res.body.error).toBe('Internal sevrer error')
 
-            // Verify console.error was called with the error
             expect(consoleErrorSpy).toHaveBeenCalled()
             expect(consoleErrorSpy).toHaveBeenCalledWith(
                 'Error en POST /createuser:',
                 mockError
             )
 
-            // Restore mocks
             saveSpy.mockRestore()
             consoleErrorSpy.mockRestore()
         })
 
         it('should return 500 for errors that are neither ValidationError nor code 11000', async () => {
-            // Test with different types of generic errors
-
             const errorsToTest = [
                 new TypeError('Cannot read property of undefined'),
                 new Error('Database connection lost'),
@@ -220,7 +227,8 @@ describe('POST /createuser', () => {
                     .post('/createuser')
                     .send({
                         username: 'test_error',
-                        email: 'test@uniovi.es'
+                        email: 'test@uniovi.es',
+                        password: '123456'
                     })
                     .set('Accept', 'application/json')
 
@@ -232,7 +240,6 @@ describe('POST /createuser', () => {
         })
 
         it('should NOT trigger the generic catch for validation errors', async () => {
-            // Create a validation error
             const validationError = new Error('Validation error');
             validationError.name = 'ValidationError';
             validationError.errors = {
@@ -248,16 +255,14 @@ describe('POST /createuser', () => {
                 .post('/createuser')
                 .send({
                     username: 'test_validation',
-                    email: 'invalid-email'
+                    email: 'invalid-email',
+                    password: '123456'
                 })
                 .set('Accept', 'application/json')
 
-            // Should be 400 (ValidationError), not 500
             expect(res.status).toBe(400)
             expect(res.body.error).not.toBe('Internal sevrer error')
 
-            // The console.error from generic catch should NOT have been called
-            // because validation is handled in the previous if block
             expect(consoleErrorSpy).not.toHaveBeenCalled()
 
             saveSpy.mockRestore()
@@ -265,7 +270,6 @@ describe('POST /createuser', () => {
         })
 
         it('should NOT trigger the generic catch for duplicate key errors (code 11000)', async () => {
-            // Create a duplicate key error (code 11000)
             const duplicateError = new Error('Duplicate key error');
             duplicateError.code = 11000;
             duplicateError.keyPattern = { username: 1 };
@@ -279,16 +283,15 @@ describe('POST /createuser', () => {
                 .post('/createuser')
                 .send({
                     username: 'duplicate_user',
-                    email: 'duplicate@uniovi.es'
+                    email: 'duplicate@uniovi.es',
+                    password: '123456'
                 })
                 .set('Accept', 'application/json')
 
-            // Should be 400 (Duplicate key), not 500
             expect(res.status).toBe(400)
             expect(res.body.error).toMatch(/already in the data base/i)
             expect(res.body.error).not.toBe('Internal sevrer error')
 
-            // The console.error from generic catch should NOT have been called
             expect(consoleErrorSpy).not.toHaveBeenCalled()
 
             saveSpy.mockRestore()
@@ -296,7 +299,6 @@ describe('POST /createuser', () => {
         })
 
         it('should handle errors with no code or name property', async () => {
-            // Create a completely malformed error
             const malformedError = { someProperty: 'this is not a standard error' };
 
             const saveSpy = vi.spyOn(mongoose.Model.prototype, 'save')
@@ -306,7 +308,8 @@ describe('POST /createuser', () => {
                 .post('/createuser')
                 .send({
                     username: 'test_malformed',
-                    email: 'test@uniovi.es'
+                    email: 'test@uniovi.es',
+                    password: '123456'
                 })
                 .set('Accept', 'application/json')
 
@@ -320,24 +323,21 @@ describe('POST /createuser', () => {
 
 describe('GET /users', () => {
     beforeAll(async () => {
-        // Asegurar conexión
         if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI ;
+            const TEST_URI = process.env.MONGODB_URI;
             await mongoose.connect(TEST_URI);
             isConnected = true;
         }
 
-        // Limpiar colección de users
         await mongoose.connection.collections['users']?.deleteMany({});
 
-        // Crear usuarios de prueba
         await request(app)
             .post('/createuser')
-            .send({ username: 'usuario1', email: 'user1@uniovi.es' })
+            .send({ username: 'usuario1', email: 'user1@uniovi.es', password: '123456' })
 
         await request(app)
             .post('/createuser')
-            .send({ username: 'usuario2', email: 'user2@uniovi.es' })
+            .send({ username: 'usuario2', email: 'user2@uniovi.es', password: '123456' })
     });
 
     afterEach(() => {
@@ -358,7 +358,6 @@ describe('GET /users', () => {
 
     describe('GET /users - Error handling', () => {
         it('should return 500 when a database error occurs during find()', async () => {
-            // Simular error en find()
             const mockError = new Error('Database connection failed');
             const findSpy = vi.spyOn(mongoose.Model, 'find')
                 .mockImplementationOnce(() => {
@@ -376,7 +375,6 @@ describe('GET /users', () => {
         })
 
         it('should return 500 when a database error occurs during sort()', async () => {
-            // Simular error en sort() (encadenamiento)
             const mockError = new Error('Sort operation failed');
 
             const mockQuery = {
@@ -444,19 +442,15 @@ describe('GET /users', () => {
 
             expect(res.body).toHaveProperty('success', false)
             expect(res.body).toHaveProperty('error')
-            // El error se convertirá a string automáticamente
             expect(typeof res.body.error).toBe('string')
 
             findSpy.mockRestore()
         })
 
         it('should handle error when find() returns null and sort is called', async () => {
-            const mockError = new Error('Cannot read property sort of null');
-
             const findSpy = vi.spyOn(mongoose.Model, 'find')
                 .mockReturnValueOnce(null)
 
-            // Como find() devuelve null, sort() no existe y dará error
             const res = await request(app)
                 .get('/users')
                 .expect(500)
@@ -472,7 +466,7 @@ describe('GET /users', () => {
 describe('POST /gameresult', () => {
     beforeAll(async () => {
         if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI ;
+            const TEST_URI = process.env.MONGODB_URI;
             await mongoose.connect(TEST_URI);
             isConnected = true;
         }
@@ -482,7 +476,7 @@ describe('POST /gameresult', () => {
 
         await request(app)
             .post('/createuser')
-            .send({ username: 'jugador', email: 'jugador@uniovi.es' })
+            .send({ username: 'jugador', email: 'jugador@uniovi.es', password: '123456' })
     });
 
     it('should save correctly the game result in the db', async () => {
@@ -512,7 +506,6 @@ describe('POST /gameresult', () => {
             .send({
                 username: 'jugador',
                 result: 'win'
-                // Falta opponent
             })
             .set('Accept', 'application/json')
             .expect(400)
@@ -535,6 +528,7 @@ describe('POST /gameresult', () => {
         expect(res.body).toHaveProperty('success', false)
         expect(res.body.error).toMatch(/does not exist/i)
     })
+
     describe('POST /gameresult - Error handling', () => {
         beforeAll(async () => {
             if (!isConnected) {
@@ -546,7 +540,7 @@ describe('POST /gameresult', () => {
             await mongoose.connection.collections['users']?.deleteMany({ username: 'jugador_error' });
             await request(app)
                 .post('/createuser')
-                .send({ username: 'jugador_error', email: 'error@uniovi.es' })
+                .send({ username: 'jugador_error', email: 'error@uniovi.es', password: '123456' })
         });
 
         afterEach(() => {
@@ -554,12 +548,10 @@ describe('POST /gameresult', () => {
         })
 
         it('should return 500 when a database error occurs during user lookup', async () => {
-            // Simular error en User.findOne()
             const mockError = new Error('Database connection failed during user lookup');
             const findOneSpy = vi.spyOn(mongoose.Model, 'findOne')
                 .mockRejectedValueOnce(mockError)
 
-            // Espiar console.error
             const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
             const res = await request(app)
@@ -675,14 +667,12 @@ describe('POST /gameresult', () => {
 
             expect(res.body).toHaveProperty('success', false)
             expect(res.body).toHaveProperty('error')
-            // El objeto no-Error se convertirá a string automáticamente
             expect(typeof res.body.error).toBe('string')
 
             findOneSpy.mockRestore()
         })
 
         it('should handle error when GameResult model save fails after user exists', async () => {
-
             const findOneSpy = vi.spyOn(mongoose.Model, 'findOne')
                 .mockResolvedValueOnce({ username: 'jugador_error' })
 
@@ -734,9 +724,8 @@ describe('POST /gameresult', () => {
 
 describe('GET /history/:username', () => {
     beforeAll(async () => {
-
         if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI ;
+            const TEST_URI = process.env.MONGODB_URI;
             await mongoose.connect(TEST_URI);
             isConnected = true;
         }
@@ -744,10 +733,9 @@ describe('GET /history/:username', () => {
         await mongoose.connection.collections['users']?.deleteMany({});
         await mongoose.connection.collections['gameresults']?.deleteMany({});
 
-
         await request(app)
             .post('/createuser')
-            .send({ username: 'historial_user', email: 'history@uniovi.es' })
+            .send({ username: 'historial_user', email: 'history@uniovi.es', password: '123456' })
 
         await request(app)
             .post('/gameresult')
@@ -797,7 +785,7 @@ describe('GET /history/:username', () => {
 
             await request(app)
                 .post('/createuser')
-                .send({ username: 'history_user', email: 'history@uniovi.es' })
+                .send({ username: 'history_user', email: 'history@uniovi.es', password: '123456' })
         });
 
         afterEach(() => {
@@ -986,7 +974,7 @@ describe('GET /history/:username', () => {
 
             const res = await request(app)
                 .get('/history/history_user')
-                .expect(200) // Debería funcionar correctamente
+                .expect(200)
 
             expect(res.body).toHaveProperty('success', true)
             expect(res.body.stats).toHaveProperty('wins', 2)
@@ -999,9 +987,8 @@ describe('GET /history/:username', () => {
 
 describe('GET /ranking', () => {
     beforeAll(async () => {
-
         if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI ;
+            const TEST_URI = process.env.MONGODB_URI;
             await mongoose.connect(TEST_URI);
             isConnected = true;
         }
@@ -1011,15 +998,15 @@ describe('GET /ranking', () => {
 
         await request(app)
             .post('/createuser')
-            .send({ username: 'top1', email: 'top1@uniovi.es' })
+            .send({ username: 'top1', email: 'top1@uniovi.es', password: '123456' })
 
         await request(app)
             .post('/createuser')
-            .send({ username: 'top2', email: 'top2@uniovi.es' })
+            .send({ username: 'top2', email: 'top2@uniovi.es', password: '123456' })
 
         await request(app)
             .post('/createuser')
-            .send({ username: 'top3', email: 'top3@uniovi.es' })
+            .send({ username: 'top3', email: 'top3@uniovi.es', password: '123456' })
 
         for (let i = 0; i < 3; i++) {
             await request(app)
@@ -1057,9 +1044,9 @@ describe('GET /ranking', () => {
             expect(ranking[1].wins).toBe(2)
         }
     })
+
     describe('GET /ranking - Error handling', () => {
         beforeAll(async () => {
-
             if (!isConnected) {
                 const TEST_URI = process.env.MONGODB_URI || 'mongodb+srv://yovi_user:yovi1234@cluster0.xxxxx.mongodb.net/yovi_db_test';
                 await mongoose.connect(TEST_URI);
@@ -1281,7 +1268,7 @@ describe('GET /ranking', () => {
 });
 
 describe('GET /health', () => {
-    it('debe devolver el estado del servidor', async () => {
+    it('should return the server status', async () => {
         const res = await request(app)
             .get('/health')
             .expect(200)
@@ -1293,8 +1280,130 @@ describe('GET /health', () => {
     })
 });
 
+describe('POST /login', () => {
+    beforeAll(async () => {
+        if (!isConnected) {
+            const TEST_URI = process.env.MONGODB_URI;
+            await mongoose.connect(TEST_URI);
+            isConnected = true;
+        }
+    });
 
-// Cerrar conexión al final de todos los tests
+    beforeEach(async () => {
+        await mongoose.connection.collections['users']?.deleteMany({});
+
+        await request(app)
+            .post('/createuser')
+            .send({
+                username: 'login_user',
+                email: 'login@uniovi.es',
+                password: '123456'
+            });
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('should login correctly with valid credentials', async () => {
+        const res = await request(app)
+            .post('/login')
+            .send({
+                username: 'login_user',
+                password: '123456'
+            })
+            .set('Accept', 'application/json');
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('success', true);
+        expect(res.body).toHaveProperty('message');
+        expect(res.body.message).toMatch(/Welcome login_user/i);
+        expect(res.body).toHaveProperty('user');
+        expect(res.body.user).toHaveProperty('username', 'login_user');
+        expect(res.body.user).toHaveProperty('email', 'login@uniovi.es');
+    });
+
+    it('should return 400 when username is missing', async () => {
+        const res = await request(app)
+            .post('/login')
+            .send({
+                password: '123456'
+            })
+            .set('Accept', 'application/json');
+
+        expect(res.status).toBe(400);
+        expect(res.body).toHaveProperty('success', false);
+        expect(res.body.error).toBe('Username and password are mandatory');
+    });
+
+    it('should return 400 when password is missing', async () => {
+        const res = await request(app)
+            .post('/login')
+            .send({
+                username: 'login_user'
+            })
+            .set('Accept', 'application/json');
+
+        expect(res.status).toBe(400);
+        expect(res.body).toHaveProperty('success', false);
+        expect(res.body.error).toBe('Username and password are mandatory');
+    });
+
+    it('should return 404 when user does not exist', async () => {
+        const res = await request(app)
+            .post('/login')
+            .send({
+                username: 'unknown_user',
+                password: '123456'
+            })
+            .set('Accept', 'application/json');
+
+        expect(res.status).toBe(404);
+        expect(res.body).toHaveProperty('success', false);
+        expect(res.body.error).toBe('User not found');
+    });
+
+    it('should return 401 when password is incorrect', async () => {
+        const res = await request(app)
+            .post('/login')
+            .send({
+                username: 'login_user',
+                password: 'wrong_password'
+            })
+            .set('Accept', 'application/json');
+
+        expect(res.status).toBe(401);
+        expect(res.body).toHaveProperty('success', false);
+        expect(res.body.error).toBe('Invalid credentials');
+    });
+
+    it('should return 500 when database error occurs during login', async () => {
+        const mockError = new Error('Database error in login');
+        const findOneSpy = vi.spyOn(mongoose.Model, 'findOne')
+            .mockRejectedValueOnce(mockError);
+
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        const res = await request(app)
+            .post('/login')
+            .send({
+                username: 'login_user',
+                password: '123456'
+            })
+            .set('Accept', 'application/json');
+
+        expect(res.status).toBe(500);
+        expect(res.body).toHaveProperty('success', false);
+        expect(res.body.error).toBe('Internal server error');
+
+        expect(consoleErrorSpy).toHaveBeenCalled();
+        expect(consoleErrorSpy).toHaveBeenCalledWith('Error in POST /login:', mockError);
+
+        findOneSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+    });
+});
+
 afterAll(async () => {
     if (isConnected) {
         await mongoose.connection.close();
