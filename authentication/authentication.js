@@ -41,6 +41,7 @@ const register = async (req, res) => {
         const user = new AuthUser({
 
             username,
+            email,
             password: hashedPassword
 
         });
