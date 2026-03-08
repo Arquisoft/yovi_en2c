@@ -490,4 +490,121 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
+
+    #[tokio::test]
+    async fn test_pvb_row_out_of_bounds() {
+        let registry =
+            YBotRegistry::new().with_bot(std::sync::Arc::new(RandomBot));
+        let state = AppState::new(registry);
+        let app = create_router(state);
+
+        let game = crate::GameY::new(7);
+        let yen: crate::YEN = (&game).into();
+
+        let body = PvbMoveRequest { yen, row: 99, col: 0 };
+
+        let response = app
+            .oneshot(
+                Request::post("/v1/game/pvb/random_bot")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        serde_json::to_string(&body).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_pvb_col_out_of_bounds() {
+        let registry =
+            YBotRegistry::new().with_bot(std::sync::Arc::new(RandomBot));
+        let state = AppState::new(registry);
+        let app = create_router(state);
+
+        let game = crate::GameY::new(7);
+        let yen: crate::YEN = (&game).into();
+
+        let body = PvbMoveRequest { yen, row: 0, col: 99 };
+
+        let response = app
+            .oneshot(
+                Request::post("/v1/game/pvb/random_bot")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        serde_json::to_string(&body).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_pvb_rejects_finished_game() {
+        let registry =
+            YBotRegistry::new().with_bot(std::sync::Arc::new(RandomBot));
+        let state = AppState::new(registry);
+        let app = create_router(state);
+
+        let mut game = crate::GameY::new(1);
+        game.add_move(crate::Movement::Placement {
+            player: crate::PlayerId::new(0),
+            coords: crate::Coordinates::new(0, 0, 0),
+        })
+        .unwrap();
+
+        let yen: crate::YEN = (&game).into();
+        let body = PvbMoveRequest { yen, row: 0, col: 0 };
+
+        let response = app
+            .oneshot(
+                Request::post("/v1/game/pvb/random_bot")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        serde_json::to_string(&body).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_pvb_rejects_invalid_yen_format() {
+        let registry =
+            YBotRegistry::new().with_bot(std::sync::Arc::new(RandomBot));
+        let state = AppState::new(registry);
+        let app = create_router(state);
+
+        let yen = crate::YEN::new(
+            3,
+            0,
+            vec!['B', 'R'],
+            "X/../...".to_string(),
+        );
+
+        let body = PvbMoveRequest { yen, row: 0, col: 0 };
+
+        let response = app
+            .oneshot(
+                Request::post("/v1/game/pvb/random_bot")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        serde_json::to_string(&body).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
 }
