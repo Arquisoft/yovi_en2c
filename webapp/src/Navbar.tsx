@@ -2,6 +2,7 @@ import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useI18n } from "./i18n/I18nProvider";
 import logo from "../img/logo.png";
+import LanguageToggle from "./LanguageToggle";
 
 type NavbarProps = {
   username?: string | null;
@@ -11,7 +12,7 @@ type NavbarProps = {
 const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { lang, setLang, t } = useI18n();
+  const { t } = useI18n();
 
   const go = (path: string) => navigate(path);
 
@@ -32,25 +33,7 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
             👤 {t("common.user")}: {username || "—"}
           </div>
 
-          <div className="lang-toggle" role="group" aria-label={t("common.language")}>
-            <button
-              type="button"
-              className={`lang-btn ${lang === "es" ? "is-active" : ""}`}
-              onClick={() => setLang("es")}
-              aria-pressed={lang === "es"}
-            >
-              ES
-            </button>
-
-            <button
-              type="button"
-              className={`lang-btn ${lang === "en" ? "is-active" : ""}`}
-              onClick={() => setLang("en")}
-              aria-pressed={lang === "en"}
-            >
-              EN
-            </button>
-          </div>
+          <LanguageToggle />
 
           <nav className="navbar__actions" aria-label="Navegación principal">
             <button

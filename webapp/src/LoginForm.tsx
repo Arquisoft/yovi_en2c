@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useI18n } from "./i18n/I18nProvider";
 import logo from "../img/logo.png";
+import LanguageToggle from "./LanguageToggle";
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
-  const { lang, setLang, t } = useI18n();
+  const { t } = useI18n();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -59,25 +60,7 @@ const LoginForm: React.FC = () => {
       <form onSubmit={handleSubmit} className="register-form" aria-label={t("login.aria")}>
         <div className="register-toprow">
           <img src={logo} alt="GameY" className="logo" />
-          <div className="lang-toggle" role="group" aria-label={t("common.language")}>
-            <button
-              type="button"
-              className={`lang-btn ${lang === "es" ? "is-active" : ""}`}
-              onClick={() => setLang("es")}
-              aria-pressed={lang === "es"}
-            >
-              ES
-            </button>
-
-            <button
-              type="button"
-              className={`lang-btn ${lang === "en" ? "is-active" : ""}`}
-              onClick={() => setLang("en")}
-              aria-pressed={lang === "en"}
-            >
-              EN
-            </button>
-          </div>
+          <LanguageToggle />
         </div>
 
         <div className="form-group">
