@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, beforeAll, expect } from 'vitest'
 import request from 'supertest'
 import mongoose from 'mongoose'
 import app from '../auth-service.js'
