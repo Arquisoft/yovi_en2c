@@ -5,6 +5,10 @@ import app from '../auth-service.js'
 
 let isConnected = false
 
+
+describe('Auth Service', () => {
+
+  
 beforeAll(async () => {
   if (!isConnected) {
     const TEST_URI = process.env.MONGODB_URI
@@ -18,8 +22,6 @@ beforeAll(async () => {
     isConnected = true
   }
 })
-
-describe('Auth Service', () => {
 
   // ================= HEALTH =================
 
