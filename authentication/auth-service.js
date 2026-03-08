@@ -1,8 +1,7 @@
 const express = require('express');
 require('dotenv').config();
-if (process.env.NODE_ENV !== 'test') {
-    require('./db');
-}
+require('./db');
+
 
 const { register, login, verifyToken } = require('./authentication');
 const authMiddleware = require('./middleware/authMiddleware');
