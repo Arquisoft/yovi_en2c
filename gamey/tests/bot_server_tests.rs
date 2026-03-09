@@ -236,7 +236,7 @@ async fn test_choose_with_custom_bot_registry() {
 #[tokio::test]
 async fn test_choose_with_empty_bot_registry() {
     // Create an empty registry
-    let bots = YBotRegistry::new();
+    let bots = YBotRegistry::new_empty();
     let state = AppState::new(bots);
     let app = test_app_with_state(state);
 

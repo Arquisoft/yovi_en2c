@@ -5,7 +5,9 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use crate::YBot;
+use crate::{MonteCarloBot, YBot};
+use crate::{RandomBot, HeuristicBot, MinimaxBot, AlfaBetaBot};
+use crate::bot_implementations::MonteCarloDifficulty;
 
 /// A registry that stores and manages [`YBot`] implementations.
 ///
@@ -31,9 +33,18 @@ pub struct YBotRegistry {
 impl YBotRegistry {
     /// Creates a new empty registry.
     pub fn new() -> Self {
-        YBotRegistry {
+        let mut registry =YBotRegistry {
             bots: HashMap::new(),
-        }
+        };
+        registry = registry
+            .with_bot(Arc::new(RandomBot))
+            .with_bot(Arc::new(HeuristicBot))
+            .with_bot(Arc::new(MinimaxBot::new(None)))
+            .with_bot(Arc::new(AlfaBetaBot::new(None)))
+            .with_bot(Arc::new(MonteCarloBot::new(MonteCarloDifficulty::Hard)))
+            .with_bot(Arc::new(MonteCarloBot::new(MonteCarloDifficulty::Extreme)));
+
+        registry
     }
 
     /// Adds a bot to the registry and returns the registry for chaining.
@@ -42,6 +53,13 @@ impl YBotRegistry {
     pub fn with_bot(mut self, bot: Arc<dyn YBot>) -> Self {
         self.bots.insert(bot.name().to_string(), bot);
         self
+    }
+
+
+    pub fn new_empty() -> Self {
+        YBotRegistry {
+            bots: HashMap::new(),
+        }
     }
 
     /// Finds a bot by name.
@@ -93,19 +111,21 @@ mod tests {
 
     #[test]
     fn test_new_registry_is_empty() {
-        let registry = YBotRegistry::new();
+        let registry = YBotRegistry::new_empty();  // AHORA SÍ está vacío
         assert!(registry.names().is_empty());
     }
 
     #[test]
-    fn test_default_registry_is_empty() {
+    fn test_default_registry_has_bots() {
         let registry = YBotRegistry::default();
-        assert!(registry.names().is_empty());
+        assert!(!registry.names().is_empty());
+        assert_eq!(registry.names().len(), 6);  // 6 bots
     }
 
     #[test]
     fn test_with_bot_adds_bot() {
-        let registry = YBotRegistry::new().with_bot(Arc::new(MockBot::new("test_bot")));
+        let registry = YBotRegistry::new_empty()  // EMPEZAR VACÍO
+            .with_bot(Arc::new(MockBot::new("test_bot")));
 
         assert_eq!(registry.names().len(), 1);
         assert!(registry.find("test_bot").is_some());
@@ -113,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_with_bot_chaining() {
-        let registry = YBotRegistry::new()
+        let registry = YBotRegistry::new_empty()  // EMPEZAR VACÍO
             .with_bot(Arc::new(MockBot::new("bot1")))
             .with_bot(Arc::new(MockBot::new("bot2")));
 
@@ -121,6 +141,19 @@ mod tests {
         assert!(registry.find("bot1").is_some());
         assert!(registry.find("bot2").is_some());
     }
+
+    #[test]
+    fn test_duplicate_name_overwrites() {
+        let bot1 = Arc::new(MockBot::new("same_name"));
+        let bot2 = Arc::new(MockBot::new("same_name"));
+
+        let registry = YBotRegistry::new_empty()  // EMPEZAR VACÍO
+            .with_bot(bot1)
+            .with_bot(bot2);
+
+        assert_eq!(registry.names().len(), 1);
+    }
+
 
     #[test]
     fn test_find_nonexistent_bot_returns_none() {
@@ -135,13 +168,4 @@ mod tests {
         assert!(registry.find("random_bot").is_some());
     }
 
-    #[test]
-    fn test_duplicate_name_overwrites() {
-        let bot1 = Arc::new(MockBot::new("same_name"));
-        let bot2 = Arc::new(MockBot::new("same_name"));
-
-        let registry = YBotRegistry::new().with_bot(bot1).with_bot(bot2);
-
-        assert_eq!(registry.names().len(), 1);
-    }
 }

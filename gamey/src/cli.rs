@@ -6,9 +6,7 @@
 //! - Human vs Computer: Play against a bot
 //! - Server: Run as an HTTP server for bot API
 
-use crate::{
-    Coordinates, GameAction, Movement, RandomBot, RenderOptions, YBot, YBotRegistry, game,
-};
+use crate::{Coordinates, GameAction, Movement, AlfaBetaBot, MonteCarloBot, RenderOptions, YBot, YBotRegistry, game};
 use crate::{GameStatus, GameY, PlayerId};
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
@@ -30,8 +28,8 @@ pub struct CliArgs {
     #[arg(short, long, default_value_t = Mode::Human)]
     pub mode: Mode,
 
-    /// The bot to use (only used with --mode=computer), default = random_bot
-    #[arg(short, long, default_value = "random_bot")]
+    /// The bot to use (only used with --mode=computer), default = minimax
+    #[arg(short, long, default_value = "minimax_bot")]
     pub bot: String,
 
     /// Port to run the server on (only used with --mode=server)
@@ -69,7 +67,7 @@ pub fn run_cli_game() -> Result<()> {
     let args = CliArgs::parse();
     let mut render_options = crate::RenderOptions::default();
     let mut rl = DefaultEditor::new()?;
-    let bots_registry = YBotRegistry::new().with_bot(Arc::new(RandomBot));
+    let bots_registry = YBotRegistry::new().with_bot(Arc::new(AlfaBetaBot::new(None)));
     let bot: Arc<dyn YBot> = match bots_registry.find(&args.bot) {
         Some(b) => b,
         None => {
