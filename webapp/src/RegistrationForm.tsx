@@ -11,6 +11,7 @@ const RegistrationForm: React.FC = () => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [repeatPassword, setRepeatPassword] = useState("");
   const [responseMessage, setResponseMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -30,25 +31,46 @@ const RegistrationForm: React.FC = () => {
       return;
     }
 
+    if (password.length < 4) {
+      setError(t("registration.error.passwordLength") || "Password must have at least 4 characters");
+      return;
+    }
+
+    if (password !== repeatPassword) {
+      setError(t("registration.error.passwordMatch") || "Passwords do not match");
+      return;
+    }
+
     setLoading(true);
+
     try {
       const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
-      const res = await fetch(`${API_URL}/createuser`, {
+      const res = await fetch(`${API_URL}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username,
+          username: username.trim(),
           email: email.trim() || undefined,
           password,
-        }),
+          repeatPassword
+        })
       });
 
       const data = await res.json();
 
       if (res.ok && data.success) {
         setResponseMessage(data.message);
-        navigate("/", { replace: true });
+
+        if (data.token) {
+          localStorage.setItem("token", data.token);
+        }
+        localStorage.setItem("username", data.user?.username ?? username.trim());
+
+        navigate("/home", {
+          replace: true,
+          state: { username: data.user?.username ?? username.trim() }
+        });
       } else {
         setError(data.error || t("registration.error.generic"));
       }
@@ -102,6 +124,21 @@ const RegistrationForm: React.FC = () => {
             onChange={(e) => setPassword(e.target.value)}
             className="form-input"
             placeholder={t("registration.password")}
+            autoComplete="new-password"
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="register-repeat-password">
+            {t("registration.repeatPassword") || "Repeat password"}
+          </label>
+          <input
+            type="password"
+            id="register-repeat-password"
+            value={repeatPassword}
+            onChange={(e) => setRepeatPassword(e.target.value)}
+            className="form-input"
+            placeholder={t("registration.repeatPassword") || "Repeat password"}
             autoComplete="new-password"
           />
         </div>

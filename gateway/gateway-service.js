@@ -72,13 +72,11 @@ app.post("/game/pvb/move", async (req, res) => {
 
   try {
     const response = await axios.post(route, { yen, row, col }); // NOSONAR
-
-    // Rust returns: { yen, finished, winner, winning_edges }
     const payload = response.data || {};
 
     return res.status(200).json({
       ok: true,
-      yen: payload.yen ?? payload, // fallback
+      yen: payload.yen ?? payload,
       finished: payload.finished === true,
       winner: payload.winner ?? null,
       winning_edges: payload.winning_edges ?? [],
@@ -121,14 +119,13 @@ app.post("/login", async (req, res) => {
     const response = await axios.post(AUTH_LOGIN_URL, req.body); // NOSONAR
     return res.status(response.status).json(response.data);
   } catch (error) {
-    if (error.response) return res.status(error.response.status).json(error.response.data);
-    return res.status(500).json({ error: "Auth service unavailable" });
+    return forwardAxiosError(res, error, "Auth service unavailable");
   }
 });
 
 app.post("/register", async (req, res) => {
   try {
-    const response = await axios.post(AUTH_REGISTER_URL, req.body);
+    const response = await axios.post(AUTH_REGISTER_URL, req.body); // NOSONAR
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Auth service unavailable");

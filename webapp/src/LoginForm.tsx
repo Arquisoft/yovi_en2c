@@ -4,12 +4,14 @@ import { useI18n } from "./i18n/I18nProvider";
 import logo from "../img/logo.png";
 import LanguageToggle from "./LanguageToggle";
 
-const LoginForm: React.FC = () => {
+const RegistrationForm: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useI18n();
 
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [repeatPassword, setRepeatPassword] = useState("");
   const [responseMessage, setResponseMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,37 +22,60 @@ const LoginForm: React.FC = () => {
     setError(null);
 
     if (!username.trim()) {
-      setError(t("login.error.username"));
+      setError(t("registration.error.username"));
       return;
     }
 
     if (!password.trim()) {
-      setError(t("login.error.password"));
+      setError(t("registration.error.password"));
+      return;
+    }
+
+    if (password.length < 4) {
+      setError(t("registration.error.passwordLength") || "Password must have at least 4 characters");
+      return;
+    }
+
+    if (password !== repeatPassword) {
+      setError(t("registration.error.passwordMatch") || "Passwords do not match");
       return;
     }
 
     setLoading(true);
+
     try {
       const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
-      const res = await fetch(`${API_URL}/login`, {
+      const res = await fetch(`${API_URL}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username: username.trim(),
+          email: email.trim() || undefined,
+          password,
+          repeatPassword
+        })
       });
 
       const data = await res.json();
 
       if (res.ok && data.success) {
         setResponseMessage(data.message);
-        localStorage.setItem("username", username);
-        localStorage.setItem("token", data.token);
-        navigate("/home", { state: { username } });
+
+        if (data.token) {
+          localStorage.setItem("token", data.token);
+        }
+        localStorage.setItem("username", data.user?.username ?? username.trim());
+
+        navigate("/home", {
+          replace: true,
+          state: { username: data.user?.username ?? username.trim() }
+        });
       } else {
-        setError(data.error || t("login.error.invalid"));
+        setError(data.error || t("registration.error.generic"));
       }
     } catch (err: any) {
-      setError(err.message || t("login.error.network"));
+      setError(err.message || t("registration.error.network"));
     } finally {
       setLoading(false);
     }
@@ -58,44 +83,72 @@ const LoginForm: React.FC = () => {
 
   return (
     <div className="auth-wrapper">
-      <form onSubmit={handleSubmit} className="register-form" aria-label={t("login.aria")}>
+      <form onSubmit={handleSubmit} className="register-form" aria-label={t("registration.aria")}>
         <div className="register-toprow">
           <img src={logo} alt="GameY" className="logo" />
           <LanguageToggle />
         </div>
 
         <div className="form-group">
-          <label htmlFor="login-username">{t("login.username")}</label>
+          <label htmlFor="register-username">{t("registration.username")}</label>
           <input
             type="text"
-            id="login-username"
+            id="register-username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="form-input"
-            placeholder={t("login.username")}
+            placeholder={t("registration.username")}
             autoComplete="username"
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="login-password">{t("login.password")}</label>
+          <label htmlFor="register-email">{t("registration.email")}</label>
+          <input
+            type="email"
+            id="register-email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="form-input"
+            placeholder={t("registration.email")}
+            autoComplete="email"
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="register-password">{t("registration.password")}</label>
           <input
             type="password"
-            id="login-password"
+            id="register-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="form-input"
-            placeholder={t("login.password")}
-            autoComplete="current-password"
+            placeholder={t("registration.password")}
+            autoComplete="new-password"
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="register-repeat-password">
+            {t("registration.repeatPassword") || "Repeat password"}
+          </label>
+          <input
+            type="password"
+            id="register-repeat-password"
+            value={repeatPassword}
+            onChange={(e) => setRepeatPassword(e.target.value)}
+            className="form-input"
+            placeholder={t("registration.repeatPassword") || "Repeat password"}
+            autoComplete="new-password"
           />
         </div>
 
         <button type="submit" className="submit-button" disabled={loading}>
-          {loading ? t("login.loading") : t("login.button")}
+          {loading ? t("registration.loading") : t("registration.button")}
         </button>
 
         <div style={{ marginTop: 12, textAlign: "center" }}>
-          <Link to="/register">{t("login.goRegister")}</Link>
+          <Link to="/">{t("registration.goLogin")}</Link>
         </div>
 
         {responseMessage && (
@@ -114,4 +167,4 @@ const LoginForm: React.FC = () => {
   );
 };
 
-export default LoginForm;
+export default RegistrationForm;

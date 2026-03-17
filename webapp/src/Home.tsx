@@ -1,84 +1,123 @@
-import React, { useEffect, useMemo } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import Navbar from "./Navbar";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useI18n } from "./i18n/I18nProvider";
 import logo from "../img/logo.png";
+import LanguageToggle from "./LanguageToggle";
 
-type LocationState = { username?: string };
-
-const Home: React.FC = () => {
+const LoginForm: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { t } = useI18n();
 
-  const username = useMemo(() => {
-    const st = (location.state as LocationState | null) ?? null;
-    return st?.username ?? localStorage.getItem("username") ?? "";
-  }, [location.state]);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [responseMessage, setResponseMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!username) navigate("/", { replace: true });
-  }, [username, navigate]);
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setResponseMessage(null);
+    setError(null);
 
-  const logout = () => {
-    localStorage.removeItem("username");
-    navigate("/", { replace: true });
+    if (!username.trim()) {
+      setError(t("login.error.username"));
+      return;
+    }
+
+    if (!password.trim()) {
+      setError(t("login.error.password"));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+
+      const res = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username.trim(),
+          password
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        const loggedUsername = data.user?.username ?? username.trim();
+
+        setResponseMessage(data.message);
+        localStorage.setItem("username", loggedUsername);
+        localStorage.setItem("token", data.token);
+
+        navigate("/home", { state: { username: loggedUsername } });
+      } else {
+        setError(data.error || t("login.error.invalid"));
+      }
+    } catch (err: any) {
+      setError(err.message || t("login.error.network"));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const start = () => navigate("/game", { state: { username } });
-
-  if (!username) return null;
-
   return (
-    <div className="page">
-      <Navbar username={username} onLogout={logout} />
+    <div className="auth-wrapper">
+      <form onSubmit={handleSubmit} className="register-form" aria-label={t("login.aria")}>
+        <div className="register-toprow">
+          <img src={logo} alt="GameY" className="logo" />
+          <LanguageToggle />
+        </div>
 
-      <main className="container">
-        <section className="hero" aria-label="Panel de inicio">
-          <div className="hero__top">
-            <img src={logo} alt="GameY" className="hero__logo" />
+        <div className="form-group">
+          <label htmlFor="login-username">{t("login.username")}</label>
+          <input
+            type="text"
+            id="login-username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="form-input"
+            placeholder={t("login.username")}
+            autoComplete="username"
+          />
+        </div>
 
-            <div className="hero__badge">
-              <span aria-hidden="true" />
-              {t("home.badge")}
-            </div>
+        <div className="form-group">
+          <label htmlFor="login-password">{t("login.password")}</label>
+          <input
+            type="password"
+            id="login-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="form-input"
+            placeholder={t("login.password")}
+            autoComplete="current-password"
+          />
+        </div>
+
+        <button type="submit" className="submit-button" disabled={loading}>
+          {loading ? t("login.loading") : t("login.button")}
+        </button>
+
+        <div style={{ marginTop: 12, textAlign: "center" }}>
+          <Link to="/register">{t("login.goRegister")}</Link>
+        </div>
+
+        {responseMessage && (
+          <div className="success-message" style={{ marginTop: 8 }}>
+            {responseMessage}
           </div>
-          <h1 className="hero__title">{t("home.welcome", { username })}</h1>
-          <p className="hero__subtitle">{t("home.subtitle")}</p>
+        )}
 
-          <div className="hero__actions">
-            <button className="btn btn--primary" onClick={start} type="button">
-              {t("home.start")}
-            </button>
-
-            <button className="btn btn--ghost" onClick={logout} type="button">
-              {t("home.changeUser")}
-            </button>
+        {error && (
+          <div className="error-message" style={{ marginTop: 8 }}>
+            {error}
           </div>
-        </section>
-
-        <section className="grid" aria-label="Tarjetas informativas">
-          <article className="card">
-            <h2 className="card__title">{t("home.card1.title")}</h2>
-            <p className="card__text">{t("home.card1.text")}</p>
-            <span className="pill">{t("home.card1.pill")}</span>
-          </article>
-
-          <article className="card">
-            <h2 className="card__title">{t("home.card2.title")}</h2>
-            <p className="card__text">{t("home.card2.text")}</p>
-            <span className="pill">{t("home.card2.pill")}</span>
-          </article>
-
-          <article className="card">
-            <h2 className="card__title">{t("home.card3.title")}</h2>
-            <p className="card__text">{t("home.card3.text")}</p>
-            <span className="pill">{t("home.card3.pill")}</span>
-          </article>
-        </section>
-      </main>
+        )}
+      </form>
     </div>
   );
 };
 
-export default Home;
+export default LoginForm;
