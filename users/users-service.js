@@ -20,6 +20,8 @@ const PORT = process.env.PORT || 3000; // use port from env or 3000 by default
 /**
  * POST /createuser
  * Saves NEW USER in the db
+ * This endpoint only creates the user.
+ * Password business validation belongs to auth-service.
  */
 app.post('/createuser', async (req, res) => {
     try {
@@ -32,7 +34,7 @@ app.post('/createuser', async (req, res) => {
             });
         }
 
-        if (!password) {
+        if (password === undefined || password === null) {
             return res.status(400).json({
                 success: false,
                 error: 'Password is a mandatory field'
@@ -45,7 +47,7 @@ app.post('/createuser', async (req, res) => {
         }
 
         const userData = {
-            username,
+            username: username.toString().trim(),
             email: processedEmail,
             password
         };
@@ -84,25 +86,18 @@ app.post('/createuser', async (req, res) => {
         console.error('Error en POST /createuser:', error);
         res.status(500).json({
             success: false,
-            error: 'Internal sevrer error'
+            error: 'Internal server error'
         });
     }
 });
 
 /**
- * POST /login
- * Logs in an existing user to the app
+ * GET /users/:username
+ * Gets one user by username
  */
-app.post('/login', async (req, res) => {
+app.get('/users/:username', async (req, res) => {
     try {
-        const { username, password } = req.body;
-
-        if (!username || !password) {
-            return res.status(400).json({
-                success: false,
-                error: 'Username and password are mandatory'
-            });
-        }
+        const { username } = req.params;
 
         const user = await User.findOne({ username: username.toString() });
 
@@ -113,24 +108,18 @@ app.post('/login', async (req, res) => {
             });
         }
 
-        if (user.password !== password) {
-            return res.status(401).json({
-                success: false,
-                error: 'Invalid credentials'
-            });
-        }
-
         res.json({
             success: true,
-            message: `Welcome ${user.username}`,
             user: {
                 id: user._id,
                 username: user.username,
-                email: user.email || null
+                email: user.email || null,
+                password: user.password,
+                createdAt: user.createdAt
             }
         });
     } catch (error) {
-        console.error('Error in POST /login:', error);
+        console.error('Error in GET /users/:username:', error);
         res.status(500).json({
             success: false,
             error: 'Internal server error'
