@@ -14,14 +14,15 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
   const location = useLocation();
   const { t } = useI18n();
 
-  const go = (path: string) => navigate(path);
+  const goHome = () => navigate("/home");
+  const goGame = () => navigate("/game", { state: { username } });
 
   return (
     <header className="navbar">
       <div className="navbar__inner">
         <button
           className="navbar__brand"
-          onClick={() => go("/home")}
+          onClick={goHome}
           type="button"
           aria-label="Ir a Home"
         >
@@ -40,7 +41,7 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
               type="button"
               className="navbtn"
               aria-current={location.pathname === "/home" ? "page" : undefined}
-              onClick={() => go("/home")}
+              onClick={goHome}
             >
               {t("common.home")}
             </button>
@@ -49,12 +50,16 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
               type="button"
               className="navbtn"
               aria-current={location.pathname === "/game" ? "page" : undefined}
-              onClick={() => go("/game")}
+              onClick={goGame}
             >
               {t("common.game")}
             </button>
 
-            <button type="button" className="navbtn navbtn--danger" onClick={onLogout}>
+            <button
+              type="button"
+              className="navbtn navbtn--danger"
+              onClick={() => onLogout?.()}
+            >
               {t("common.logout")}
             </button>
           </nav>
