@@ -10,13 +10,17 @@ app.use(express.json());
 app.use(cors({
   origin: true,
   methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
 
 const USERS_BASE_URL = process.env.USERS_BASE_URL || "http://localhost:3000";
 const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://localhost:4000";
 const LOGIN_USER_URL = `${USERS_BASE_URL}/login`;
+const AUTH_BASE_URL = process.env.AUTH_BASE_URL || "http://localhost:5000";
+const AUTH_REGISTER_URL = `${AUTH_BASE_URL}/register`;
+const AUTH_LOGIN_URL = `${AUTH_BASE_URL}/login`;
+const AUTH_VERIFY_URL = `${AUTH_BASE_URL}/verify`;
 
 const PVB_MOVE_ROUTES = {
   random_bot: `${GAMEY_BASE_URL}/v1/game/pvb/random_bot`,

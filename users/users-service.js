@@ -306,7 +306,7 @@ if (require.main == module) {
     });
 }
 
-// Handeling for not cactched errors
+// Handeling for not catched errors
 process.on('unhandledRejection', (error) => {
     console.error('❌ Unhandled Rejection:', error);
 });
