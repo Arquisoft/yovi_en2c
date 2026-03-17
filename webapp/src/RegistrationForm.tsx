@@ -31,13 +31,8 @@ const RegistrationForm: React.FC = () => {
       return;
     }
 
-    if (password.length < 4) {
-      setError(t("registration.error.passwordLength") || "Password must have at least 4 characters");
-      return;
-    }
-
-    if (password !== repeatPassword) {
-      setError(t("registration.error.passwordMatch") || "Passwords do not match");
+    if (!repeatPassword.trim()) {
+      setError(t("registration.error.repeatPassword") || "Repeat password is required");
       return;
     }
 
@@ -65,6 +60,7 @@ const RegistrationForm: React.FC = () => {
         if (data.token) {
           localStorage.setItem("token", data.token);
         }
+
         localStorage.setItem("username", data.user?.username ?? username.trim());
 
         navigate("/home", {
