@@ -133,7 +133,7 @@ app.get('/users/:username', async (req, res) => {
  */
 app.get('/users', async (req, res) => {
     try {
-        const users = await User.find({}).sort({ createdAt: -1 });
+        const users = await User.find({}, { password: 0 }).sort({ createdAt: -1 });
         res.json({
             success: true,
             count: users.length,
@@ -292,6 +292,7 @@ if (require.main == module) {
         console.log(`   GET    /history/:username`);
         console.log(`   GET    /ranking`);
         console.log(`   GET    /health`);
+        console.log(`   GET    /users/:username`);
     });
 }
 

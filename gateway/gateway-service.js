@@ -13,8 +13,6 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
-
-const USERS_BASE_URL = process.env.USERS_BASE_URL || "http://localhost:3000";
 const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://localhost:4000";
 const AUTH_BASE_URL = process.env.AUTH_BASE_URL || "http://localhost:5000";
 const AUTH_REGISTER_URL = `${AUTH_BASE_URL}/register`;
@@ -31,7 +29,6 @@ const BOT_CHOOSE_ROUTES = {
   smart_bot: `${GAMEY_BASE_URL}/v1/ybot/choose/smart_bot`,
 };
 
-const CREATE_USER_URL = `${USERS_BASE_URL}/createuser`;
 const GAME_NEW_URL = `${GAMEY_BASE_URL}/game/new`;
 const GAME_STATUS_URL = `${GAMEY_BASE_URL}/status`;
 
@@ -129,12 +126,6 @@ app.post("/login", async (req, res) => {
   }
 });
 
-if (process.env.NODE_ENV !== "test") {
-  app.listen(PORT, () => {
-    console.log(`Gateway listening on http://localhost:${PORT}`);
-  });
-}
-
 app.post("/register", async (req, res) => {
   try {
     const response = await axios.post(AUTH_REGISTER_URL, req.body);
@@ -157,5 +148,11 @@ app.get("/verify", async (req, res) => {
     return forwardAxiosError(res, error, "Auth service unavailable");
   }
 });
+
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`Gateway listening on http://localhost:${PORT}`);
+  });
+}
 
 export default app;
