@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { useI18n } from "./i18n/I18nProvider";
@@ -10,15 +10,51 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useI18n();
+  const [checkingSession, setCheckingSession] = useState(true);
 
   const username = useMemo(() => {
     const st = (location.state as LocationState | null) ?? null;
     return st?.username ?? localStorage.getItem("username") ?? "";
   }, [location.state]);
 
+  const token = useMemo(() => localStorage.getItem("token") ?? "", []);
+
   useEffect(() => {
-    if (!username) navigate("/", { replace: true });
-  }, [username, navigate]);
+    const verifySession = async () => {
+      if (!username || !token) {
+        localStorage.removeItem("username");
+        localStorage.removeItem("token");
+        navigate("/", { replace: true });
+        return;
+      }
+
+      try {
+        const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+
+        const res = await fetch(`${API_URL}/verify`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (!res.ok) {
+          localStorage.removeItem("username");
+          localStorage.removeItem("token");
+          navigate("/", { replace: true });
+          return;
+        }
+
+        setCheckingSession(false);
+      } catch {
+        localStorage.removeItem("username");
+        localStorage.removeItem("token");
+        navigate("/", { replace: true });
+      }
+    };
+
+    verifySession();
+  }, [username, token, navigate]);
 
   const logout = () => {
     localStorage.removeItem("username");
@@ -28,7 +64,7 @@ const Home: React.FC = () => {
 
   const start = () => navigate("/game", { state: { username } });
 
-  if (!username) return null;
+  if (checkingSession || !username || !token) return null;
 
   return (
     <div className="page">
@@ -44,6 +80,7 @@ const Home: React.FC = () => {
               {t("home.badge")}
             </div>
           </div>
+
           <h1 className="hero__title">{t("home.welcome", { username })}</h1>
           <p className="hero__subtitle">{t("home.subtitle")}</p>
 
