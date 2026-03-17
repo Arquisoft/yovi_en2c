@@ -5,7 +5,7 @@ import axios from "axios";
 
 vi.mock("axios");
 
-process.env.JWT_SECRET = "test_secret_for_auth_service";
+process.env.JWT_SECRET = "false_test_secret_for_auth_service";
 process.env.JWT_EXPIRES = "24h";
 process.env.USERS_SERVICE_URL = "http://localhost:3000";
 
