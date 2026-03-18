@@ -57,16 +57,7 @@ const RegistrationForm: React.FC = () => {
       if (res.ok && data.success) {
         setResponseMessage(data.message);
 
-        if (data.token) {
-          localStorage.setItem("token", data.token);
-        }
-
-        localStorage.setItem("username", data.user?.username ?? username.trim());
-
-        navigate("/home", {
-          replace: true,
-          state: { username: data.user?.username ?? username.trim() }
-        });
+        navigate("/", { replace: true });
       } else {
         setError(data.error || t("registration.error.generic"));
       }

@@ -6,6 +6,16 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import "@testing-library/jest-dom";
 import { I18nProvider } from "../i18n/I18nProvider";
 
+const mockNavigate = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 function renderWithProviders() {
   return render(
     <I18nProvider>
@@ -19,7 +29,9 @@ function renderWithProviders() {
 describe("RegistrationForm", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.clearAllMocks();
     localStorage.clear();
+    global.fetch = vi.fn();
   });
 
   afterEach(() => {
@@ -29,7 +41,6 @@ describe("RegistrationForm", () => {
 
   test("shows validation error when username is empty", async () => {
     const user = userEvent.setup();
-    global.fetch = vi.fn();
 
     renderWithProviders();
 
@@ -59,7 +70,6 @@ describe("RegistrationForm", () => {
 
   test("shows validation error when password is empty", async () => {
     const user = userEvent.setup();
-    global.fetch = vi.fn();
 
     renderWithProviders();
 
@@ -87,7 +97,7 @@ describe("RegistrationForm", () => {
     ).toBeInTheDocument();
   });
 
-  test("submits username email and password successfully", async () => {
+  test("submits username email and password successfully and redirects to login", async () => {
     const user = userEvent.setup();
 
     global.fetch = vi.fn().mockResolvedValueOnce({
@@ -143,6 +153,13 @@ describe("RegistrationForm", () => {
         }),
       })
     );
+
+    expect(localStorage.getItem("token")).toBeNull();
+    expect(localStorage.getItem("username")).toBeNull();
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+    });
   });
 
   test("submits undefined email when email is empty", async () => {
