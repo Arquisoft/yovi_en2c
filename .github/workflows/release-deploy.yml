@@ -99,6 +99,8 @@ jobs:
           npm run test:e2e
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES: ${{ secrets.JWT_EXPIRES }}
 
   docker-push-users:
     name: Publish users image
