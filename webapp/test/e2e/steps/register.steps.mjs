@@ -7,27 +7,38 @@ Given("the register page is open", async function () {
   if (!page) throw new Error("Page not initialized");
 
   await page.goto(`${BASE_URL}/register`);
-  await page.waitForSelector("#register-username", { timeout: 5000 });
+
+  await page.waitForSelector("#register-username");
+  await page.waitForSelector("#register-email");
+  await page.waitForSelector("#register-password");
+  await page.waitForSelector("#register-repeat-password");
 });
 
 When(
-  'I enter {string} as the username, {string} as the email and {string} as the password and submit',
-  async function (username, email, password) {
+  'I enter {string} as the username, {string} as the email, {string} as the password and {string} as the repeat password and submit',
+  async function (username, email, password, repeatPassword) {
     const page = this.page;
     if (!page) throw new Error("Page not initialized");
 
-    await page.fill("#register-username", username);
-    await page.fill("#register-email", email);
+    const uniqueSuffix = Date.now();
+    const uniqueUsername = `${username}_${uniqueSuffix}`;
+    const uniqueEmail = email.replace("@", `_${uniqueSuffix}@`);
+
+    await page.fill("#register-username", uniqueUsername);
+    await page.fill("#register-email", uniqueEmail);
     await page.fill("#register-password", password);
-    await page.click(".submit-button");
+    await page.fill("#register-repeat-password", repeatPassword);
+
+    await Promise.all([
+      page.waitForURL("**/"),
+      page.locator(".submit-button").click()
+    ]);
   }
 );
 
 Then("I should be redirected to the login page", async function () {
   const page = this.page;
   if (!page) throw new Error("Page not initialized");
-
-  await page.waitForURL("**/", { timeout: 10000 });
 
   const url = page.url();
   const normalized = new URL(url).pathname;

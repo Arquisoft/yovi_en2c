@@ -74,6 +74,13 @@ jobs:
           npm ci
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      - name: Install authentication dependencies
+        run: |
+          cd authentication
+          npm ci
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES: ${{ secrets.JWT_EXPIRES }}
       - name: Install gateway dependencies
         run: |
           cd gateway
