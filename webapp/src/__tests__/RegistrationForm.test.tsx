@@ -41,6 +41,10 @@ describe("RegistrationForm", () => {
       screen.getByLabelText(/^(password|contraseña)$/i),
       "123456"
     );
+    await user.type(
+      screen.getByLabelText(/Repetir contraseña|Repeat password/i),
+      "123456"
+    );
 
     await user.click(
       screen.getByRole("button", { name: /^(register|registrarse)$/i })
@@ -67,6 +71,10 @@ describe("RegistrationForm", () => {
       screen.getByRole("textbox", { name: /^(email|correo electrónico)$/i }),
       "pablo@uniovi.es"
     );
+    await user.type(
+      screen.getByLabelText(/Repetir contraseña|Repeat password/i),
+      "123456"
+    );
 
     await user.click(
       screen.getByRole("button", { name: /^(register|registrarse)$/i })
@@ -86,7 +94,12 @@ describe("RegistrationForm", () => {
       ok: true,
       json: async () => ({
         success: true,
-        message: "User Pablo created",
+        message: "User registered successfully",
+        token: "fake-token",
+        user: {
+          username: "Pablo",
+          email: "pablo@uniovi.es"
+        }
       }),
     } as Response);
 
@@ -104,6 +117,10 @@ describe("RegistrationForm", () => {
       screen.getByLabelText(/^(password|contraseña)$/i),
       "123456"
     );
+    await user.type(
+      screen.getByLabelText(/Repetir contraseña|Repeat password/i),
+      "123456"
+    );
 
     await user.click(
       screen.getByRole("button", { name: /^(register|registrarse)$/i })
@@ -114,7 +131,7 @@ describe("RegistrationForm", () => {
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringMatching(/\/createuser$/),
+      expect.stringMatching(/\/register$/),
       expect.objectContaining({
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -122,6 +139,7 @@ describe("RegistrationForm", () => {
           username: "Pablo",
           email: "pablo@uniovi.es",
           password: "123456",
+          repeatPassword: "123456",
         }),
       })
     );
@@ -134,7 +152,11 @@ describe("RegistrationForm", () => {
       ok: true,
       json: async () => ({
         success: true,
-        message: "User Pablo created",
+        message: "User registered successfully",
+        token: "fake-token",
+        user: {
+          username: "Pablo"
+        }
       }),
     } as Response);
 
@@ -148,6 +170,10 @@ describe("RegistrationForm", () => {
       screen.getByLabelText(/^(password|contraseña)$/i),
       "123456"
     );
+    await user.type(
+      screen.getByLabelText(/Repetir contraseña|Repeat password/i),
+      "123456"
+    );
 
     await user.click(
       screen.getByRole("button", { name: /^(register|registrarse)$/i })
@@ -158,12 +184,13 @@ describe("RegistrationForm", () => {
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringMatching(/\/createuser$/),
+      expect.stringMatching(/\/register$/),
       expect.objectContaining({
         body: JSON.stringify({
           username: "Pablo",
           email: undefined,
           password: "123456",
+          repeatPassword: "123456",
         }),
       })
     );
@@ -194,6 +221,10 @@ describe("RegistrationForm", () => {
       screen.getByLabelText(/^(password|contraseña)$/i),
       "123456"
     );
+    await user.type(
+      screen.getByLabelText(/Repetir contraseña|Repeat password/i),
+      "123456"
+    );
 
     await user.click(
       screen.getByRole("button", { name: /^(register|registrarse)$/i })
@@ -221,6 +252,10 @@ describe("RegistrationForm", () => {
     );
     await user.type(
       screen.getByLabelText(/^(password|contraseña)$/i),
+      "123456"
+    );
+    await user.type(
+      screen.getByLabelText(/Repetir contraseña|Repeat password/i),
       "123456"
     );
 

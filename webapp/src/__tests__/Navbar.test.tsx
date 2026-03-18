@@ -98,7 +98,9 @@ describe("Navbar", () => {
 
     await user.click(screen.getByRole("button", { name: /Juego|Game/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith("/game");
+    expect(mockNavigate).toHaveBeenCalledWith("/game", {
+      state: { username: "Pablo" }
+    });
   });
 
   test("calls onLogout when logout button is clicked", async () => {
