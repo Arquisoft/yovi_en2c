@@ -4,19 +4,20 @@ import cors from "cors";
 
 const app = express();
 app.disable("x-powered-by");
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 
 app.use(express.json());
 app.use(cors({
   origin: true,
   methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
-
-const USERS_BASE_URL = process.env.USERS_BASE_URL || "http://localhost:3000";
 const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://localhost:4000";
-const LOGIN_USER_URL = `${USERS_BASE_URL}/login`;
+const AUTH_BASE_URL = process.env.AUTH_BASE_URL || "http://localhost:5000";
+const AUTH_REGISTER_URL = `${AUTH_BASE_URL}/register`;
+const AUTH_LOGIN_URL = `${AUTH_BASE_URL}/login`;
+const AUTH_VERIFY_URL = `${AUTH_BASE_URL}/verify`;
 
 const PVB_MOVE_ROUTES = {
   random_bot: `${GAMEY_BASE_URL}/v1/game/pvb/random_bot`,
@@ -28,7 +29,6 @@ const BOT_CHOOSE_ROUTES = {
   smart_bot: `${GAMEY_BASE_URL}/v1/ybot/choose/smart_bot`,
 };
 
-const CREATE_USER_URL = `${USERS_BASE_URL}/createuser`;
 const GAME_NEW_URL = `${GAMEY_BASE_URL}/game/new`;
 const GAME_STATUS_URL = `${GAMEY_BASE_URL}/status`;
 
@@ -72,13 +72,11 @@ app.post("/game/pvb/move", async (req, res) => {
 
   try {
     const response = await axios.post(route, { yen, row, col }); // NOSONAR
-
-    // Rust returns: { yen, finished, winner, winning_edges }
     const payload = response.data || {};
 
     return res.status(200).json({
       ok: true,
-      yen: payload.yen ?? payload, // fallback
+      yen: payload.yen ?? payload,
       finished: payload.finished === true,
       winner: payload.winner ?? null,
       winning_edges: payload.winning_edges ?? [],
@@ -116,31 +114,35 @@ app.get("/game/status", async (req, res) => {
   }
 });
 
-app.post("/createuser", async (req, res) => {
+app.post("/login", async (req, res) => {
   try {
-    const { username, email, password } = req.body;
-
-    const forwardedBody = {
-      username,
-      email,
-      password,
-    };
-
-    const response = await axios.post(CREATE_USER_URL, forwardedBody); // NOSONAR
+    const response = await axios.post(AUTH_LOGIN_URL, req.body); // NOSONAR
     return res.status(response.status).json(response.data);
   } catch (error) {
-    if (error.response) return res.status(error.response.status).json(error.response.data);
-    return res.status(500).json({ error: "User service unavailable" });
+    return forwardAxiosError(res, error, "Auth service unavailable");
   }
 });
 
-app.post("/login", async (req, res) => {
+app.post("/register", async (req, res) => {
   try {
-    const response = await axios.post(LOGIN_USER_URL, req.body); // NOSONAR
+    const response = await axios.post(AUTH_REGISTER_URL, req.body); // NOSONAR
     return res.status(response.status).json(response.data);
   } catch (error) {
-    if (error.response) return res.status(error.response.status).json(error.response.data);
-    return res.status(500).json({ error: "User service unavailable" });
+    return forwardAxiosError(res, error, "Auth service unavailable");
+  }
+});
+
+app.get("/verify", async (req, res) => {
+  try {
+    const response = await axios.get(AUTH_VERIFY_URL, {
+      headers: {
+        Authorization: req.headers.authorization,
+      },
+    });
+
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Auth service unavailable");
   }
 });
 

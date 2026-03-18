@@ -10,6 +10,22 @@ services:
     networks:
       - monitor-net
 
+  authentication:
+    build: ./authentication
+    container_name: authentication
+    image: ghcr.io/arquisoft/yovi_en2c-authentication:latest
+    ports:
+      - "5000:5000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES=${JWT_EXPIRES}
+      - USERS_SERVICE_URL=http://users:3000
+      - PORT=5000
+    depends_on:
+      - users
+    networks:
+      - monitor-net
+
   webapp:
     build:
       context: ./webapp
@@ -31,10 +47,11 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - USERS_BASE_URL=http://users:3000
+      - AUTH_BASE_URL=http://authentication:5000
       - GAMEY_BASE_URL=http://gamey:4000
+      - PORT=8080
     depends_on:
-      - users
+      - authentication
       - gamey
     networks:
       - monitor-net

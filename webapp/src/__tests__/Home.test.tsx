@@ -16,12 +16,31 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-function renderHome(usernameFromState?: string, usernameInStorage?: string) {
+function renderHome(
+  usernameFromState?: string,
+  usernameInStorage?: string,
+  tokenInStorage = "fake-token"
+) {
   localStorage.clear();
 
   if (usernameInStorage) {
     localStorage.setItem("username", usernameInStorage);
   }
+
+  if (tokenInStorage) {
+    localStorage.setItem("token", tokenInStorage);
+  }
+
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      success: true,
+      message: "Token valid",
+      user: {
+        username: usernameFromState ?? usernameInStorage ?? "Pablo",
+      },
+    }),
+  } as Response);
 
   return render(
     <I18nProvider>
@@ -43,6 +62,7 @@ describe("Home", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    global.fetch = vi.fn();
   });
 
   afterEach(() => {
@@ -50,11 +70,11 @@ describe("Home", () => {
     localStorage.clear();
   });
 
-  test("renders home content with username from location state", () => {
+  test("renders home content with username from location state", async () => {
     renderHome("Pablo");
 
+    expect(await screen.findByText(/Hola Pablo|Hello Pablo/i)).toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: /GameY/i })).toHaveLength(2);
-    expect(screen.getByText(/Hola Pablo|Hello Pablo/i)).toBeInTheDocument();
     expect(screen.getByText(/Juega al juego Y|Play the Game of Y/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Empezar partida|Start game/i })
@@ -64,21 +84,30 @@ describe("Home", () => {
     ).toBeInTheDocument();
   });
 
-  test("renders home content with username from localStorage", () => {
+  test("renders home content with username from localStorage", async () => {
     renderHome(undefined, "Laura");
 
-    expect(screen.getByText(/Hola Laura|Hello Laura/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Hola Laura|Hello Laura/i)).toBeInTheDocument();
   });
 
-  test("prefers username from location state over localStorage", () => {
+  test("prefers username from location state over localStorage", async () => {
     renderHome("Pablo", "Laura");
 
-    expect(screen.getByText(/Hola Pablo|Hello Pablo/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Hola Pablo|Hello Pablo/i)).toBeInTheDocument();
     expect(screen.queryByText(/Hola Laura|Hello Laura/i)).not.toBeInTheDocument();
   });
 
   test("redirects to root when username is missing", async () => {
-    renderHome();
+    localStorage.clear();
+    global.fetch = vi.fn();
+
+    render(
+      <I18nProvider>
+        <MemoryRouter initialEntries={[{ pathname: "/home" }]}>
+          <Home />
+        </MemoryRouter>
+      </I18nProvider>
+    );
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
@@ -88,6 +117,8 @@ describe("Home", () => {
   test("navigates to game when start button is clicked", async () => {
     const user = userEvent.setup();
     renderHome("Pablo");
+
+    await screen.findByRole("button", { name: /Empezar partida|Start game/i });
 
     await user.click(
       screen.getByRole("button", { name: /Empezar partida|Start game/i })
@@ -102,11 +133,14 @@ describe("Home", () => {
     const user = userEvent.setup();
     renderHome(undefined, "Pablo");
 
+    await screen.findByRole("button", { name: /Cambiar usuario|Change user/i });
+
     await user.click(
       screen.getByRole("button", { name: /Cambiar usuario|Change user/i })
     );
 
     expect(localStorage.getItem("username")).toBeNull();
+    expect(localStorage.getItem("token")).toBeNull();
     expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
   });
 
@@ -114,27 +148,22 @@ describe("Home", () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
+    await screen.findByRole("button", { name: /Salir|Logout/i });
+
     await user.click(
       screen.getByRole("button", { name: /Salir|Logout/i })
     );
 
     expect(localStorage.getItem("username")).toBeNull();
+    expect(localStorage.getItem("token")).toBeNull();
     expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
   });
 
-  test("renders all information cards", () => {
+  test("renders all information cards", async () => {
     renderHome("Pablo");
 
-    expect(
-      screen.getByText(/Modo rápido|Quick mode/i)
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByText(/Futuro|Future/i)
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByText(/Distintos bots|Different bots/i)
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Modo rápido|Quick mode/i)).toBeInTheDocument();
+    expect(screen.getByText(/Futuro|Future/i)).toBeInTheDocument();
+    expect(screen.getByText(/Distintos bots|Different bots/i)).toBeInTheDocument();
   });
 });

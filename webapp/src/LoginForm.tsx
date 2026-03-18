@@ -44,6 +44,7 @@ const LoginForm: React.FC = () => {
       if (res.ok && data.success) {
         setResponseMessage(data.message);
         localStorage.setItem("username", username);
+        localStorage.setItem("token", data.token);
         navigate("/home", { state: { username } });
       } else {
         setError(data.error || t("login.error.invalid"));

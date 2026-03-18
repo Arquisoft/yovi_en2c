@@ -1,0 +1,24 @@
+{
+  "name": "auth-service",
+  "version": "1.0.0",
+  "description":"Authentication service for the application",
+  "type": "module",
+  "main": "auth-service.js",
+  "scripts": {
+    "start": "node auth-service.js",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.7",
+    "express": "^5.0.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.15",
+    "supertest": "^7.1.4",
+    "vitest": "^4.0.15"
+  }
+}

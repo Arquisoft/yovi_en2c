@@ -27,6 +27,8 @@ export const translations: Record<Lang, Dict> = {
     "registration.username": "Usuario",
     "registration.email": "Correo electrónico",
     "registration.password": "Contraseña", //NOSONAR
+    "registration.repeatPassword": "Repetir contraseña", //NOSONAR
+    "registration.error.repeatPassword": "Debes repetir la contraseña.", //NOSONAR
     "registration.button": "Registrarse",
     "registration.loading": "Registrando…",
     "registration.error.username": "El nombre de usuario es obligatorio.",
@@ -104,6 +106,8 @@ export const translations: Record<Lang, Dict> = {
     "registration.username": "Username",
     "registration.email": "Email",
     "registration.password": "Password", //NOSONAR
+    "registration.repeatPassword": "Repeat password", //NOSONAR
+    "registration.error.repeatPassword": "Repeat password is required.", //NOSONAR
     "registration.button": "Register",
     "registration.loading": "Loading...",
     "registration.error.username": "Username is mandatory.",
