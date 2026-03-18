@@ -200,7 +200,7 @@ describe('POST /createuser', () => {
             expect(res.status).toBe(500)
             expect(res.body).toHaveProperty('success', false)
 
-            expect(res.body.error).toBe('Internal sevrer error')
+            expect(res.body.error).toBe('Internal server error')
 
             expect(consoleErrorSpy).toHaveBeenCalled()
             expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -233,7 +233,7 @@ describe('POST /createuser', () => {
                     .set('Accept', 'application/json')
 
                 expect(res.status).toBe(500)
-                expect(res.body.error).toBe('Internal sevrer error')
+                expect(res.body.error).toBe('Internal server error')
 
                 saveSpy.mockRestore()
             }
@@ -314,7 +314,7 @@ describe('POST /createuser', () => {
                 .set('Accept', 'application/json')
 
             expect(res.status).toBe(500)
-            expect(res.body.error).toBe('Internal sevrer error')
+            expect(res.body.error).toBe('Internal server error')
 
             saveSpy.mockRestore()
         })
@@ -1278,130 +1278,6 @@ describe('GET /health', () => {
         expect(res.body).toHaveProperty('database')
         expect(res.body).toHaveProperty('timestamp')
     })
-});
-
-describe('POST /login', () => {
-    beforeAll(async () => {
-        if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI;
-            await mongoose.connect(TEST_URI);
-            isConnected = true;
-        }
-    });
-
-    beforeEach(async () => {
-        await mongoose.connection.collections['users']?.deleteMany({});
-
-        await request(app)
-            .post('/createuser')
-            .send({
-                username: 'login_user',
-                email: 'login@uniovi.es',
-                password: '123456'
-            });
-    });
-
-    afterEach(() => {
-        vi.restoreAllMocks();
-    });
-
-    it('should login correctly with valid credentials', async () => {
-        const res = await request(app)
-            .post('/login')
-            .send({
-                username: 'login_user',
-                password: '123456'
-            })
-            .set('Accept', 'application/json');
-
-        expect(res.status).toBe(200);
-        expect(res.body).toHaveProperty('success', true);
-        expect(res.body).toHaveProperty('message');
-        expect(res.body.message).toMatch(/Welcome login_user/i);
-        expect(res.body).toHaveProperty('user');
-        expect(res.body.user).toHaveProperty('username', 'login_user');
-        expect(res.body.user).toHaveProperty('email', 'login@uniovi.es');
-    });
-
-    it('should return 400 when username is missing', async () => {
-        const res = await request(app)
-            .post('/login')
-            .send({
-                password: '123456'
-            })
-            .set('Accept', 'application/json');
-
-        expect(res.status).toBe(400);
-        expect(res.body).toHaveProperty('success', false);
-        expect(res.body.error).toBe('Username and password are mandatory');
-    });
-
-    it('should return 400 when password is missing', async () => {
-        const res = await request(app)
-            .post('/login')
-            .send({
-                username: 'login_user'
-            })
-            .set('Accept', 'application/json');
-
-        expect(res.status).toBe(400);
-        expect(res.body).toHaveProperty('success', false);
-        expect(res.body.error).toBe('Username and password are mandatory');
-    });
-
-    it('should return 404 when user does not exist', async () => {
-        const res = await request(app)
-            .post('/login')
-            .send({
-                username: 'unknown_user',
-                password: '123456'
-            })
-            .set('Accept', 'application/json');
-
-        expect(res.status).toBe(404);
-        expect(res.body).toHaveProperty('success', false);
-        expect(res.body.error).toBe('User not found');
-    });
-
-    it('should return 401 when password is incorrect', async () => {
-        const res = await request(app)
-            .post('/login')
-            .send({
-                username: 'login_user',
-                password: 'wrong_password'
-            })
-            .set('Accept', 'application/json');
-
-        expect(res.status).toBe(401);
-        expect(res.body).toHaveProperty('success', false);
-        expect(res.body.error).toBe('Invalid credentials');
-    });
-
-    it('should return 500 when database error occurs during login', async () => {
-        const mockError = new Error('Database error in login');
-        const findOneSpy = vi.spyOn(mongoose.Model, 'findOne')
-            .mockRejectedValueOnce(mockError);
-
-        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-        const res = await request(app)
-            .post('/login')
-            .send({
-                username: 'login_user',
-                password: '123456'
-            })
-            .set('Accept', 'application/json');
-
-        expect(res.status).toBe(500);
-        expect(res.body).toHaveProperty('success', false);
-        expect(res.body.error).toBe('Internal server error');
-
-        expect(consoleErrorSpy).toHaveBeenCalled();
-        expect(consoleErrorSpy).toHaveBeenCalledWith('Error in POST /login:', mockError);
-
-        findOneSpy.mockRestore();
-        consoleErrorSpy.mockRestore();
-    });
 });
 
 afterAll(async () => {

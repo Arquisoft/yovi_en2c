@@ -391,14 +391,15 @@ describe("Gateway Service", () => {
       expect(res.body.error).toMatch(/Invalid credentials/i);
     });
 
-    it("POST /login returns 500 if auth-service fails", async () => {
+    it("POST /login returns 502 if auth-service fails", async () => {
       axios.post.mockRejectedValueOnce(new Error("Service down"));
 
       const res = await request(app)
         .post("/login")
         .send({ username: "Ana", password: "123456" });
 
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(502);
+      expect(res.body.ok).toBe(false);
       expect(res.body).toHaveProperty("error");
       expect(res.body.error).toMatch(/Auth service unavailable/i);
     });
