@@ -865,14 +865,15 @@ mod tests {
         // Force heuristic path (random < 0.2)
         // We can't easily force the random value, so we'll run multiple times
         let mut edge_selected = 0;
-        for _ in 0..50 {
-            if tree.heuristic_random_move(&game, &available) == edge_idx {
-                edge_selected += 1;
-            }
+        let runs = 500;
+        for _ in 0..runs {
+        if tree.heuristic_random_move(&game, &available) == edge_idx {
+            edge_selected += 1;
         }
+    }
 
         // Edge should be selected more often due to higher score
-        assert!(edge_selected > 25);
+        assert!(edge_selected > 260, "edge_selected = {}", edge_selected);
     }
 
     #[test]
