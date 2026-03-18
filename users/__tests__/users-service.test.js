@@ -46,6 +46,22 @@ describe('POST /createuser', () => {
         expect(res.body.user).toHaveProperty('email', 'pablo@uniovi.es')
     })
 
+    it('should trim username and email before saving', async () => {
+        const res = await request(app)
+            .post('/createuser')
+            .send({
+                username: '   PabloTrim   ',
+                email: '   pablo.trim@uniovi.es   ',
+                password: '123456'
+            })
+            .set('Accept', 'application/json')
+
+        expect(res.status).toBe(201)
+        expect(res.body.success).toBe(true)
+        expect(res.body.user).toHaveProperty('username', 'PabloTrim')
+        expect(res.body.user).toHaveProperty('email', 'pablo.trim@uniovi.es')
+    })
+
     it('should create an user without an email', async () => {
         const res = await request(app)
             .post('/createuser')
@@ -119,6 +135,21 @@ describe('POST /createuser', () => {
 
         expect(res.status).toBe(400)
         expect(res.body).toHaveProperty('success', false)
+        expect(res.body.error).toMatch(/Password is a mandatory field/i)
+    })
+
+    it('should gave error 400 if password is null', async () => {
+        const res = await request(app)
+            .post('/createuser')
+            .send({
+                username: 'Pablo',
+                email: 'pablo@uniovi.es',
+                password: null
+            })
+            .set('Accept', 'application/json')
+
+        expect(res.status).toBe(400)
+        expect(res.body.success).toBe(false)
         expect(res.body.error).toMatch(/Password is a mandatory field/i)
     })
 
@@ -199,7 +230,6 @@ describe('POST /createuser', () => {
 
             expect(res.status).toBe(500)
             expect(res.body).toHaveProperty('success', false)
-
             expect(res.body.error).toBe('Internal server error')
 
             expect(consoleErrorSpy).toHaveBeenCalled()
@@ -262,7 +292,6 @@ describe('POST /createuser', () => {
 
             expect(res.status).toBe(400)
             expect(res.body.error).not.toBe('Internal sevrer error')
-
             expect(consoleErrorSpy).not.toHaveBeenCalled()
 
             saveSpy.mockRestore()
@@ -291,11 +320,61 @@ describe('POST /createuser', () => {
             expect(res.status).toBe(400)
             expect(res.body.error).toMatch(/already in the data base/i)
             expect(res.body.error).not.toBe('Internal sevrer error')
-
             expect(consoleErrorSpy).not.toHaveBeenCalled()
 
             saveSpy.mockRestore()
             consoleErrorSpy.mockRestore()
+        })
+
+        it('should handle duplicate key errors when keyPattern contains email', async () => {
+            const duplicateError = new Error('Duplicate key error');
+            duplicateError.code = 11000;
+            duplicateError.keyPattern = { email: 1 };
+
+            const saveSpy = vi.spyOn(mongoose.Model.prototype, 'save')
+                .mockRejectedValueOnce(duplicateError)
+
+            const res = await request(app)
+                .post('/createuser')
+                .send({
+                    username: 'otro_usuario',
+                    email: 'duplicado@uniovi.es',
+                    password: '123456'
+                })
+                .set('Accept', 'application/json')
+
+            expect(res.status).toBe(400)
+            expect(res.body.error).toMatch(/email field is already in the data base/i)
+
+            saveSpy.mockRestore()
+        })
+
+        it('should handle ValidationError with multiple field messages', async () => {
+            const validationError = new Error('Validation error');
+            validationError.name = 'ValidationError';
+            validationError.errors = {
+                email: { message: 'Email is invalid' },
+                username: { message: 'Username is invalid' }
+            };
+
+            const saveSpy = vi.spyOn(mongoose.Model.prototype, 'save')
+                .mockRejectedValueOnce(validationError)
+
+            const res = await request(app)
+                .post('/createuser')
+                .send({
+                    username: '%%%invalid%%%',
+                    email: 'invalid-email',
+                    password: '123456'
+                })
+                .set('Accept', 'application/json')
+
+            expect(res.status).toBe(400)
+            expect(res.body.success).toBe(false)
+            expect(res.body.error).toContain('Email is invalid')
+            expect(res.body.error).toContain('Username is invalid')
+
+            saveSpy.mockRestore()
         })
 
         it('should handle errors with no code or name property', async () => {
@@ -320,6 +399,72 @@ describe('POST /createuser', () => {
         })
     })
 });
+
+describe('GET /users/:username', () => {
+    beforeAll(async () => {
+        if (!isConnected) {
+            const TEST_URI = process.env.MONGODB_URI;
+            await mongoose.connect(TEST_URI);
+            isConnected = true;
+        }
+    });
+
+    beforeEach(async () => {
+        await mongoose.connection.collections['users']?.deleteMany({});
+        await request(app)
+            .post('/createuser')
+            .send({
+                username: 'usuario_get_one',
+                email: 'getone@uniovi.es',
+                password: '123456'
+            });
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks()
+    })
+
+    it('should return one user by username', async () => {
+        const res = await request(app)
+            .get('/users/usuario_get_one')
+            .expect(200)
+
+        expect(res.body.success).toBe(true)
+        expect(res.body.user).toHaveProperty('username', 'usuario_get_one')
+        expect(res.body.user).toHaveProperty('email', 'getone@uniovi.es')
+        expect(res.body.user).toHaveProperty('password', '123456')
+    })
+
+    it('should return 404 when user does not exist', async () => {
+        const res = await request(app)
+            .get('/users/no_existe')
+            .expect(404)
+
+        expect(res.body.success).toBe(false)
+        expect(res.body.error).toBe('User not found')
+    })
+
+    it('should return 500 when findOne throws in GET /users/:username', async () => {
+        const mockError = new Error('findOne failed in GET /users/:username')
+        const findOneSpy = vi.spyOn(mongoose.Model, 'findOne')
+            .mockRejectedValueOnce(mockError)
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        const res = await request(app)
+            .get('/users/usuario_get_one')
+            .expect(500)
+
+        expect(res.body.success).toBe(false)
+        expect(res.body.error).toBe('Internal server error')
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+            'Error in GET /users/:username:',
+            mockError
+        )
+
+        findOneSpy.mockRestore()
+        consoleErrorSpy.mockRestore()
+    })
+})
 
 describe('GET /users', () => {
     beforeAll(async () => {
@@ -354,6 +499,19 @@ describe('GET /users', () => {
         expect(res.body.count).toBeGreaterThanOrEqual(2)
         expect(res.body).toHaveProperty('users')
         expect(Array.isArray(res.body.users)).toBe(true)
+    })
+
+    it('should not include password field in GET /users response', async () => {
+        const res = await request(app)
+            .get('/users')
+            .expect(200)
+
+        expect(res.body.success).toBe(true)
+        expect(Array.isArray(res.body.users)).toBe(true)
+
+        for (const user of res.body.users) {
+            expect(user).not.toHaveProperty('password')
+        }
     })
 
     describe('GET /users - Error handling', () => {
@@ -498,6 +656,21 @@ describe('POST /gameresult', () => {
         expect(res.body.game).toHaveProperty('opponent', 'bot_dificil')
         expect(res.body.game).toHaveProperty('result', 'win')
         expect(res.body.game).toHaveProperty('score', 150)
+    })
+
+    it('should save score 0 when score is omitted', async () => {
+        const res = await request(app)
+            .post('/gameresult')
+            .send({
+                username: 'jugador',
+                opponent: 'bot_sin_score',
+                result: 'win'
+            })
+            .set('Accept', 'application/json')
+            .expect(201)
+
+        expect(res.body.success).toBe(true)
+        expect(res.body.game).toHaveProperty('score', 0)
     })
 
     it('should return error 400 if fields are missing', async () => {
@@ -759,6 +932,17 @@ describe('GET /history/:username', () => {
         expect(res.body).toHaveProperty('total', 2)
         expect(Array.isArray(res.body.games)).toBe(true)
         expect(res.body.games.length).toBe(2)
+    })
+
+    it('should respect the limit query parameter', async () => {
+        const res = await request(app)
+            .get('/history/historial_user?limit=1')
+            .expect(200)
+
+        expect(res.body.success).toBe(true)
+        expect(res.body.total).toBe(1)
+        expect(Array.isArray(res.body.games)).toBe(true)
+        expect(res.body.games.length).toBe(1)
     })
 
     it('should return empty history for user without games', async () => {
@@ -1045,6 +1229,16 @@ describe('GET /ranking', () => {
         }
     })
 
+    it('should return at most 10 users in ranking', async () => {
+        const res = await request(app)
+            .get('/ranking')
+            .expect(200)
+
+        expect(res.body.success).toBe(true)
+        expect(Array.isArray(res.body.ranking)).toBe(true)
+        expect(res.body.ranking.length).toBeLessThanOrEqual(10)
+    })
+
     describe('GET /ranking - Error handling', () => {
         beforeAll(async () => {
             if (!isConnected) {
@@ -1277,6 +1471,14 @@ describe('GET /health', () => {
         expect(res.body).toHaveProperty('server', 'running')
         expect(res.body).toHaveProperty('database')
         expect(res.body).toHaveProperty('timestamp')
+    })
+
+    it('should return a valid timestamp format', async () => {
+        const res = await request(app)
+            .get('/health')
+            .expect(200)
+
+        expect(new Date(res.body.timestamp).toString()).not.toBe('Invalid Date')
     })
 });
 
