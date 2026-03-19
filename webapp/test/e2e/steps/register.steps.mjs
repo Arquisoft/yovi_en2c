@@ -7,7 +7,6 @@ Given("the register page is open", async function () {
   if (!page) throw new Error("Page not initialized");
 
   await page.goto(`${BASE_URL}/register`);
-
   await page.waitForSelector("#register-username");
   await page.waitForSelector("#register-email");
   await page.waitForSelector("#register-password");
@@ -29,10 +28,7 @@ When(
     await page.fill("#register-password", password);
     await page.fill("#register-repeat-password", repeatPassword);
 
-    await Promise.all([
-      page.waitForURL("**/"),
-      page.locator(".submit-button").click()
-    ]);
+    await page.locator(".submit-button").click();
   }
 );
 
@@ -40,8 +36,11 @@ Then("I should be redirected to the login page", async function () {
   const page = this.page;
   if (!page) throw new Error("Page not initialized");
 
-  const url = page.url();
-  const normalized = new URL(url).pathname;
+  await page.waitForFunction(() => window.location.pathname === "/", null, {
+    timeout: 10000,
+  });
+
+  const normalized = new URL(page.url()).pathname;
 
   if (normalized !== "/") {
     throw new Error(`Expected path to be "/", but got: ${normalized}`);
