@@ -34,6 +34,7 @@ export const translations: Record<Lang, Dict> = {
     "registration.error.generic": "Error de registro",
     "registration.error.network": "Error de red",
     "registration.goLogin": "¿Ya tienes cuenta? Volver al login",
+    "registration.heading": "REGISTRO",
 
     // Login
     "login.aria": "Inicio de sesión",
@@ -46,6 +47,8 @@ export const translations: Record<Lang, Dict> = {
     "login.error.invalid": "Error de inicio de sesión",
     "login.error.network": "Error de red",
     "login.goRegister": "¿No tienes cuenta? Regístrate",
+    "login.heading": "INICIAR SESIÓN",
+
 
     // Home
     "home.badge": "Estás en Gamey - Yovi_EN2C",
@@ -64,6 +67,24 @@ export const translations: Record<Lang, Dict> = {
     "home.card3.title": "🤖 Distintos bots!",
     "home.card3.text": "Algunos son más listos que otros",
     "home.card3.pill": "Diferentes dificultades",
+    "home.play": "JUGAR",
+    "home.card.bots": "Partida contra bots",
+    "home.card.players": "Partida contra jugadores",
+    "home.config.botTitle": "CONFIGURACIÓN DEL BOT",
+    "home.config.playerTitle": "CONFIGURACIÓN DE PARTIDA",
+    "home.config.bot": "Bot",
+    "home.config.boardSize": "Tamaño del tablero",
+
+    // Bots
+    "game.bot.random": "Bot aleatorio",
+    "game.bot.smart": "Bot inteligente",
+    "game.bot.minimax": "Bot Minimax",
+    "game.bot.alfabeta": "Bot Alfa-Beta",
+    "game.bot.mcHard": "Monte Carlo (Difícil)",
+    "game.bot.mcExtreme": "Monte Carlo (Extremo)",
+
+
+
 
     // Game
     "game.new": "Nueva partida",
@@ -74,12 +95,19 @@ export const translations: Record<Lang, Dict> = {
     "game.ok": "Conectado correctamente → {msg}",
     "game.fail": "Error de conexión → {msg}",
     "game.back": "Volver a Home",
+    "game.restart": "Nueva partida",
+    "game.pressStart": "Pulsa empezar para jugar",
+
 
     // Game Ends
     "game.finished.win": "Partida terminada: Has ganado",
     "game.finished.lost": "Partida terminada: Has perdido",
     "game.finished.draw": "Partida terminada: Empate",
     "game.finished.back": "Volver al juego",
+    "game.finished.winSub": "¡Bien jugado!",
+    "game.finished.lostSub": "Mejor suerte la próxima vez.",
+    "game.finished.drawSub": "¡Casi!",
+
   },
 
   en: {
@@ -111,6 +139,7 @@ export const translations: Record<Lang, Dict> = {
     "registration.error.generic": "Registration failed",
     "registration.error.network": "Network error",
     "registration.goLogin": "Already have an account? Back to login",
+    "registration.heading": "REGISTER",
 
     // Login
     "login.aria": "User login",
@@ -123,6 +152,7 @@ export const translations: Record<Lang, Dict> = {
     "login.error.invalid": "Login failed",
     "login.error.network": "Network error",
     "login.goRegister": "Don’t have an account? Register",
+    "login.heading": "LOGIN",
 
     // Home
     "home.badge": "You are in Gamey - Yovi_EN2C",
@@ -140,6 +170,23 @@ export const translations: Record<Lang, Dict> = {
     "home.card3.title": "🤖 Different bots!",
     "home.card3.text": "Some are smarter than others",
     "home.card3.pill": "Different difficultites",
+    "home.play": "PLAY",
+    "home.card.bots": "Game against bots",
+    "home.card.players": "Game against players",
+    "home.config.botTitle": "BOT SETTINGS",
+    "home.config.playerTitle": "MATCH SETTINGS",
+    "home.config.bot": "Bot",
+    "home.config.boardSize": "Board size",
+
+    // Bots
+    "game.bot.random": "Random Bot",
+    "game.bot.smart": "Smart Bot",
+    "game.bot.minimax": "Minimax Bot",
+    "game.bot.alfabeta": "Alpha-Beta Bot",
+    "game.bot.mcHard": "Monte Carlo (Hard)",
+    "game.bot.mcExtreme": "Monte Carlo (Extreme)",
+
+
 
     // Game
     "game.new": "New game",
@@ -150,11 +197,19 @@ export const translations: Record<Lang, Dict> = {
     "game.ok": "Connected → {msg}",
     "game.fail": "Connection error → {msg}",
     "game.back": "Back To Home",
+    "game.restart": "New Game",
+    "game.pressStart": "Press Start to begin",
+
+
 
     // Game Ends
     "game.finished.win": "Game Finished: You win",
     "game.finished.lost": "Game Finished: You lost",
     "game.finished.draw": "Game Finished: Draw",
     "game.finished.back": "Back to game",
+    "game.finished.winSub": "Well played!",
+    "game.finished.lostSub": "Better luck next time.",
+    "game.finished.drawSub": "So close!",
+
   },
 };
