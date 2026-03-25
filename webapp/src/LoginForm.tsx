@@ -31,8 +31,7 @@ const LoginForm: React.FC = () => {
 
     setLoading(true);
     try {
-      const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
-
+      const API_URL = "/api";
       const res = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
