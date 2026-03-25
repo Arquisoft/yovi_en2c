@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import "@testing-library/jest-dom";
-import SelectDifficulty from "./SelectDifficulty";
-import { I18nProvider } from "./i18n/I18nProvider";
+import SelectDifficulty from "../SelectDifficulty";
+import { I18nProvider } from "../i18n/I18nProvider";
 
 const mockNavigate = vi.fn();
 
