@@ -125,7 +125,7 @@ describe("Home", () => {
     );
 
     expect(mockNavigate).toHaveBeenCalledWith("/game", {
-      state: { username: "Pablo" },
+      state: { username: "Pablo", bot: "minimax_bot" },
     });
   });
 
