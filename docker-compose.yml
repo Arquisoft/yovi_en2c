@@ -1,12 +1,27 @@
 services:
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - webapp
+      - gateway
+    networks:
+      - monitor-net
+
   users:
     build: ./users
     container_name: users
     image: ghcr.io/arquisoft/yovi_en2c-users:latest
-    ports:
-      - "3000:3000"
     environment:
       - MONGODB_URI=${MONGODB_URI}
+    expose:
+      - "3000"
     networks:
       - monitor-net
 
@@ -14,8 +29,6 @@ services:
     build: ./authentication
     container_name: authentication
     image: ghcr.io/arquisoft/yovi_en2c-authentication:latest
-    ports:
-      - "5000:5000"
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES=${JWT_EXPIRES}
@@ -23,6 +36,8 @@ services:
       - PORT=5000
     depends_on:
       - users
+    expose:
+      - "5000"
     networks:
       - monitor-net
 
@@ -30,22 +45,20 @@ services:
     build:
       context: ./webapp
       args:
-        - VITE_API_URL=http://13.61.177.230:8080
+        - VITE_API_URL=/api
     container_name: webapp
     image: ghcr.io/arquisoft/yovi_en2c-webapp:latest
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     depends_on:
       - gateway
     networks:
       - monitor-net
 
   gateway:
-    build: ./gatewayservice
+    build: ./gateway
     container_name: gateway
     image: ghcr.io/arquisoft/yovi_en2c-gateway:latest
-    ports:
-      - "8080:8080"
     environment:
       - AUTH_BASE_URL=http://authentication:5000
       - GAMEY_BASE_URL=http://gamey:4000
@@ -53,6 +66,8 @@ services:
     depends_on:
       - authentication
       - gamey
+    expose:
+      - "8080"
     networks:
       - monitor-net
 
@@ -60,8 +75,8 @@ services:
     build: ./gamey
     container_name: gamey
     image: ghcr.io/arquisoft/yovi_en2c-gamey:latest
-    ports:
-      - "4000:4000"
+    expose:
+      - "4000"
     networks:
       - monitor-net
 
