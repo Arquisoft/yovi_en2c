@@ -4,7 +4,7 @@ import { useI18n } from "./i18n/I18nProvider";
 import logo from "../img/logo.png";
 import LanguageToggle from "./LanguageToggle.tsx";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+const API_URL = import.meta.env.VITE_API_URL ?? "/api"; // <-- use relative
 
 const RegistrationForm: React.FC = () => {
   const navigate = useNavigate();
