@@ -77,7 +77,7 @@ describe("Home", () => {
     expect(screen.getAllByRole("img", { name: /GameY/i })).toHaveLength(2);
     expect(screen.getByText(/Juega al juego Y|Play the Game of Y/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Empezar partida|Start game/i })
+      screen.getByRole("button", { name: /Partida rapida|Start quick game/i })
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Cambiar usuario|Change user/i })
@@ -118,10 +118,10 @@ describe("Home", () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
-    await screen.findByRole("button", { name: /Empezar partida|Start game/i });
+    await screen.findByRole("button", { name: /Partida rapida|Start quick game/i });
 
     await user.click(
-      screen.getByRole("button", { name: /Empezar partida|Start game/i })
+      screen.getByRole("button", { name: /Partida rapida|Start quick game/i })
     );
 
     expect(mockNavigate).toHaveBeenCalledWith("/game", {
