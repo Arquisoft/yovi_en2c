@@ -335,27 +335,25 @@ describe("Game component", () => {
     });
   });
 
-  test("navigates to finished screen when backend returns a winning result", async () => {
-    vi.useFakeTimers();
-
+  test("shows win overlay when backend returns a winning result", async () => {
     global.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,
       text: async () =>
-        JSON.stringify({
-          ok: true,
-          finished: true,
-          winner: "B",
-          winning_edges: [
-            [[0, 0], [1, 0]],
-            [[1, 0], [2, 0]],
-          ],
-          yen: {
-            size: 7,
-            players: ["B", "R"],
-            layout: "......./......./......./......./......./......./.......",
-          },
-        }),
-    } as unknown as Response);
+          JSON.stringify({
+            ok: true,
+            finished: true,
+            winner: "B",
+            winning_edges: [
+              [[0, 0], [1, 0]],
+              [[1, 0], [2, 0]],
+            ],
+            yen: {
+              size: 7,
+              players: ["B", "R"],
+              layout: "......./......./......./......./......./......./.......",
+            },
+          }),
+    } as Response);
 
     renderGame();
 
@@ -365,13 +363,10 @@ describe("Game component", () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
 
-    act(() => {
-      vi.advanceTimersByTime(950);
-    });
-
-    expect(mockNavigate).toHaveBeenCalledWith("/game/finished", {
-      replace: true,
-      state: { result: "win" },
+    // Esperar que aparezca el overlay con el mensaje de victoria
+    await waitFor(() => {
+      expect(screen.getByText(/Has ganado|You win/i)).toBeInTheDocument();
     });
   });
+
 });
