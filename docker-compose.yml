@@ -10,6 +10,7 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - /etc/letsencrypt/live/gameofy.publicvm.com:/etc/letsencrypt/live/gameofy.publicvm.com:ro
+      - /etc/letsencrypt/archive/gameofy.publicvm.com:/etc/letsencrypt/archive/gameofy.publicvm.com:ro
     depends_on:
       - webapp
       - gateway
