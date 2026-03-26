@@ -7,8 +7,8 @@ type BotId = "random_bot" | "heuristic_bot" | "minimax_bot" | "alfa_beta_bot" | 
 type WinningEdge = [[number, number], [number, number]];
 
 type GatewayResponse =
-  | { ok: true; yen?: any; finished?: boolean; winner?: string | null; winning_edges?: WinningEdge[]; message?: string }
-  | { ok: false; error: string; details?: any };
+    | { ok: true; yen?: any; finished?: boolean; winner?: string | null; winning_edges?: WinningEdge[]; message?: string }
+    | { ok: false; error: string; details?: any };
 
 type LocationState = {
   username?: string;
@@ -16,7 +16,7 @@ type LocationState = {
   botId?: BotId;
   boardSize?: number;
 };
-const API_URL = import.meta.env.VITE_API_URL ?? "/api"; // <-- use relative
+const API_URL = import.meta.env.VITE_API_URL ?? "/api";
 
 function parseLayout(layout: string) {
   if (!layout) return [];
@@ -42,8 +42,8 @@ function useWindowSize() {
 function normalizeEdges(raw: any): WinningEdge[] {
   if (!Array.isArray(raw)) return [];
   return raw
-    .filter((e: any) => Array.isArray(e) && e.length === 2 && Array.isArray(e[0]) && Array.isArray(e[1]))
-    .map((e: any) => [[Number(e[0][0]), Number(e[0][1])], [Number(e[1][0]), Number(e[1][1])]]);
+      .filter((e: any) => Array.isArray(e) && e.length === 2 && Array.isArray(e[0]) && Array.isArray(e[1]))
+      .map((e: any) => [[Number(e[0][0]), Number(e[0][1])], [Number(e[1][0]), Number(e[1][1])]]);
 }
 
 const Game: React.FC = () => {
@@ -138,7 +138,11 @@ const Game: React.FC = () => {
     finishTimerRef.current = window.setTimeout(() => {
       navigate("/game/finished", {
         replace: true,
-        state: { result: winner ? (youWin ? "win" : "lost") : "draw" },
+        state: {
+          result: winner ? (youWin ? "win" : "lost") : "draw",
+          // Pass the bot id as opponent so GameFinished can record it
+          opponent: gameMode === "bot" ? botId : "player",
+        },
       });
     }, winner ? 900 : 350);
   };
@@ -215,143 +219,143 @@ const Game: React.FC = () => {
   };
 
   return (
-    <div className="game-page">
-      <Navbar username={username} onLogout={logout} />
+      <div className="game-page">
+        <Navbar username={username} onLogout={logout} />
 
-      <main className="game-main">
-        {/* Toolbar */}
-        <div ref={headerRef} className="game-toolbar">
-          <button
-            type="button"
-            className="btn btn--outline"
-            style={{ padding: "8px 14px", fontSize: 13 }}
-            onClick={() => navigate("/home", { state: { username } })}
-          >
-            ← {t("game.back")}
-          </button>
+        <main className="game-main">
+          {/* Toolbar */}
+          <div ref={headerRef} className="game-toolbar">
+            <button
+                type="button"
+                className="btn btn--outline"
+                style={{ padding: "8px 14px", fontSize: 13 }}
+                onClick={() => navigate("/home", { state: { username } })}
+            >
+              ← {t("game.back")}
+            </button>
 
-          {gameMode === "bot" && (
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", letterSpacing: ".5px", textTransform: "uppercase" }}>
+            {gameMode === "bot" && (
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", letterSpacing: ".5px", textTransform: "uppercase" }}>
               vs {botId.replace(/_/g, " ")}
             </span>
-          )}
+            )}
 
-          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", letterSpacing: ".5px", textTransform: "uppercase" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", letterSpacing: ".5px", textTransform: "uppercase" }}>
             {boardSize}×{boardSize}
           </span>
 
-          <button
-            type="button"
-            className="btn btn--primary"
-            style={{ padding: "8px 16px", fontSize: 13 }}
-            onClick={newGame}
-            disabled={busy}
-          >
-            {gameStarted ? t("game.restart") ?? "New Game" : t("game.new") ?? "Start"}
-          </button>
+            <button
+                type="button"
+                className="btn btn--primary"
+                style={{ padding: "8px 16px", fontSize: 13 }}
+                onClick={newGame}
+                disabled={busy}
+            >
+              {gameStarted ? t("game.restart") ?? "New Game" : t("game.new") ?? "Start"}
+            </button>
+
+            {gameStarted && (
+                <button
+                    type="button"
+                    className="btn btn--outline"
+                    style={{ padding: "8px 14px", fontSize: 13 }}
+                    onClick={() => sendMove(null)}
+                    disabled={!selected || busy || !yen}
+                >
+                  {busy ? t("game.sending") : t("game.send")}
+                </button>
+            )}
+          </div>
+
+          {error && (
+              <p className="msg msg--error" style={{ textAlign: "center" }}>{error}</p>
+          )}
+
+          {!gameStarted && (
+              <div style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 12,
+                color: "var(--muted)",
+              }}>
+                <span style={{ fontSize: 48 }}>🎮</span>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 16, letterSpacing: ".5px" }}>
+                  {t("game.pressStart") ?? "Press Start to begin"}
+                </p>
+              </div>
+          )}
 
           {gameStarted && (
-            <button
-              type="button"
-              className="btn btn--outline"
-              style={{ padding: "8px 14px", fontSize: 13 }}
-              onClick={() => sendMove(null)}
-              disabled={!selected || busy || !yen}
-            >
-              {busy ? t("game.sending") : t("game.send")}
-            </button>
+              <div
+                  className="game-board-wrap"
+                  style={{ width: `${boardPx}px`, height: `${boardPx}px` }}
+              >
+                <svg
+                    viewBox={`0 0 ${boardWidth} ${boardWidth}`}
+                    width="100%"
+                    height="100%"
+                    preserveAspectRatio="xMidYMid meet"
+                    style={{ display: "block", touchAction: "manipulation" }}
+                >
+                  {/* Win overlay edges */}
+                  {winOverlay?.edges?.map(([[r1, c1], [r2, c2]], i) => {
+                    const row1 = layoutMatrix[r1];
+                    const row2 = layoutMatrix[r2];
+                    if (!row1 || !row2) return null;
+                    const ox1 = padding + ((actualBoardSize - row1.length) * cellSpacing) / 2;
+                    const ox2 = padding + ((actualBoardSize - row2.length) * cellSpacing) / 2;
+                    return (
+                        <line
+                            key={`we-${i}`}
+                            x1={ox1 + c1 * cellSpacing}
+                            y1={padding + r1 * rowHeight}
+                            x2={ox2 + c2 * cellSpacing}
+                            y2={padding + r2 * rowHeight}
+                            stroke={overlayStroke(winOverlay.winner)}
+                            strokeWidth={Math.max(3, r * 0.9)}
+                            strokeLinecap="round"
+                            opacity={0.85}
+                        />
+                    );
+                  })}
+
+                  {/* Cells */}
+                  {layoutMatrix.map((row, ri) => {
+                    const offsetX = padding + ((actualBoardSize - row.length) * cellSpacing) / 2;
+                    return row.map((cell, ci) => {
+                      const x = offsetX + ci * cellSpacing;
+                      const y = padding + ri * rowHeight;
+
+                      let fill = "#b0aa9f";
+                      if (cell === humanToken) fill = "#1e6bb8";
+                      if (cell === botToken)   fill = "#b83232";
+                      const isSelected = !!selected && selected.row === ri && selected.col === ci;
+                      if (isSelected && cell === ".") fill = "#d4782a";
+
+                      const clickable = cell === "." && !busy && !!yen;
+
+                      return (
+                          <circle
+                              key={`${ri}-${ci}`}
+                              cx={x} cy={y} r={r}
+                              fill={fill}
+                              stroke="#5a5650"
+                              strokeWidth={1.2}
+                              onClick={() => { if (!clickable) return; setSelected({ row: ri, col: ci }); }}
+                              onDoubleClick={() => { if (!clickable) return; sendMove({ row: ri, col: ci }); }}
+                              style={{ cursor: clickable ? "pointer" : "default" }}
+                          />
+                      );
+                    });
+                  })}
+                </svg>
+              </div>
           )}
-        </div>
-
-        {error && (
-          <p className="msg msg--error" style={{ textAlign: "center" }}>{error}</p>
-        )}
-
-        {!gameStarted && (
-          <div style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 12,
-            color: "var(--muted)",
-          }}>
-            <span style={{ fontSize: 48 }}>🎮</span>
-            <p style={{ margin: 0, fontWeight: 700, fontSize: 16, letterSpacing: ".5px" }}>
-              {t("game.pressStart") ?? "Press Start to begin"}
-            </p>
-          </div>
-        )}
-
-        {gameStarted && (
-          <div
-            className="game-board-wrap"
-            style={{ width: `${boardPx}px`, height: `${boardPx}px` }}
-          >
-            <svg
-              viewBox={`0 0 ${boardWidth} ${boardWidth}`}
-              width="100%"
-              height="100%"
-              preserveAspectRatio="xMidYMid meet"
-              style={{ display: "block", touchAction: "manipulation" }}
-            >
-              {/* Win overlay edges */}
-              {winOverlay?.edges?.map(([[r1, c1], [r2, c2]], i) => {
-                const row1 = layoutMatrix[r1];
-                const row2 = layoutMatrix[r2];
-                if (!row1 || !row2) return null;
-                const ox1 = padding + ((actualBoardSize - row1.length) * cellSpacing) / 2;
-                const ox2 = padding + ((actualBoardSize - row2.length) * cellSpacing) / 2;
-                return (
-                  <line
-                    key={`we-${i}`}
-                    x1={ox1 + c1 * cellSpacing}
-                    y1={padding + r1 * rowHeight}
-                    x2={ox2 + c2 * cellSpacing}
-                    y2={padding + r2 * rowHeight}
-                    stroke={overlayStroke(winOverlay.winner)}
-                    strokeWidth={Math.max(3, r * 0.9)}
-                    strokeLinecap="round"
-                    opacity={0.85}
-                  />
-                );
-              })}
-
-              {/* Cells */}
-              {layoutMatrix.map((row, ri) => {
-                const offsetX = padding + ((actualBoardSize - row.length) * cellSpacing) / 2;
-                return row.map((cell, ci) => {
-                  const x = offsetX + ci * cellSpacing;
-                  const y = padding + ri * rowHeight;
-
-                  let fill = "#b0aa9f";
-                  if (cell === humanToken) fill = "#1e6bb8";
-                  if (cell === botToken)   fill = "#b83232";
-                  const isSelected = !!selected && selected.row === ri && selected.col === ci;
-                  if (isSelected && cell === ".") fill = "#d4782a";
-
-                  const clickable = cell === "." && !busy && !!yen;
-
-                  return (
-                    <circle
-                      key={`${ri}-${ci}`}
-                      cx={x} cy={y} r={r}
-                      fill={fill}
-                      stroke="#5a5650"
-                      strokeWidth={1.2}
-                      onClick={() => { if (!clickable) return; setSelected({ row: ri, col: ci }); }}
-                      onDoubleClick={() => { if (!clickable) return; sendMove({ row: ri, col: ci }); }}
-                      style={{ cursor: clickable ? "pointer" : "default" }}
-                    />
-                  );
-                });
-              })}
-            </svg>
-          </div>
-        )}
-      </main>
-    </div>
+        </main>
+      </div>
   );
 };
 

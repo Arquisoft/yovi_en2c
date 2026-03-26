@@ -176,6 +176,61 @@ app.post("/login", async (req, res) => {
   }
 });
 
+// ── Game history endpoints (proxied to users-service) ────────────────────────
+
+/**
+ * POST /gameresult
+ * Records a finished game result for a user.
+ * Body: { username, opponent, result: "win"|"loss", score? }
+ */
+app.post("/gameresult", async (req, res) => {
+  try {
+    const { username, opponent, result, score } = req.body;
+    const response = await axios.post(`${USERS_BASE_URL}/gameresult`, { // NOSONAR
+      username,
+      opponent,
+      result,
+      score,
+    });
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    if (error.response) return res.status(error.response.status).json(error.response.data);
+    return res.status(500).json({ success: false, error: "User service unavailable" });
+  }
+});
+
+/**
+ * GET /history/:username
+ * Returns the game history and stats for a user.
+ * Query param: limit (default 20)
+ */
+app.get("/history/:username", async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { limit } = req.query;
+    const url = `${USERS_BASE_URL}/history/${encodeURIComponent(username)}${limit ? `?limit=${limit}` : ""}`;
+    const response = await axios.get(url); // NOSONAR
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    if (error.response) return res.status(error.response.status).json(error.response.data);
+    return res.status(500).json({ success: false, error: "User service unavailable" });
+  }
+});
+
+/**
+ * GET /ranking
+ * Returns the top-10 ranking of players by wins.
+ */
+app.get("/ranking", async (req, res) => {
+  try {
+    const response = await axios.get(`${USERS_BASE_URL}/ranking`); // NOSONAR
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    if (error.response) return res.status(error.response.status).json(error.response.data);
+    return res.status(500).json({ success: false, error: "User service unavailable" });
+  }
+});
+
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
     console.log(`Gateway listening on http://localhost:${PORT}`);
