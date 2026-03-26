@@ -13,6 +13,7 @@ export const translations: Record<Lang, Dict> = {
     "common.logout": "Salir",
     "common.language": "Idioma",
     "common.user": "Usuario",
+    "common.stats": "Estadísticas",
 
     // Register
     "register.title": "GameY",
@@ -108,6 +109,21 @@ export const translations: Record<Lang, Dict> = {
     "game.finished.lostSub": "Mejor suerte la próxima vez.",
     "game.finished.drawSub": "¡Casi!",
 
+    // Stats
+    "stats.title": "ESTADÍSTICAS",
+    "stats.loading": "Cargando tu historial…",
+    "stats.played": "Jugadas",
+    "stats.wins": "Victorias",
+    "stats.losses": "Derrotas",
+    "stats.winRate": "Porcentaje de victoria",
+    "stats.history": "HISTORIAL DE PARTIDAS",
+    "stats.games": "partidas",
+    "stats.noGames": "Aún no has jugado ninguna partida. ¡Empieza a jugar!",
+    "stats.col.result": "Resultado",
+    "stats.col.opponent": "Oponente",
+    "stats.col.date": "Fecha",
+    "stats.win": "VICTORIA",
+    "stats.loss": "DERROTA",
   },
 
   en: {
@@ -118,6 +134,7 @@ export const translations: Record<Lang, Dict> = {
     "common.logout": "Logout",
     "common.language": "Language",
     "common.user": "User",
+    "common.stats": "Stats",
 
     // Register
     "register.title": "GameY",
@@ -210,6 +227,22 @@ export const translations: Record<Lang, Dict> = {
     "game.finished.winSub": "Well played!",
     "game.finished.lostSub": "Better luck next time.",
     "game.finished.drawSub": "So close!",
+
+    // Stats
+    "stats.title": "STATISTICS",
+    "stats.loading": "Loading your history…",
+    "stats.played": "Played",
+    "stats.wins": "Wins",
+    "stats.losses": "Losses",
+    "stats.winRate": "Win Rate",
+    "stats.history": "MATCH HISTORY",
+    "stats.games": "games",
+    "stats.noGames": "No games played yet. Start playing!",
+    "stats.col.result": "Result",
+    "stats.col.opponent": "Opponent",
+    "stats.col.date": "Date",
+    "stats.win": "WIN",
+    "stats.loss": "LOSS",
 
   },
 };
