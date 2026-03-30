@@ -6,6 +6,7 @@ const app = express();
 app.disable("x-powered-by");
 const PORT = 8080;
 
+
 app.use(express.json());
 app.use(cors({
   origin: [
@@ -82,7 +83,7 @@ app.post("/game/pvb/move", async (req, res) => {
   if (typeof row !== "number" || typeof col !== "number") {
     return res.status(400).json({ ok: false, error: "Missing row/col" });
   }
-  if (!bot || typeof bot !== "string" || !/^[a-z0-9_]+$/.test(bot)) {
+  if (!bot || typeof bot !== "string" || !CANDIDATE_BOT_IDS.includes(bot)) {
     return res.status(400).json({ ok: false, error: "Invalid bot id" });
   }
 
@@ -106,7 +107,7 @@ app.post("/game/bot/choose", async (req, res) => {
   const { yen, bot } = req.body;
 
   if (!yen) return res.status(400).json({ ok: false, error: "Missing YEN" });
-  if (!bot || typeof bot !== "string" || !/^[a-z0-9_]+$/.test(bot)) {
+  if (!bot || typeof bot !== "string" || !CANDIDATE_BOT_IDS.includes(bot)) {
     return res.status(400).json({ ok: false, error: "Invalid bot id" });
   }
 

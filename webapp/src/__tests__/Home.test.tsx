@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, afterEach, describe, expect, test, vi } from "vitest";
@@ -50,65 +50,7 @@ describe("Home", () => {
     localStorage.clear();
   });
 
-  test("renders home content with username from location state", () => {
-    renderHome("Pablo");
 
-    expect(screen.getAllByRole("img", { name: /GameY/i })).toHaveLength(2);
-    expect(screen.getByText(/Hola Pablo|Hello Pablo/i)).toBeInTheDocument();
-    expect(screen.getByText(/Juega al juego Y|Play the Game of Y/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Empezar partida|Start game/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Cambiar usuario|Change user/i })
-    ).toBeInTheDocument();
-  });
-
-  test("renders home content with username from localStorage", () => {
-    renderHome(undefined, "Laura");
-
-    expect(screen.getByText(/Hola Laura|Hello Laura/i)).toBeInTheDocument();
-  });
-
-  test("prefers username from location state over localStorage", () => {
-    renderHome("Pablo", "Laura");
-
-    expect(screen.getByText(/Hola Pablo|Hello Pablo/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Hola Laura|Hello Laura/i)).not.toBeInTheDocument();
-  });
-
-  test("redirects to root when username is missing", async () => {
-    renderHome();
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
-    });
-  });
-
-  test("navigates to game when start button is clicked", async () => {
-    const user = userEvent.setup();
-    renderHome("Pablo");
-
-    await user.click(
-      screen.getByRole("button", { name: /Empezar partida|Start game/i })
-    );
-
-    expect(mockNavigate).toHaveBeenCalledWith("/game", {
-      state: { username: "Pablo" },
-    });
-  });
-
-  test("logs out and navigates to root when change user button is clicked", async () => {
-    const user = userEvent.setup();
-    renderHome(undefined, "Pablo");
-
-    await user.click(
-      screen.getByRole("button", { name: /Cambiar usuario|Change user/i })
-    );
-
-    expect(localStorage.getItem("username")).toBeNull();
-    expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
-  });
 
   test("logs out from navbar and navigates to root", async () => {
     const user = userEvent.setup();
@@ -122,19 +64,82 @@ describe("Home", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
   });
 
-  test("renders all information cards", () => {
+  test("renders username from location state", () => {
     renderHome("Pablo");
 
-    expect(
-      screen.getByText(/Modo rápido|Quick mode/i)
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByText(/Futuro|Future/i)
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByText(/Distintos bots|Different bots/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText("Pablo")).toBeInTheDocument();
   });
+
+  test("uses username from localStorage if not in state", () => {
+    renderHome(undefined, "Ana");
+
+    expect(screen.getByText("Ana")).toBeInTheDocument();
+  });
+
+  test("selecting bot mode shows config panel", async () => {
+    const user = userEvent.setup();
+    renderHome("Pablo");
+
+    await user.click(screen.getByText(/Game against bots/i));
+
+    expect(screen.getByText(/BOT SETTINGS|MATCH SETTINGS/i)).toBeInTheDocument();
+  });
+  test("selecting bot mode shows config panel", async () => {
+    const user = userEvent.setup();
+    renderHome("Pablo");
+
+    await user.click(screen.getByText(/Game against bots/i));
+
+    expect(screen.getByText(/BOT SETTINGS|MATCH SETTINGS/i)).toBeInTheDocument();
+  });
+
+  test("clicking same mode twice toggles it off", async () => {
+    const user = userEvent.setup();
+    renderHome("Pablo");
+
+    const botButton = screen.getByText(/Game against bots/i);
+
+    await user.click(botButton);
+    expect(screen.getByText(/BOT SETTINGS/i)).toBeInTheDocument();
+
+    await user.click(botButton);
+    expect(screen.queryByText(/BOT SETTINGS/i)).not.toBeInTheDocument();
+  });
+
+  test("player mode does not show bot selector", async () => {
+    const user = userEvent.setup();
+    renderHome("Pablo");
+
+    await user.click(screen.getByText(/Game against players/i));
+
+    expect(screen.queryByLabelText(/Bot/i)).not.toBeInTheDocument();
+  });
+
+  test("can change bot selection", async () => {
+    const user = userEvent.setup();
+    renderHome("Pablo");
+
+    await user.click(screen.getByText(/Game against bots/i));
+
+    const select = screen.getByRole("combobox", { name: /Bot/i });
+
+    await user.selectOptions(select, "minimax_bot");
+
+    expect(select).toHaveValue("minimax_bot");
+  });
+
+  test("can change board size", async () => {
+    const user = userEvent.setup();
+    renderHome("Pablo");
+
+    await user.click(screen.getByText(/Game against bots/i));
+
+    const select = screen.getByRole("combobox", { name: /Board size/i });
+
+    await user.selectOptions(select, "9");
+
+    expect(select).toHaveValue("9");
+  });
+
+
 });

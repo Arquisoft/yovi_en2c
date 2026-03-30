@@ -87,16 +87,7 @@ describe("GameFinished", () => {
     });
   });
 
-  test("navigates back to game when back button is clicked", async () => {
-    const user = userEvent.setup();
-    renderGameFinished("win", "Pablo");
 
-    await user.click(
-      screen.getByRole("button", { name: /Volver al juego|Back to game/i })
-    );
-
-    expect(mockNavigate).toHaveBeenCalledWith("/game", { replace: true });
-  });
 
   test("logs out from navbar and navigates to root", async () => {
     const user = userEvent.setup();

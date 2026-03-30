@@ -1,46 +1,40 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+// src/i18n/I18nProvider.tsx
+import React, { createContext, useContext, useState } from "react";
+import type { ReactNode } from "react";
 import { translations } from "./translations";
-import type { Lang } from "./translations";
 
-type I18nCtx = {
+type Lang = "en" | "es";
+
+interface I18nContextValue {
+  t: (key: string) => string;
   lang: Lang;
-  setLang: (l: Lang) => void;
-  t: (key: string, vars?: Record<string, string | number>) => string;
-};
-
-const I18nContext = createContext<I18nCtx | null>(null);
-
-function format(template: string, vars?: Record<string, string | number>) {
-  if (!vars) return template;
-  return template.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`));
+  setLang: (lang: Lang) => void;
 }
 
-export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [lang, setLangState] = useState<Lang>(() => {
-    const saved = localStorage.getItem("lang");
-    return (saved === "es" || saved === "en") ? saved : "es";
-  });
+const I18nContext = createContext<I18nContextValue | undefined>(undefined);
 
-  const setLang = (l: Lang) => {
-    localStorage.setItem("lang", l);
-    setLangState(l);
+interface I18nProviderProps {
+  children: ReactNode;
+}
+
+export const I18nProvider: React.FC<I18nProviderProps> = ({ children }) => {
+  const [lang, setLang] = useState<Lang>("en");
+
+  const t = (key: string) => {
+    return translations[lang][key] ?? key;
   };
 
-  const t = useMemo(() => {
-    return (key: string, vars?: Record<string, string | number>) => {
-      const dict = translations[lang];
-      const raw = dict[key] ?? translations.es[key] ?? key;
-      return format(raw, vars);
-    };
-  }, [lang]);
-
-  const value = useMemo(() => ({ lang, setLang, t }), [lang, t]);
-
-  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+  return (
+      <I18nContext.Provider value={{ t, lang, setLang }}>
+        {children}
+      </I18nContext.Provider>
+  );
 };
 
-export function useI18n() {
-  const ctx = useContext(I18nContext);
-  if (!ctx) throw new Error("useI18n must be used within I18nProvider");
-  return ctx;
-}
+export const useI18n = (): I18nContextValue => {
+  const context = useContext(I18nContext);
+  if (!context) {
+    throw new Error("useI18n must be used within an I18nProvider");
+  }
+  return context;
+};

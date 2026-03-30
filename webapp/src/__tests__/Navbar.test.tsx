@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import "@testing-library/jest-dom";
 import Navbar from "../Navbar";
 import { I18nProvider } from "../i18n/I18nProvider";
+import userEvent from "@testing-library/user-event";
 
 const mockNavigate = vi.fn();
 
@@ -53,90 +53,76 @@ describe("Navbar", () => {
     expect(screen.getByRole("button", { name: /^ES$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^EN$/i })).toBeInTheDocument();
   });
-
-  test("shows dash when username is missing", () => {
-    renderNavbar("/home", null);
-
-    expect(screen.getByText(/—/i)).toBeInTheDocument();
-  });
-
-  test("marks Home as current page when pathname is /home", () => {
-    renderNavbar("/home", "Pablo");
-
-    expect(screen.getByRole("button", { name: /^Home$/i })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("button", { name: /Juego|Game/i })).not.toHaveAttribute("aria-current");
-  });
-
-  test("marks Game as current page when pathname is /game", () => {
-    renderNavbar("/game", "Pablo");
-
-    expect(screen.getByRole("button", { name: /Juego|Game/i })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("button", { name: /^Home$/i })).not.toHaveAttribute("aria-current");
-  });
-
-  test("navigates to home when logo is clicked", async () => {
+  test("clicking logo navigates to /home with username state", async () => {
     const user = userEvent.setup();
     renderNavbar("/game", "Pablo");
 
-    await user.click(screen.getByRole("button", { name: /Ir a Home/i }));
+    const logoBtn = screen.getByRole("button", { name: /Go home/i });
+    await user.click(logoBtn);
 
-    expect(mockNavigate).toHaveBeenCalledWith("/home");
+    expect(mockNavigate).toHaveBeenCalledWith("/home", { state: { username: "Pablo" } });
   });
-
-  test("navigates to home when Home button is clicked", async () => {
+  test("navbar buttons navigate correctly", async () => {
     const user = userEvent.setup();
-    renderNavbar("/game", "Pablo");
+    renderNavbar("/stats", "Ana");
 
-    await user.click(screen.getByRole("button", { name: /^Home$/i }));
+    // Home button
+    const homeBtn = screen.getByRole("button", { name: /^Home$/i });
+    await user.click(homeBtn);
+    expect(mockNavigate).toHaveBeenCalledWith("/home", { state: { username: "Ana" } });
 
-    expect(mockNavigate).toHaveBeenCalledWith("/home");
+    // Game button
+    const gameBtn = screen.getByRole("button", { name: /Juego|Game/i });
+    await user.click(gameBtn);
+    expect(mockNavigate).toHaveBeenCalledWith("/game", { state: { username: "Ana" } });
+
+    // Stats button
+    const statsBtn = screen.getByRole("button", { name: /Stats/i });
+    await user.click(statsBtn);
+    expect(mockNavigate).toHaveBeenCalledWith("/stats", { state: { username: "Ana" } });
   });
-
-  test("navigates to game when Game button is clicked", async () => {
+  test("clicking logout calls onLogout", async () => {
     const user = userEvent.setup();
-    renderNavbar("/home", "Pablo");
+    const { onLogout } = renderNavbar("/home", "Ana");
 
-    await user.click(screen.getByRole("button", { name: /Juego|Game/i }));
-
-    expect(mockNavigate).toHaveBeenCalledWith("/game");
-  });
-
-  test("calls onLogout when logout button is clicked", async () => {
-    const user = userEvent.setup();
-    const { onLogout } = renderNavbar("/home", "Pablo", vi.fn());
-
-    await user.click(screen.getByRole("button", { name: /Salir|Logout/i }));
+    const logoutBtn = screen.getByRole("button", { name: /Salir|Logout/i });
+    await user.click(logoutBtn);
 
     expect(onLogout).toHaveBeenCalledTimes(1);
   });
+  test("active class is applied based on current path", () => {
+    const { rerender } = renderNavbar("/home", "Ana");
 
-  test("changes language from spanish to english", async () => {
-    const user = userEvent.setup();
-    renderNavbar("/home", "Pablo");
+    // Home is active
+    expect(screen.getByRole("button", { name: /^Home$/i })).toHaveClass("nav-link--active");
+    expect(screen.getByRole("button", { name: /Juego|Game/i })).not.toHaveClass("nav-link--active");
 
-    expect(screen.getByRole("button", { name: /^ES$/i })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: /^EN$/i })).toHaveAttribute("aria-pressed", "false");
+    // Change path to /game
+    rerender(
+        <MemoryRouter initialEntries={["/game"]}>
+          <I18nProvider>
+            <Navbar username="Ana" onLogout={vi.fn()} />
+          </I18nProvider>
+        </MemoryRouter>
+    );
 
-    await user.click(screen.getByRole("button", { name: /^EN$/i }));
+    expect(screen.getByRole("button", { name: /Juego|Game/i })).toHaveClass("nav-link--active");
+  });
+  test("renders custom title if provided", () => {
+    renderNavbar("/home", "Ana", vi.fn());
+    render(
+        <I18nProvider>
+          <MemoryRouter>
+            <Navbar username="Ana" title="Custom App"/>
+          </MemoryRouter>
+        </I18nProvider>
+    );
 
-    expect(screen.getByRole("button", { name: /^EN$/i })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: /^ES$/i })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: /^Game$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Logout$/i })).toBeInTheDocument();
-    expect(screen.getByText(/User/i)).toBeInTheDocument();
+    expect(screen.getByText("Custom App")).toBeInTheDocument();
+  });
+  test("does not render username when not provided", () => {
+    renderNavbar("/home", null);
+    expect(screen.queryByText(/👤/i)).not.toBeInTheDocument();
   });
 
-  test("changes language from english back to spanish", async () => {
-    const user = userEvent.setup();
-    renderNavbar("/home", "Pablo");
-
-    await user.click(screen.getByRole("button", { name: /^EN$/i }));
-    await user.click(screen.getByRole("button", { name: /^ES$/i }));
-
-    expect(screen.getByRole("button", { name: /^ES$/i })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: /^EN$/i })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: /Juego/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Salir/i })).toBeInTheDocument();
-    expect(screen.getByText(/Usuario/i)).toBeInTheDocument();
-  });
 });

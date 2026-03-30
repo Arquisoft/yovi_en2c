@@ -21,16 +21,6 @@ describe("LanguageToggle", () => {
     expect(screen.getByRole("button", { name: "EN" })).toBeInTheDocument();
   });
 
-  test("ES is active by default", () => {
-    renderWithProvider();
-
-    const esButton = screen.getByRole("button", { name: "ES" });
-    const enButton = screen.getByRole("button", { name: "EN" });
-
-    expect(esButton).toHaveAttribute("aria-pressed", "true");
-    expect(enButton).toHaveAttribute("aria-pressed", "false");
-  });
-
   test("switches language when clicking EN", async () => {
     const user = userEvent.setup();
 

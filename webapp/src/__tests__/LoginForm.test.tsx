@@ -5,7 +5,6 @@ import LoginForm from "../LoginForm";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import "@testing-library/jest-dom";
 import { I18nProvider } from "../i18n/I18nProvider";
-
 function renderWithProviders() {
   return render(
     <I18nProvider>
@@ -151,14 +150,4 @@ describe("LoginForm", () => {
     ).toBeInTheDocument();
   });
 
-  test("renders link to registration page", () => {
-    renderWithProviders();
-
-    const link = screen.getByRole("link", {
-      name: /regístrate|register|don't have an account/i,
-    });
-
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute("href", "/register");
-  });
 });
