@@ -127,7 +127,7 @@ describe('Gateway Service', () => {
       expect(res.body.error).toMatch(/Missing row\/col/i)
     })
 
-    it('POST /game/pvb/move returns 400 if invalid bot id', async () => {
+    it('POST /game/pvb/move returns 502 if invalid bot id', async () => {
       const res = await request(app)
         .post('/game/pvb/move')
         .send({
@@ -384,4 +384,116 @@ describe('Gateway Service', () => {
       expect(res.body.error).toMatch(/User service unavailable/i)
     })
   })
+
+  it('GET /bots returns available bots', async () => {
+    // first call: /game/new
+    axios.post.mockResolvedValueOnce({
+      data: { size: 3 }
+    })
+
+    // then bot checks (simulate 2 working, rest failing)
+    axios.post
+        .mockResolvedValueOnce({}) // random_bot works
+        .mockRejectedValue(new Error()) // others fail
+
+    const res = await request(app).get('/bots')
+
+    expect(res.status).toBe(200)
+    expect(res.body.ok).toBe(true)
+    expect(res.body.bots).toContain('random_bot')
+  })
+
+  it('GET /bots returns 502 if game server fails', async () => {
+    axios.post.mockRejectedValueOnce(new Error('fail'))
+
+    const res = await request(app).get('/bots')
+
+    expect(res.status).toBe(502)
+    expect(res.body.ok).toBe(false)
+    expect(res.body.error).toMatch(/Game server unavailable/i)
+  })
+
+  it('POST /gameresult forwards request correctly', async () => {
+    axios.post.mockResolvedValueOnce({
+      status: 201,
+      data: { success: true }
+    })
+
+    const res = await request(app)
+        .post('/gameresult')
+        .send({
+          username: 'Ana',
+          opponent: 'bot',
+          result: 'win',
+          score: 10
+        })
+
+    expect(res.status).toBe(201)
+    expect(res.body.success).toBe(true)
+  })
+
+  it('POST /gameresult propagates error', async () => {
+    axios.post.mockRejectedValueOnce({
+      response: {
+        status: 400,
+        data: { error: 'Bad request' }
+      }
+    })
+
+    const res = await request(app)
+        .post('/gameresult')
+        .send({})
+
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/Bad request/i)
+  })
+
+  it('GET /history/:username returns history', async () => {
+    axios.get.mockResolvedValueOnce({
+      status: 200,
+      data: { games: [] }
+    })
+
+    const res = await request(app).get('/history/Ana')
+
+    expect(res.status).toBe(200)
+    expect(res.body.games).toBeDefined()
+  })
+
+  it('GET /history/:username with limit', async () => {
+    axios.get.mockResolvedValueOnce({
+      status: 200,
+      data: { games: [] }
+    })
+
+    const res = await request(app).get('/history/Ana?limit=5')
+
+    expect(res.status).toBe(200)
+    expect(axios.get).toHaveBeenCalledWith(
+        expect.stringMatching(/limit=5/)
+    )
+  })
+
+  it('GET /ranking returns ranking', async () => {
+    axios.get.mockResolvedValueOnce({
+      status: 200,
+      data: { ranking: [] }
+    })
+
+    const res = await request(app).get('/ranking')
+
+    expect(res.status).toBe(200)
+    expect(res.body.ranking).toBeDefined()
+  })
+
+  it('GET /ranking returns 500 if service fails', async () => {
+    axios.get.mockRejectedValueOnce(new Error('fail'))
+
+    const res = await request(app).get('/ranking')
+
+    expect(res.status).toBe(500)
+    expect(res.body.error).toMatch(/User service unavailable/i)
+  })
+
+
 })
