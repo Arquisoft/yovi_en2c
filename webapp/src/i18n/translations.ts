@@ -54,7 +54,7 @@ export const translations: Record<Lang, Dict> = {
     "home.welcome": "Hola {username}",
     "home.subtitle":
       "Juega al juego Y",
-    "home.start": "Empezar partida",
+    "home.quickgame": "Partida rapida",
     "home.goBoard": "Ir al tablero",
     "home.changeUser": "Cambiar usuario",
     "home.card1.title": "✨ Modo rápido",
@@ -66,6 +66,8 @@ export const translations: Record<Lang, Dict> = {
     "home.card3.title": "🤖 Distintos bots!",
     "home.card3.text": "Algunos son más listos que otros",
     "home.card3.pill": "Diferentes dificultades",
+    "home.selectDifficulty": "Seleccionar dificultad",
+
 
     // Game
     "game.new": "Nueva partida",
@@ -82,6 +84,17 @@ export const translations: Record<Lang, Dict> = {
     "game.finished.lost": "Partida terminada: Has perdido",
     "game.finished.draw": "Partida terminada: Empate",
     "game.finished.back": "Volver al juego",
+
+    // Dificultades
+    "difficulty.title": "Selecciona la dificultad",
+    "difficulty.subtitle": "Elige el nivel del bot",
+    "difficulty.random": "Muy fácil",
+    "difficulty.easy": "Fácil",
+    "difficulty.medium": "Medio",
+    "difficulty.hard": "Difícil",
+    "difficulty.expert": "Experto",
+    "difficulty.extreme": "Extremo",
+    "difficulty.start": "Jugar",
   },
 
   en: {
@@ -132,7 +145,7 @@ export const translations: Record<Lang, Dict> = {
     "home.badge": "You are in Gamey - Yovi_EN2C",
     "home.welcome": "Hello {username}",
     "home.subtitle": "Play the Game of Y",
-    "home.start": "Start game",
+    "home.quickgame": "Start quick game",
     "home.goBoard": "Go to board",
     "home.changeUser": "Change user",
     "home.card1.title": "✨ Quick mode",
@@ -144,6 +157,7 @@ export const translations: Record<Lang, Dict> = {
     "home.card3.title": "🤖 Different bots!",
     "home.card3.text": "Some are smarter than others",
     "home.card3.pill": "Different difficultites",
+    "home.selectDifficulty": "Select difficulty",
 
     // Game
     "game.new": "New game",
@@ -160,5 +174,16 @@ export const translations: Record<Lang, Dict> = {
     "game.finished.lost": "Game Finished: You lost",
     "game.finished.draw": "Game Finished: Draw",
     "game.finished.back": "Back to game",
+
+    // Difficulties
+    "difficulty.title": "Select Difficulty",
+    "difficulty.subtitle": "Choose the bot level",
+    "difficulty.random": "Very easy",
+    "difficulty.easy": "Easy",
+    "difficulty.medium": "Medium",
+    "difficulty.hard": "Hard",
+    "difficulty.expert": "Expert",
+    "difficulty.extreme": "Extreme ",
+    "difficulty.start": "Play",
   },
 };

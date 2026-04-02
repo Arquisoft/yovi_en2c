@@ -21,12 +21,20 @@ const AUTH_VERIFY_URL = `${AUTH_BASE_URL}/verify`;
 
 const PVB_MOVE_ROUTES = {
   random_bot: `${GAMEY_BASE_URL}/v1/game/pvb/random_bot`,
-  smart_bot: `${GAMEY_BASE_URL}/v1/game/pvb/smart_bot`,
+  heuristic_bot: `${GAMEY_BASE_URL}/v1/game/pvb/heuristic_bot`,
+  minimax_bot: `${GAMEY_BASE_URL}/v1/game/pvb/minimax_bot`,
+  alfa_beta_bot: `${GAMEY_BASE_URL}/v1/game/pvb/alfa_beta_bot`,
+  monte_carlo_hard: `${GAMEY_BASE_URL}/v1/game/pvb/monte_carlo_hard`,
+  monte_carlo_extreme: `${GAMEY_BASE_URL}/v1/game/pvb/monte_carlo_extreme`,
 };
 
 const BOT_CHOOSE_ROUTES = {
   random_bot: `${GAMEY_BASE_URL}/v1/ybot/choose/random_bot`,
-  smart_bot: `${GAMEY_BASE_URL}/v1/ybot/choose/smart_bot`,
+  heuristic_bot: `${GAMEY_BASE_URL}/v1/ybot/choose/heuristic_bot`,
+  minimax_bot: `${GAMEY_BASE_URL}/v1/ybot/choose/minimax_bot`,
+  alfa_beta_bot: `${GAMEY_BASE_URL}/v1/ybot/choose/alfa_beta_bot`,
+  monte_carlo_hard: `${GAMEY_BASE_URL}/v1/ybot/choose/monte_carlo_hard`,
+  monte_carlo_extreme: `${GAMEY_BASE_URL}/v1/ybot/choose/monte_carlo_extreme`,
 };
 
 const GAME_NEW_URL = `${GAMEY_BASE_URL}/game/new`;

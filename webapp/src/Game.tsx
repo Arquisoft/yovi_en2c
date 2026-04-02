@@ -78,7 +78,16 @@ const Game: React.FC = () => {
   };
 
   const [yen, setYen] = useState<any>(null);
-  const [botId] = useState<BotId>("random_bot");
+  const botId = useMemo(() => {
+      const stateBot = (location.state as { bot?: string } | null)?.bot;
+      if (stateBot) {
+          localStorage.setItem("selectedBot", stateBot);
+          return stateBot;
+      }
+      const saved = localStorage.getItem("selectedBot");
+      if (saved) return saved;
+      return "heuristic_bot";
+  }, [location.state]);
   const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +112,11 @@ const Game: React.FC = () => {
     winner: string;
     edges: WinningEdge[];
   } | null>(null);
+
+    const [gameOver, setGameOver] = useState<{
+        result: "win" | "lost" | "draw";
+        winner: string | null;
+    } | null>(null);
 
   const finishTimerRef = React.useRef<number | null>(null);
 
@@ -187,29 +201,25 @@ const Game: React.FC = () => {
     }
   };
 
-  const applyFinishFromGateway = (payload: any, playersFixed: [string, string]) => {
-    const finished = typeof payload?.finished === "boolean" ? payload.finished : false;
-    if (!finished) return;
+    const applyFinishFromGateway = (payload: any, playersFixed: [string, string]) => {
+        const finished = typeof payload?.finished === "boolean" ? payload.finished : false;
+        if (!finished) return;
 
-    const winnerRaw = payload?.winner ?? null;
-    const winner = winnerRaw == null ? null : String(winnerRaw);
+        const winnerRaw = payload?.winner ?? null;
+        const winner = winnerRaw == null ? null : String(winnerRaw);
 
-    const edges = normalizeEdges(payload?.winning_edges);
+        const edges = normalizeEdges(payload?.winning_edges);
 
-    if (winner && edges.length > 0) setWinOverlay({ winner, edges });
-    else setWinOverlay(null);
+        if (winner && edges.length > 0) setWinOverlay({ winner, edges });
+        else setWinOverlay(null);
 
-    clearPendingFinish();
+        clearPendingFinish();
 
-    const youWin = winner ? winner === playersFixed[0] : false;
+        const youWin = winner ? winner === playersFixed[0] : false;
+        const result: "win" | "lost" | "draw" = winner ? (youWin ? "win" : "lost") : "draw";
 
-    finishTimerRef.current = window.setTimeout(() => {
-      navigate("/game/finished", {
-        replace: true,
-        state: { result: winner ? (youWin ? "win" : "lost") : "draw" },
-      });
-    }, winner ? 900 : 350);
-  };
+        setGameOver({ result, winner });
+    };
 
   const newGame = async () => {
     setBusy(true);
@@ -442,7 +452,7 @@ const Game: React.FC = () => {
                 const isSelected = !!selected && selected.row === rowIndex && selected.col === colIndex;
                 if (isSelected && cell === ".") fill = "#FF681F";
 
-                const clickable = cell === "." && !busy && !!yen;
+                  const clickable = cell === "." && !busy && !!yen && !gameOver;
 
                 return (
                   <circle
@@ -468,6 +478,81 @@ const Game: React.FC = () => {
             })}
           </svg>
         </div>
+          {/* Game Over Overlay */}
+          {gameOver && (
+              <div
+                  style={{
+                      position: "fixed",
+                      inset: 0,
+                      zIndex: 100,
+                      background: "rgba(0,0,0,0.72)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                  }}
+              >
+                  <div
+                      style={{
+                          background: "linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.04))",
+                          border: "1px solid rgba(255,255,255,.18)",
+                          borderRadius: 20,
+                          padding: "40px 48px",
+                          textAlign: "center",
+                          boxShadow: "0 24px 60px rgba(0,0,0,.6)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 24,
+                          minWidth: 260,
+                      }}
+                  >
+                      <div style={{ fontSize: 56 }}>
+                          {gameOver.result === "win" ? "🏆" : gameOver.result === "lost" ? "💀" : "🤝"}
+                      </div>
+                      <h2 style={{ margin: 0, fontSize: 28, color: "white" }}>
+                          {gameOver.result === "win"
+                              ? t("game.finished.win")
+                              : gameOver.result === "lost"
+                                  ? t("game.finished.lost")
+                                  : t("game.finished.draw")}
+                      </h2>
+                      <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+                          <button
+                              onClick={() => navigate("/home", { state: { username } })}
+                              style={{
+                                  padding: "12px 22px",
+                                  borderRadius: 12,
+                                  background: "#A52019",
+                                  color: "white",
+                                  border: "none",
+                                  fontWeight: 800,
+                                  fontSize: 16,
+                                  cursor: "pointer",
+                              }}
+                          >
+                              {t("game.finished.back")}
+                          </button>
+                          <button
+                              onClick={() => {
+                                  setGameOver(null);
+                                  newGame();
+                              }}
+                              style={{
+                                  padding: "12px 22px",
+                                  borderRadius: 12,
+                                  background: "rgba(67,195,221,.20)",
+                                  color: "white",
+                                  border: "1px solid rgba(67,195,221,.55)",
+                                  fontWeight: 800,
+                                  fontSize: 16,
+                                  cursor: "pointer",
+                              }}
+                          >
+                              {t("game.new")}
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          )}
       </main>
     </div>
   );

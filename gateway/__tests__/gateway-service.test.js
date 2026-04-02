@@ -92,7 +92,7 @@ describe("Gateway Service", () => {
         .post("/game/pvb/move")
         .send({
           yen: { size: 5, turn: 1, layout: "....." },
-          bot: "smart_bot",
+          bot: "random_bot",
           row: 0,
           col: 0
         });
@@ -221,7 +221,7 @@ describe("Gateway Service", () => {
         .post("/game/bot/choose")
         .send({
           yen: { size: 5, turn: 0, layout: "....." },
-          bot: "smart_bot"
+          bot: "random_bot"
         });
 
       expect(res.status).toBe(429);

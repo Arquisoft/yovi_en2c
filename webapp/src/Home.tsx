@@ -61,7 +61,9 @@ const Home: React.FC = () => {
     navigate("/", { replace: true });
   };
 
-  const start = () => navigate("/game", { state: { username } });
+  const startQuickGame = () => {
+    navigate("/game", { state: { username, bot: "minimax_bot" } });
+  };
 
   if (checkingSession || !username || !token) return null;
 
@@ -84,8 +86,8 @@ const Home: React.FC = () => {
           <p className="hero__subtitle">{t("home.subtitle")}</p>
 
           <div className="hero__actions">
-            <button className="btn btn--primary" onClick={start} type="button">
-              {t("home.start")}
+            <button className="btn btn--primary" onClick={startQuickGame} type="button">
+              {t("home.quickgame")}
             </button>
 
             <button className="btn btn--ghost" onClick={logout} type="button">
@@ -110,7 +112,14 @@ const Home: React.FC = () => {
           <article className="card">
             <h2 className="card__title">{t("home.card3.title")}</h2>
             <p className="card__text">{t("home.card3.text")}</p>
-            <span className="pill">{t("home.card3.pill")}</span>
+            <div style={{ marginTop: 16 }}>
+              <button
+                  className="btn btn--primary"
+                  onClick={() => navigate("/select-difficulty")}
+              >
+                {t("home.selectDifficulty")}
+              </button>
+            </div>
           </article>
         </section>
       </main>
