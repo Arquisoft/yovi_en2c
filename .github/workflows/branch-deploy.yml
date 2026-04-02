@@ -152,8 +152,8 @@ jobs:
           command: |
             cd ${{ secrets.DEPLOY_PATH }}
             git fetch origin
-            git checkout nginx-deploy
-            git pull origin nginx-deploy
+            git checkout ana-https
+            git pull origin ana-https
 
             echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
             echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
