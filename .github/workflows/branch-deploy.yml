@@ -182,7 +182,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
-          timeout: 30m
+          command_timeout: 30m
           script: |
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
@@ -193,8 +193,5 @@ jobs:
             echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
             echo "JWT_EXPIRES=${{ secrets.JWT_EXPIRES }}" >> .env
 
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
             docker compose down || true
-            docker compose pull
-            docker compose up -d
+            docker compose up -d --pull always
