@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   test-node:
+    name: Run node unit tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -40,6 +41,7 @@ jobs:
           JWT_EXPIRES: ${{ secrets.JWT_EXPIRES }}
 
   test-rust:
+    name: Run rust tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -53,28 +55,126 @@ jobs:
           cd gamey
           cargo test
 
-  deploy:
+  docker-push-users:
+    name: Publish users image
     runs-on: ubuntu-latest
     needs: [test-node, test-rust]
     steps:
-      - name: Checkout branch
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Remove local-only certs before upload
-        run: |
-          rm -f nginx/certs/fullchain.pem || true
-          rm -f nginx/certs/privkey.pem || true
+      - name: Publish users
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-users
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: users
 
-      - name: Upload project to VM
+  docker-push-authentication:
+    name: Publish authentication image
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish authentication
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-authentication
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: authentication
+
+  docker-push-gateway:
+    name: Publish gateway image
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish gateway
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-gateway
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: gateway
+
+  docker-push-webapp:
+    name: Publish webapp image
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish webapp
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-webapp
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: webapp
+          buildargs: VITE_API_URL=/api
+
+  docker-push-gamey:
+    name: Publish gamey image
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish gamey
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-gamey
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: gamey
+
+  deploy:
+    name: Deploy on VM
+    runs-on: ubuntu-latest
+    needs:
+      - docker-push-users
+      - docker-push-authentication
+      - docker-push-gateway
+      - docker-push-webapp
+      - docker-push-gamey
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare deployment bundle
+        run: |
+          mkdir -p deploy_bundle/nginx/conf.d
+          mkdir -p deploy_bundle/users/monitoring/prometheus
+          mkdir -p deploy_bundle/users/monitoring/grafana/provisioning
+
+          cp docker-compose.deploy.yml deploy_bundle/docker-compose.yml
+          cp nginx/conf.d/default.conf deploy_bundle/nginx/conf.d/default.conf
+          cp -r users/monitoring/prometheus/* deploy_bundle/users/monitoring/prometheus/ || true
+          cp -r users/monitoring/grafana/provisioning/* deploy_bundle/users/monitoring/grafana/provisioning/ || true
+
+      - name: Upload deployment bundle to VM
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
-          source: "."
+          source: "deploy_bundle/*"
           target: "${{ secrets.DEPLOY_PATH }}"
-          rm: true
-          strip_components: 0
+          strip_components: 1
+          overwrite: true
 
       - name: Start app on VM
         uses: appleboy/ssh-action@v1.0.3
@@ -82,6 +182,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
+          timeout: 30m
           script: |
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
@@ -92,5 +193,8 @@ jobs:
             echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
             echo "JWT_EXPIRES=${{ secrets.JWT_EXPIRES }}" >> .env
 
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
             docker compose down || true
-            docker compose up -d --build
+            docker compose pull
+            docker compose up -d
