@@ -1,0 +1,163 @@
+name: Branch Deploy
+
+on:
+  push:
+    branches:
+      - ana-https
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test-node:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [webapp, users, gateway, authentication]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          cd ${{ matrix.service }}
+          npm ci
+
+      - name: Run tests
+        run: |
+          cd ${{ matrix.service }}
+          npm test
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES: ${{ secrets.JWT_EXPIRES }}
+
+  test-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run tests
+        run: |
+          cd gamey
+          cargo test
+
+  docker-push-users:
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish users
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-users
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: users
+
+  docker-push-authentication:
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish authentication
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-authentication
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: authentication
+
+  docker-push-gateway:
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish gateway
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-gateway
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: gateway
+
+  docker-push-webapp:
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish webapp
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-webapp
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: webapp
+          buildargs: VITE_API_URL=/api
+
+  docker-push-gamey:
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish gamey
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-gamey
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: gamey
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs:
+      - docker-push-users
+      - docker-push-authentication
+      - docker-push-gateway
+      - docker-push-webapp
+      - docker-push-gamey
+    steps:
+      - name: Deploy over SSH
+        uses: fifsky/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          user: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          command: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            git fetch origin
+            git checkout nginx-deploy
+            git pull origin nginx-deploy
+
+            echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+            echo "JWT_EXPIRES=${{ secrets.JWT_EXPIRES }}" >> .env
+
+            docker compose down
+            docker compose up -d --build
