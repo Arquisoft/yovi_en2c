@@ -4,6 +4,7 @@ import Navbar from "./Navbar";
 import { useI18n } from "./i18n/I18nProvider";
 
 //type BotId = "random_bot" | "smart_bot";
+
 type WinningEdge = [[number, number], [number, number]];
 
 type GatewayResponse =
