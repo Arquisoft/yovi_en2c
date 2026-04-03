@@ -26,11 +26,17 @@ yovi_en2c/
 
 ---
 
-## Basic Features
+## Features
 
-- **User Registration**: The web application provides a simple form to register new users.
-- **User Service**: The user service receives the registration request, simulates some processing, and returns a welcome message.
-- **GameY**: A basic Game engine which only chooses a random piece.
+- **User registration and login** with JWT-based authentication
+- **Play Game Y vs AI bot** with 5 difficulty levels
+- **Variable board size** configurable by the user
+- **Match history and game results** stored in MongoDB
+- **Internationalization (i18n)** — English and Spanish supported
+- **Public REST API** for external bots using YEN notation
+- **Monitoring** with Prometheus and Grafana
+
+---
 
 ## Components
 
