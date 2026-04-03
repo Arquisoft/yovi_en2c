@@ -8,6 +8,13 @@
 
 🎮 **Play here:** [http://13.60.227.214/](http://13.60.227.214/)
 
+## Contributors
+
+| Name | GitHub | Email |
+|------|--------|-------|
+| Ana Pérez Bango | [@AnaPB8](https://github.com/AnaPB8) | UO294100@uniovi.es |
+| Adriana García Suárez | [@Adrigarsu](https://github.com/Adrigarsu) | UO300042@uniovi.es |
+
 ---
 
 ## Project Structure
