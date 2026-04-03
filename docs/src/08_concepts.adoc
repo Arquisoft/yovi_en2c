@@ -10,47 +10,41 @@ All game state across the system is represented using **YEN notation**, as manda
 [source,json]
 ----
 {
-  "size": 11,
-  "turn": "R",
-  "board": {
-    "cells": [
-      ["R", "B", "R", "B"]
-    ]
-  }
+  "size": 5,
+  "turn": 0,
+  "players": ["B", "R"],
+  "layout": "B/BR/.R./..../....."
 }
 ----
 
 * **Usage**:
-** `gamey/` service: Parses and validates YEN, returns moves in YEN
-** `webapp/`: Converts UI interactions to YEN for API calls
+** `gamey/` service: Parses and validates YEN via `GameY::try_from(yen)`, returns moves in YEN
+** `webapp/`: Sends and receives YEN in all game API calls
 ** Public API: Accepts and returns YEN exclusively
+** Gateway: Passes YEN through transparently — no parsing
 
 * **Rationale**: Standardization ensures interoperability with external bots and consistency across services.
 
 
 === Internationalization
-For the application to be more accessible to a wider range of users, internationalization was implemented for the
-languages of english and spanish, with architecture designed for easy addition of new languages.
+For the application to be more accessible to a wider range of users, internationalization has been implemented for
+English and Spanish, with architecture designed for easy addition of new languages.
 
 * **Implementation**:
-** All UI strings externalized to JSON files
-** Language selection in user preferences
-** URL-based language (optional): `/en/play`, `/es/play`
+** All UI strings externalized to a `translations.ts` dictionary (no external library)
+** Language selection persisted in `localStorage`
+** Custom `I18nProvider` React context with `useI18n()` hook
+** Template variable interpolation: `t("home.welcome", { username })` → `"Hello Ana"`
+** Fallback to Spanish if a key is missing in the selected language
 
-[source,javascript]
+[source,typescript]
 ----
-// i18n file structure
-/locales/
-  en/
-    common.json
-    game.json
-    user.json
-  es/
-    common.json
-    game.json
-    user.json
+// i18n structure in webapp/src/i18n/
+translations.ts       // EN + ES dictionaries
+I18nProvider.tsx      // React Context provider + useI18n hook
 ----
-* **Fallback**: English as default if translation missing
+
+* **Fallback**: Spanish as default if no language saved; English fallback if key missing in selected language
 
 
 ==== Network Security
@@ -61,6 +55,7 @@ languages of english and spanish, with architecture designed for easy addition o
 | **Network isolation** | Docker networks (frontend/backend) | Prevent direct backend access
 | **Firewall** | Only ports 22(SSH) and 443(HTTPS) exposed | Minimize attack surface
 | **API Gateway** | Single entry point | Hide internal service topology
+| **JWT Authentication** | Stateless tokens with expiry | Protect user-specific endpoints
 |===
 
 ==== Secrets Management
@@ -71,9 +66,10 @@ languages of english and spanish, with architecture designed for easy addition o
 
 Example secrets:
 
-* JWT_SECRET
-* MONGODB_URI
-* GITHUB_TOKEN
+* `JWT_SECRET` — used by the authentication service to sign and verify JWT tokens
+* `JWT_EXPIRES` — token expiration (e.g., `24h`)
+* `MONGODB_URI` — MongoDB connection string used by the users service
+* `GITHUB_TOKEN` — used by CI/CD pipeline
 
 === Architecture and Design Patterns
 
@@ -81,10 +77,12 @@ Already documented in Section 4, but summarized here for cross-cutting relevance
 
 |===
 | Pattern | Application | Cross-cutting Concern
-| **Strategy Pattern** | Bot AI strategies | Extensibility (new strategies = new classes)
-| **Repository Pattern** | Data access in `users` service | Testability (mock repositories)
-| **Gateway/Router** | API Gateway | Security, routing, monitoring
-| **Observer/Reactive** | UI updates via React state | Consistent UI across state changes
+| **Strategy Pattern** | Bot AI strategies in `gamey/src/bot/` | Extensibility (new strategies = new `YBot` impl)
+| **Repository Pattern** | Data access in `users` service via Mongoose models | Testability (mock repositories)
+| **Gateway/Router** | API Gateway — single entry point | Security, routing, centralized CORS
+| **Observer/Reactive** | UI updates via React state and hooks | Consistent UI across state changes
+| **Middleware Pattern** | `authenticateToken` in auth service | JWT verification before protected routes
+| **Context Pattern** | `I18nProvider` in webapp | Global i18n state without prop drilling
 |===
 
 ==== Error Handling Strategy
@@ -95,14 +93,17 @@ API errors always return appropriate HTTP status codes:
 
 |===
 | Status Code | When | Example
-| 400 Bad Request | Invalid input format | Malformed YEN
-| 401 Unauthorized | Missing/invalid token | No JWT
+| 400 Bad Request | Invalid input format or validation error | Passwords do not match, malformed YEN
+| 401 Unauthorized | Missing or invalid JWT token | No Authorization header, expired token
 | 403 Forbidden | Valid token but insufficient permissions | User accessing another's data
-| 404 Not Found | Resource doesn't exist | Invalid game ID
+| 404 Not Found | Resource doesn't exist | Username not found
 | 409 Conflict | Business rule violation | Username already exists
 | 500 Internal Error | Unexpected server error | Database connection lost
+| 502 Bad Gateway | Internal service unreachable | Game engine or auth service down
 | 503 Unavailable | Service temporarily down | Game engine unreachable
 |===
+
+The gateway uses a centralized `forwardAxiosError` function that propagates the status and error message from internal services to the client, or returns 502 if the service is completely unreachable.
 
 ==== Code Organization
 
@@ -111,22 +112,21 @@ All services follow consistent structure:
 ----
 
 /service-name/
-    src/            # Production code
+    src/            # Production code (Rust services)
     test/           # Unit tests
-    integration/    # Integration tests
-package.json/Cargo.toml
+    __tests__/      # Unit tests (Node.js services)
+package.json / Cargo.toml
 Dockerfile
-README.md
 ----
 
 ==== Testing Strategy
 
 |===
 | Test Type | Tool | Location | Coverage Target
-| Unit tests | Jest (Node), cargo test (Rust) | */.test.ts, *_test.rs | 80%+
-| Integration tests | Supertest (Node), custom (Rust) | /test/integration/ | Key paths
-| End-to-end tests | Playwright | webapp/e2e/ | Critical user journeys
-| API tests | Postman/Newman | /api-tests/ | All endpoints
+| Unit tests | Vitest (gateway), Jest (users/auth), cargo test (Rust) | `__tests__/`, `*.test.ts`, `*_test.rs` | 80%+
+| Integration tests | Supertest (Node), `tower::ServiceExt::oneshot` (Rust) | `__tests__/`, `gamey/src/game_server/` | Key paths
+| End-to-end tests | Playwright | `webapp/e2e/` | Critical user journeys
+| Property-based tests | proptest (Rust) | `gamey/src/core/coord.rs` | Coordinate invariants
 |===
 
 CI Integration: All tests run on every PR via GitHub Actions
@@ -143,3 +143,6 @@ CI Integration: All tests run on every PR via GitHub Actions
 ** Any test fails
 ** Code coverage drops below threshold (80%)
 ** SonarQube detects critical issues
+
+NOTE: SonarQube may flag translation keys containing words like "password" as potential credential leaks.
+These are annotated with `// NOSONAR` comments in `translations.ts` to suppress false positives.
