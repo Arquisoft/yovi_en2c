@@ -11,7 +11,7 @@ These decisions complement the solution strategy outlined in Section 4, providin
 
 === ADR-001: Game Modes Available to the User
 
-* **Status**: Implemented
+* **Status**: Implemented ✅
 * **Date**: 2026-01-15
 * **Deciders**: Development Team
 
@@ -43,7 +43,7 @@ We will design the game mode system with **extensibility as a core principle**. 
 ---
 === ADR-002: MongoDB for User Data Persistence
 
-* **Status**: Implemented
+* **Status**: Implemented ✅
 * **Date**: 2026-01-20
 * **Deciders**: Development Team
 
@@ -51,11 +51,10 @@ We will design the game mode system with **extensibility as a core principle**. 
 The users service needs to persist user profiles, authentication data, and match history. The team needed to choose a database technology that balances development speed with future flexibility.
 
 **Decision**:
-We will use **MongoDB** for user data persistence. The schema will be designed to accommodate:
+We will use **MongoDB** for user data persistence, managed via **Mongoose ODM**. The schema will be designed to accommodate:
 
-* User profiles (username, password hash, email)
-* Authentication data (tokens, sessions)
-* Match history (games played, results, moves)
+* User profiles (username, email, password)
+* Game results (username, opponent, result, score, date)
 
 **Alternatives Considered**:
 
@@ -69,58 +68,86 @@ We will use **MongoDB** for user data persistence. The schema will be designed t
 *  Positive: Flexible schema allows easy addition of user fields
 *  Positive: Excellent integration with Node.js via Mongoose ODM
 *  Positive: Fast prototyping and iteration on data models
+*  Positive: Aggregation pipelines support ranking and statistics queries
 *  Negative: No built-in relations (handled in application code)
 *  Negative: Eventual consistency (not critical for this domain)
 *  Mitigation: Use atomic operations for critical updates (e.g., game statistics)
 
 ---
-=== ADR-003: Three-Service Microservices Architecture
+=== ADR-003: Five-Service Microservices Architecture
 
-* **Status**: Implemented
+* **Status**: Implemented ✅ — **Updated 2026-02-24** (previously "Three-Service Architecture")
 * **Date**: 2026-01-15
+* **Last Update**: 2026-02-24
 * **Deciders**: Development Team
 
+NOTE: This ADR supersedes the original decision of a three-service architecture (`webapp`, `users`, `gamey`).
+As the project evolved, authentication and gateway responsibilities were extracted into dedicated services.
+The original decision and its rationale are preserved below for traceability.
+
 **Context**:
-The lab assignment requires a web application in TypeScript and a game engine in Rust. These technologies cannot run in the same process. Additionally, user management (registration, history) is a distinct responsibility that could be separated.
+The lab assignment requires a web application in TypeScript and a game engine in Rust. These technologies cannot run in the same process. Additionally, user management (registration, history) is a distinct responsibility that could be separated. As the project scaled, authentication logic and API routing were identified as further responsibilities that benefit from their own dedicated services.
 
 **Decision**:
 
-We will implement a **microservices architecture** with three independent services:
+We implement a **microservices architecture** with five independent services:
 
-* `webapp/` - TypeScript/React frontend
-* `users/` - Node.js/Express user management service
-* `gamey/` - Rust game engine service
+* `webapp/` - TypeScript/React frontend (port 80)
+* `users/` - Node.js/Express user management and data persistence (port 3000)
+* `authentication/` - Node.js/Express JWT authentication service (port 5000)
+* `gateway/` - Node.js/Express API gateway — single external entry point (port 8080)
+* `gamey/` - Rust game engine and bot service (port 4000)
 
-All services will communicate via REST APIs and be orchestrated with an API gateway.
+All services communicate via REST APIs and are orchestrated with Docker Compose. Prometheus (port 9090) and Grafana (port 9091) provide monitoring.
+
+**Original decision (2026-01-15)**:
+Three services were originally planned: `webapp`, `users`, and `gamey`. The gateway was considered part of the infrastructure rather than a standalone service, and authentication was to be handled inside the users service.
+
+**Reason for update**:
+Mixing authentication logic into the users service violated the single responsibility principle and reduced testability. Extracting both authentication and the gateway into dedicated services improved separation of concerns and aligned with ADR-006.
+
+**Alternatives Considered**:
+
+* **Three-service architecture (original)**: Superseded - authentication and gateway extracted for better separation of concerns
+* **Authentication inside users service**: Rejected - coupling user data management with token generation reduces testability
+* **Single monolith**: Rejected - technology constraints (TypeScript + Rust) make this impossible
 
 **Consequences**:
 
-*  Positive: Clear separation of concerns
+*  Positive: Clear separation of concerns — each service has a single responsibility
 *  Positive: Each service can be developed and tested independently
-*  Positive: Technology-specific optimizations possible
-*  Negative: Increased operational complexity (multiple services to deploy)
+*  Positive: Technology-specific optimizations possible (Rust for performance, Node.js for productivity)
+*  Positive: Authentication logic is independently testable and replaceable
+*  Negative: Increased operational complexity (five services to deploy and monitor)
+*  Negative: More inter-service HTTP calls add latency (e.g., auth → users on login)
 *  Negative: Network latency between services
-*  Mitigation: docker-compose simplifies local development and deployment
+*  Mitigation: Docker Compose simplifies local development; Prometheus + Grafana provide visibility into inter-service performance
 
 ---
 === ADR-004: API Gateway as Single Entry Point
 
-* **Status**: Implemented
+* **Status**: Implemented ✅ — **Updated 2026-02-24** (routing rules revised)
 * **Date**: 2026-01-20
+* **Last Update**: 2026-02-24
 * **Deciders**: Development Team
 
 **Context**:
-With three independent services, external clients (human users and bots) would need to know multiple endpoints. This increases complexity and exposes internal service topology.
+With five independent services, external clients (human users and bots) would need to know multiple endpoints. This increases complexity and exposes internal service topology.
 
 **Decision**:
 
-We will implement an **API Gateway** (`gateway/`) as the single entry point for all external requests. The gateway will:
+We implement an **API Gateway** (`gateway/`) as the single entry point for all external requests. The gateway:
 
-* Route `/` → webapp service (static files)
-* Route `/users/*` → users service
-* Route `/game/*` → gamey service
-* Handle SSL termination
-* Provide a security layer
+* Routes `/game/*` → gamey service (port 4000)
+* Routes `/register`, `/login`, `/verify` → authentication service (port 5000)
+* Handles CORS centrally for all services
+* Propagates errors from internal services to clients
+* Hides the internal service topology from external clients
+
+Nginx acts as a reverse proxy in front of the gateway, handling SSL termination and routing web traffic to the webapp.
+
+**Original decision (2026-01-20)**:
+The gateway was originally planned to route `/users/*` to the users service and `/game/*` to the gamey service. With the extraction of the authentication service (ADR-006), auth-related routes (`/register`, `/login`, `/verify`) now forward to the authentication service instead. The users service is no longer directly reachable from external clients.
 
 **Alternatives Considered**:
 
@@ -132,27 +159,51 @@ We will implement an **API Gateway** (`gateway/`) as the single entry point for 
 
 *  Positive: Single URL for all clients simplifies access
 *  Positive: Internal services remain hidden from external clients
-*  Positive: Centralized SSL and security policies
+*  Positive: Centralized CORS and error handling policies
 *  Negative: Additional component to deploy and maintain
-*  Negative: Potential performance bottleneck
+*  Negative: Potential single point of failure (mitigated by Docker restart policies)
 *  Mitigation: Gateway is stateless and can be scaled horizontally
 
 ---
 === ADR-005: Strategy Pattern for AI Bot Behaviors
 
-* **Status**: In Progress
+* **Status**: Implemented ✅ — **Updated 2026-03-15** (previously "In Progress")
 * **Date**: 2026-01-25
+* **Last Update**: 2026-03-15
 * **Deciders**: Development Team
 
 **Context**:
 The system must support multiple AI strategies and difficulty levels. New strategies may be added in the future without modifying existing code. The requirement states "more than one strategy" must be available.
 
 **Decision**:
-We will implement the **Strategy Pattern** in the `gamey` service. Each AI strategy will be a separate module implementing a common trait (`BotStrategy`). The game engine will select the appropriate strategy based on user input. Initial strategies will include:
+We implement the **Strategy Pattern** in the `gamey` service using Rust traits. Each AI strategy is a separate module implementing the `YBot` trait:
 
-* Random move (implemented)
-* Heuristic-based (in discussion)
-* Minimax (in discussion)
+[source,rust]
+----
+pub trait YBot: Send + Sync {
+    fn name(&self) -> &str;
+    fn choose_move(&self, board: &GameY) -> Option<Coordinates>;
+}
+----
+
+The `YBotRegistry` manages all registered bots and allows dynamic selection by name at runtime.
+
+**Original decision (2026-01-25)**:
+Only three strategies were initially planned: random move (implemented), heuristic-based (in discussion), and minimax (in discussion).
+
+**Current implementation (2026-03-15)**:
+All six strategies are now fully implemented:
+
+|===
+| Bot ID | Algorithm | Difficulty
+
+| `random_bot` | Random valid move | —
+| `heuristic_bot` | Side connection heuristic | Easy
+| `minimax_bot` | Minimax (depth 3) | Medium
+| `alfa_beta_bot` | Minimax with alpha-beta pruning | Hard
+| `monte_carlo_hard` | Monte Carlo Tree Search | Expert
+| `monte_carlo_extreme` | Monte Carlo Tree Search (more iterations) | Extreme
+|===
 
 **Alternatives Considered**:
 
@@ -162,12 +213,115 @@ We will implement the **Strategy Pattern** in the `gamey` service. Each AI strat
 
 **Consequences**:
 
-*  Positive: New strategies can be added without modifying core game logic
+*  Positive: New strategies can be added without modifying core game logic — just implement `YBot` and register in `YBotRegistry`
 *  Positive: Each strategy can be tested independently
 *  Positive: Clear separation of concerns
-*  Negative: Slight indirection overhead (negligible)
-*  Negative: Requires understanding of trait/interface design
-*  Mitigation: Well-documented strategy trait and example implementations
+*  Positive: `Send + Sync` bounds allow safe concurrent use across async Axum handlers
+*  Negative: Slight indirection overhead (negligible in practice)
+*  Negative: More complex bots (minimax, Monte Carlo) can be slow on large boards
+*  Mitigation: Performance budget of < 2 seconds per move; depth is configurable per bot
+
+---
+=== ADR-006: Dedicated Authentication Microservice
+
+* **Status**: Implemented ✅
+* **Date**: 2026-02-24
+* **Deciders**: Development Team
+
+**Context**:
+Initially, authentication responsibilities (JWT generation, credential validation) were planned as part of the users service. As the project grew it became clear that mixing user data persistence with authentication logic violated the single responsibility principle and reduced testability. A dedicated authentication service allows each to evolve independently.
+
+**Decision**:
+We extract authentication into a **separate `authentication/` microservice** responsible exclusively for:
+
+* Validating registration payloads and delegating user creation to the users service via HTTP
+* Authenticating users by querying the users service and verifying credentials
+* Generating and validating **JWT tokens** (via `jsonwebtoken`)
+* Exposing `/register`, `/login`, and `/verify` endpoints
+
+The users service remains a pure data store with no knowledge of JWTs. The authentication service calls the users service internally via HTTP on the Docker internal network.
+
+**Alternatives Considered**:
+
+* **Auth logic inside users service**: Rejected - violates single responsibility, harder to test JWT logic in isolation
+* **Auth logic inside gateway**: Rejected - gateway should only route, not implement business logic
+* **Third-party auth provider (Auth0, Firebase)**: Rejected - external dependency, overkill for project scope
+
+**Consequences**:
+
+*  Positive: Clean separation — users service handles data, auth service handles identity
+*  Positive: JWT logic is independently testable
+*  Positive: Future auth strategies (OAuth, refresh tokens) can be added without touching the users service
+*  Negative: Login requires two HTTP calls: auth service → users service (adds minimal latency on Docker internal network)
+*  Negative: One more service to deploy and maintain
+*  Negative: Passwords are currently compared in plain text — bcrypt hashing is tracked as pending technical debt
+*  Mitigation: Inter-service calls are on Docker's internal network (sub-millisecond latency). Bcrypt is planned for a future sprint.
+
+---
+=== ADR-007: Axum as HTTP Framework for the Rust Game Engine
+
+* **Status**: Implemented ✅
+* **Date**: 2026-02-01
+* **Deciders**: Development Team
+
+**Context**:
+The `gamey` Rust service needs to expose a REST API. Rust has several HTTP framework options. The choice affects ergonomics, async support, compile times, and ecosystem maturity.
+
+**Decision**:
+We use **Axum** as the HTTP framework for the game engine, with **Tokio** as the async runtime. The server exposes versioned REST endpoints (`/v1/...`) and uses Axum's extractor pattern for request parsing and shared state (`AppState` wrapping `Arc<YBotRegistry>`).
+
+**Alternatives Considered**:
+
+* **Actix-web**: Rejected - more complex, historically used unsafe code, steeper learning curve
+* **Warp**: Rejected - less ergonomic API, less active community
+* **Rocket**: Rejected - async support was immature at time of decision
+* **Raw hyper**: Rejected - too low-level, excessive boilerplate
+
+**Consequences**:
+
+*  Positive: Ergonomic extractor-based API that integrates naturally with Tokio
+*  Positive: Excellent performance for concurrent game move calculations
+*  Positive: Type-safe shared state via `State<AppState>` across all handlers
+*  Positive: `Send + Sync` requirements on `YBot` trait align naturally with Axum's threading model
+*  Positive: Integration tests use `tower::ServiceExt::oneshot` without binding to a network port
+*  Negative: Rust async adds compile-time complexity
+*  Negative: Team needed time to learn Axum's extractor pattern
+*  Mitigation: Axum's documentation and examples are thorough; the extractor pattern becomes intuitive quickly
+
+---
+=== ADR-008: Custom i18n Implementation in the Frontend
+
+* **Status**: Implemented ✅
+* **Date**: 2026-03-01
+* **Deciders**: Development Team
+
+**Context**:
+The webapp needs to support English and Spanish as stated in quality requirement QS-07. We need to decide between a third-party i18n library and a lightweight custom implementation, considering the project scope and the number of strings involved (< 100 keys).
+
+**Decision**:
+We implement a **custom i18n solution** using React Context API (`I18nProvider`) with a static `translations.ts` dictionary. Features:
+
+* Language preference persisted in `localStorage`
+* Template variable interpolation via `{variableName}` syntax (e.g., `"home.welcome": "Hello {username}"`)
+* Fallback to Spanish if a key is missing in the selected language
+* `LanguageToggle` component available on all pages (Login, Register, Navbar)
+
+**Alternatives Considered**:
+
+* **react-i18next**: Rejected - adds dependency and configuration overhead disproportionate to the number of strings
+* **FormatJS / react-intl**: Rejected - same concern; better suited for large-scale applications
+* **No i18n**: Rejected - internationalization is a stated quality requirement (QS-07)
+
+**Consequences**:
+
+*  Positive: Zero additional dependencies
+*  Positive: Full control over the implementation
+*  Positive: Simple to add new languages — just add a new entry in `translations.ts`
+*  Positive: SonarQube false positives on password-related keys managed with `// NOSONAR` comments
+*  Negative: No pluralization support (not currently needed)
+*  Negative: No lazy loading of translation files (acceptable given the small dictionary size)
+*  Negative: Manual maintenance of translation keys across both languages
+*  Mitigation: TypeScript typing on the `Dict` type helps catch missing or inconsistent keys
 
 ---
 
@@ -175,9 +329,13 @@ We will implement the **Strategy Pattern** in the `gamey` service. Each AI strat
 
 |===
 | ID | Decision | Key Rationale | Status
-| **ADR-001** | Game Modes | Extensibility for future modes | Implemented
-| **ADR-002** | MongoDB for User Data | Schema flexibility, Node.js integration | Implemented
-| **ADR-003** | Three-Service Architecture | Technology constraints (TypeScript + Rust) | Implemented
-| **ADR-004** | API Gateway | Security, single entry point | Implemented
-| **ADR-005** | Strategy Pattern for AI | Extensibility for multiple strategies | In Progress
+
+| **ADR-001** | Game Modes (PvM first, extensible) | Extensibility for future modes | Implemented ✅
+| **ADR-002** | MongoDB for User Data | Schema flexibility, Node.js + Mongoose integration | Implemented ✅
+| **ADR-003** | Five-Service Architecture | Technology constraints + separation of concerns | Implemented ✅ (updated)
+| **ADR-004** | API Gateway | Security, single entry point | Implemented ✅ (updated)
+| **ADR-005** | Strategy Pattern for AI (6 strategies) | Extensibility, multiple difficulties | Implemented ✅ (updated)
+| **ADR-006** | Dedicated Authentication Microservice | Single responsibility, testability | Implemented ✅
+| **ADR-007** | Axum as HTTP Framework for Rust | Ergonomics, async, performance | Implemented ✅
+| **ADR-008** | Custom i18n in Frontend | Lightweight, zero dependencies | Implemented ✅
 |===
