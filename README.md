@@ -4,18 +4,27 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_en2c&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_en2c)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_en2c&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_en2c)
 
-This project is a template with some basic functionality for the ASW labs.
+**YOVI** is a web platform for playing **Game Y** — an abstract strategy board game where players compete to connect all three sides of a triangular board. The project is developed as part of the Software Architecture (ASW) course at the University of Oviedo.
+
+🎮 **Play here:** [http://13.60.227.214/](http://13.60.227.214/)
+
+---
 
 ## Project Structure
 
-The project is divided into three main components, each in its own directory:
+The project follows a **microservices architecture** with five independent services orchestrated via Docker Compose:
 
-- `webapp/`: A frontend application built with React, Vite, and TypeScript.
-- `users/`: A backend service for managing users, built with Node.js and Express.
-- `gamey/`: A Rust game engine and bot service.
-- `docs/`: Architecture documentation sources following Arc42 template
+```
+yovi_en2c/
+├── webapp/          # React + TypeScript frontend (SPA)
+├── users/           # Node.js + Express user management service
+├── authentication/  # Node.js + Express JWT authentication service
+├── gateway/         # Node.js + Express API gateway
+├── gamey/           # Rust game engine and bot service
+└── docs/            # Architecture documentation (Arc42 + ADRs)
+```
 
-Each component has its own `package.json` file with the necessary scripts to run and test the application.
+---
 
 ## Basic Features
 
