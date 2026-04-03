@@ -90,6 +90,8 @@ jobs:
           npm run test:e2e
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          VITE_API_URL: http://localhost:8080
+          NODE_TLS_REJECT_UNAUTHORIZED: "0"
 
   docker-push-users:
     name: Publish users image
