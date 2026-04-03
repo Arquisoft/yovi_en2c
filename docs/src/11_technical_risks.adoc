@@ -1,5 +1,3 @@
-
-
 [[section-technical-risks]]
 == Risks and Technical Debts
 
@@ -45,4 +43,5 @@ Technical debts are **already incurred** design or implementation shortcuts that
 | **TD2** | **Hardcoded Configuration** – Some API endpoints are hardcoded in frontend instead of using environment variables | Low – Works in dev but causes issues in prod | Move all configuration to .env files
 | **TD3** | **Missing Input Validation** – Some user inputs in forms lack client-side validation | Medium – Poor user experience, extra server load | Add validation to all forms
 | **TD4** | **Incomplete Test Coverage** – Some modules have < 70% test coverage |  Medium – Higher risk of undetected bugs | Increase coverage to 80% (per QS-10)
+| **TD5** | **Plain Text Password Comparison** – The authentication service compares passwords in plain text (`user.password !== password`) instead of using bcrypt | High – Critical security vulnerability; passwords stored unhashed are exposed if the database is compromised | Implement bcrypt hashing on user creation (`/createuser`) and bcrypt comparison on login (`/login`)
 |===
