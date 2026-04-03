@@ -238,3 +238,33 @@ npm run dev
 ```
 
 ---
+
+## Available Scripts
+
+### Webapp (`webapp/`)
+
+```bash
+npm run dev        # Start development server
+npm test           # Run unit tests
+npm run test:e2e   # Run end-to-end tests (Playwright)
+npm run build      # Production build
+```
+
+### Users / Auth / Gateway (Node.js services)
+
+```bash
+npm start          # Start the service
+npm test           # Run tests
+```
+
+### Game Engine (`gamey/`)
+
+```bash
+cargo build        # Build the project
+cargo test         # Run all tests
+cargo run          # Run in CLI mode (human vs human)
+cargo run -- --mode server --port 4000   # Run as HTTP server
+cargo doc --open   # Generate and open documentation
+```
+
+---
