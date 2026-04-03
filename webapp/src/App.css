@@ -311,11 +311,24 @@ body{
   text-align: left;
 }
 
-.register-toprow{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  margin-bottom:10px;
+.register-toprow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 420px) {
+  .register-toprow {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .logo {
+    height: 140px;
+  }
 }
 
 .logo{
