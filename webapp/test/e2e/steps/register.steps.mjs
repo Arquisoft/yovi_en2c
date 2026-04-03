@@ -1,10 +1,8 @@
 import { Given, When, Then } from "@cucumber/cucumber";
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:5173";
-const API_URL  = process.env.VITE_API_URL || "http://localhost:8080";
 
-// Generate a unique username for every CI run so the MongoDB Atlas database
-// never sees a duplicate-user error across runs.
+// Unique suffix per CI run so the same username is never re-used across runs.
 const RUN_ID = Date.now();
 
 Given("the register page is open", async function () {
@@ -21,6 +19,7 @@ When(
         const page = this.page;
         if (!page) throw new Error("Page not initialized");
 
+        // Append run-unique suffix to avoid duplicate-user errors on re-runs.
         const uniqueUsername = `${username}_${RUN_ID}`;
 
         await page.fill("#register-username", uniqueUsername);
