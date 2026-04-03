@@ -268,3 +268,13 @@ cargo doc --open   # Generate and open documentation
 ```
 
 ---
+
+## Architecture
+
+The system follows a **microservices architecture** with an API gateway as the single external entry point. All internal communication uses HTTP/REST with JSON payloads. External traffic uses HTTPS (port 443) terminated at the gateway.
+
+For detailed architecture documentation, see the [project wiki](https://github.com/Arquisoft/yovi_en2c/wiki) and the [Architecture Decision Records (ADRs)](https://github.com/Arquisoft/yovi_en2c/wiki/Architecture-Decision-Record).
+
+---
+
+
