@@ -33,7 +33,7 @@ const RegistrationForm: React.FC = () => {
       const data = await res.json();
       if (res.ok && data.success) {
         setSuccess(data.message);
-        setTimeout(() => navigate("/", { replace: true }), 1000);
+        setTimeout(() => navigate("/", { replace: true }), 0);
       } else {
         setError(data.error || t("registration.error.generic"));
       }
