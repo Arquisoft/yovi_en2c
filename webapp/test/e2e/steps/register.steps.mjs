@@ -28,7 +28,19 @@ When(
     await page.fill("#register-password", password);
     await page.fill("#register-repeat-password", repeatPassword);
 
-    await page.locator(".submit-button").click();
+    const [response] = await Promise.all([
+      page.waitForResponse((r) => r.url().includes("/api/register")),
+      page.locator(".submit-button").click(),
+    ]);
+
+    console.log("REGISTER STATUS:", response.status());
+    console.log("REGISTER BODY:", await response.text());
+    console.log("URL AFTER SUBMIT:", page.url());
+
+    const errorMessage = page.locator(".error-message");
+    if (await errorMessage.count()) {
+      console.log("UI ERROR:", await errorMessage.textContent());
+    }
   }
 );
 
@@ -36,13 +48,10 @@ Then("I should be redirected to the login page", async function () {
   const page = this.page;
   if (!page) throw new Error("Page not initialized");
 
-  await page.waitForFunction(() => window.location.pathname === "/", null, {
-    timeout: 10000,
-  });
+  await page.waitForSelector("#login-username", { timeout: 15000 });
 
-  const normalized = new URL(page.url()).pathname;
-
-  if (normalized !== "/") {
-    throw new Error(`Expected path to be "/", but got: ${normalized}`);
+  const pathname = await page.evaluate(() => window.location.pathname);
+  if (pathname !== "/") {
+    throw new Error(`Expected path "/", got "${pathname}"`);
   }
 });
