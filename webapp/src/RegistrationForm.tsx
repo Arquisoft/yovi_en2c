@@ -45,85 +45,86 @@ const RegistrationForm: React.FC = () => {
   };
 
   return (
-    <div className="auth-page">
-      <header className="site-header">
-        <div className="site-header__inner">
-          <img src={logo} alt="GameY" className="site-header__logo" />
-          <span className="site-header__title">{t("app.brand")}</span>
-          <LanguageToggle />
-        </div>
-      </header>
-      <div className="site-header__ribbon" aria-hidden="true" />
-
-      <div className="auth-body">
-        <div className="auth-card">
-          <div className="auth-card__top">
-            <img src={logo} alt="GameY" className="auth-card__logo" />
+      <div className="auth-page">
+        <header className="site-header">
+          <div className="site-header__inner">
+            <img src={logo} alt="GameY" className="site-header__logo" />
+            <span className="site-header__title">{t("app.brand")}</span>
             <LanguageToggle />
           </div>
+        </header>
+        <div className="site-header__ribbon" aria-hidden="true" />
 
-          <h1 className="auth-card__heading">{t("registration.heading") ?? "REGISTER"}</h1>
-
-          <form onSubmit={handleSubmit} noValidate>
-            <div className="form-group">
-              <label className="form-label" htmlFor="reg-user">{t("registration.username")}</label>
-              <input
-                id="reg-user"
-                type="text"
-                className="form-input"
-                placeholder={t("registration.username")}
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                autoComplete="username"
-              />
+        <div className="auth-body">
+          <div className="auth-card">
+            <div className="auth-card__top">
+              <img src={logo} alt="GameY" className="auth-card__logo" />
+              <LanguageToggle />
             </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="reg-email">{t("registration.email")}</label>
-              <input
-                id="reg-email"
-                type="email"
-                className="form-input"
-                placeholder={t("registration.email")}
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                autoComplete="email"
-              />
-            </div>
+            <h1 className="auth-card__heading">{t("registration.heading") ?? "REGISTER"}</h1>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="reg-pw">{t("registration.password")}</label>
-              <input
-                id="reg-pw"
-                type="password"
-                className="form-input"
-                placeholder={t("registration.password")}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                autoComplete="new-password"
-              />
-            </div>
+            <form onSubmit={handleSubmit} noValidate>
+              <div className="form-group">
+                <label className="form-label" htmlFor="register-username">{t("registration.username")}</label>
+                <input
+                    id="register-username"
+                    type="text"
+                    className="form-input"
+                    placeholder={t("registration.username")}
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    autoComplete="username"
+                />
 
-            <div style={{ marginBottom: 14, textAlign: "right" }}>
-              <button type="button" className="text-link" onClick={() => navigate("/")}>
-                {t("registration.goLogin")}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="register-email">{t("registration.email")}</label>
+                <input
+                    id="register-email"
+                    type="email"
+                    className="form-input"
+                    placeholder={t("registration.email")}
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    autoComplete="email"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="register-password">{t("registration.password")}</label>
+                <input
+                    id="register-password"
+                    type="password"
+                    className="form-input"
+                    placeholder={t("registration.password")}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    autoComplete="new-password"
+                />
+              </div>
+
+              <div style={{ marginBottom: 14, textAlign: "right" }}>
+                <button type="button" className="text-link" onClick={() => navigate("/")}>
+                  {t("registration.goLogin")}
+                </button>
+              </div>
+
+              <button
+                  type="submit"
+                  className="btn btn--primary btn--full btn--lg submit-button"
+                  disabled={loading}
+              >
+                {loading ? t("registration.loading") : t("registration.button")}
               </button>
-            </div>
 
-            <button
-              type="submit"
-              className="btn btn--primary btn--full btn--lg"
-              disabled={loading}
-            >
-              {loading ? t("registration.loading") : t("registration.button")}
-            </button>
-
-            {success && <p className="msg msg--ok">{success}</p>}
-            {error   && <p className="msg msg--error">{error}</p>}
-          </form>
+              {success && <p className="msg msg--ok">{success}</p>}
+              {error   && <p className="msg msg--error">{error}</p>}
+            </form>
+          </div>
         </div>
       </div>
-    </div>
   );
 };
 
