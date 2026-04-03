@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { useI18n } from "./i18n/I18nProvider";
 
-type BotId = "random_bot" | "smart_bot";
+//type BotId = "random_bot" | "smart_bot";
+
 type WinningEdge = [[number, number], [number, number]];
 
 type GatewayResponse =
@@ -17,7 +18,7 @@ type GatewayResponse =
     }
   | { ok: false; error: string; details?: any };
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+const API_URL = "/api";
 
 function parseLayout(layout: string) {
   if (!layout) return [];

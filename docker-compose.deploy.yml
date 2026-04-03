@@ -15,9 +15,8 @@ services:
       - monitor-net
 
   users:
-    build: ./users
-    container_name: users
     image: ghcr.io/arquisoft/yovi_en2c-users:latest
+    container_name: users
     environment:
       - MONGODB_URI=${MONGODB_URI}
     expose:
@@ -26,9 +25,8 @@ services:
       - monitor-net
 
   authentication:
-    build: ./authentication
-    container_name: authentication
     image: ghcr.io/arquisoft/yovi_en2c-authentication:latest
+    container_name: authentication
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES=${JWT_EXPIRES}
@@ -42,12 +40,8 @@ services:
       - monitor-net
 
   webapp:
-    build:
-      context: ./webapp
-      args:
-        - VITE_API_URL=/api
-    container_name: webapp
     image: ghcr.io/arquisoft/yovi_en2c-webapp:latest
+    container_name: webapp
     expose:
       - "80"
     depends_on:
@@ -56,9 +50,8 @@ services:
       - monitor-net
 
   gateway:
-    build: ./gateway
-    container_name: gateway
     image: ghcr.io/arquisoft/yovi_en2c-gateway:latest
+    container_name: gateway
     environment:
       - AUTH_BASE_URL=http://authentication:5000
       - GAMEY_BASE_URL=http://gamey:4000
@@ -72,9 +65,8 @@ services:
       - monitor-net
 
   gamey:
-    build: ./gamey
-    container_name: gamey
     image: ghcr.io/arquisoft/yovi_en2c-gamey:latest
+    container_name: gamey
     expose:
       - "4000"
     networks:
@@ -86,7 +78,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./users/monitoring/prometheus:/etc/prometheus
+      - ./users/monitoring/prometheus:/etc/prometheus:ro
     networks:
       - monitor-net
 
@@ -96,7 +88,7 @@ services:
     ports:
       - "9091:3000"
     volumes:
-      - ./users/monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./users/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     networks:
       - monitor-net
 
