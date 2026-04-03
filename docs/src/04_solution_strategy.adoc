@@ -15,9 +15,10 @@ and the **quality goal of maintainability**.
 
 |===
 | Decision | Rationale | Constraints/Goals Addressed | Alternatives Considered
-| **Frontend: React + TypeScript** | React's component model enables UI reuse and supports future i18n. TypeScript is mandatory per client. | Technical Constraint: TypeScript; Quality: Usability, Maintainability | Vue, Angular (rejected due to team familiarity)
+| **Frontend: React + TypeScript** | React's component model enables UI reuse and i18n support. TypeScript is mandatory per client. | Technical Constraint: TypeScript; Quality: Usability, Maintainability | Vue, Angular (rejected due to team familiarity)
+| **Authentication Service: Node.js/Express + JWT** | Isolated JWT logic improves testability and single responsibility. | Quality: Security, Testability | Auth inside users service (rejected: violates SRP)
 | **User Service: Node.js/Express** | Lightweight, fast for prototyping, integrates well with MongoDB. Team has JavaScript expertise. | Quality: Development speed, Testability | Python/Flask, Java/Spring (rejected: heavier, slower for simple CRUD)
-| **Game Engine: Rust** | Mandated by client. Provides memory safety and performance for game logic and AI. | Technical Constraint: Rust; Quality: Performance, Reliability | C++, Go (not allowed by constraint)
+| **Game Engine: Rust + Axum** | Mandated by client. Provides memory safety and performance for game logic and AI. Axum provides ergonomic async HTTP. | Technical Constraint: Rust; Quality: Performance, Reliability | C++, Go (not allowed by constraint); Actix-web (rejected: more complex)
 | **Database: MongoDB** | Schema flexibility for user data, easy integration with Node.js, quick setup. | Quality: Development speed, Deployability | PostgreSQL (rejected: schema changes slower for evolving requirements)
 | **Containerization: Docker + docker-compose** | Ensures consistent environments across dev/test/prod. Required for deployment. | Technical Constraint: Containerization; Quality: Deployability | Manual deployment (rejected: inconsistent, error-prone)
 | **CI/CD: GitHub Actions** | Integrated with repository, automates testing and deployment, free for students. | Organizational Constraint: CI/CD; Quality: Testability | Jenkins (rejected: requires separate infrastructure)
@@ -27,11 +28,12 @@ and the **quality goal of maintainability**.
 === 2. Top-Level Decomposition (Architectural Pattern)
 
 
-**Decision:** **Microservices architecture** with three independent services (`webapp`, `users`, `gamey`) plus an **API gateway**.
+**Decision:** **Microservices architecture** with five independent services (`webapp`, `authentication`, `users`, `gateway`, `gamey`).
 
 **Reasons:**
-- The technology constraints (TypeScript + Rust) **force** a separation - they cannot run in the same process
+- The technology constraints (TypeScript + Rust) **force** a separation — they cannot run in the same process
 - Separating user management from game logic allows independent scaling and development
+- Separating authentication from user data management improves testability and single responsibility
 - The gateway provides a single entry point, hiding internal complexity (security constraint)
 
 **How it maps to quality goals**:
@@ -46,20 +48,23 @@ and the **quality goal of maintainability**.
 @startuml
 package "YOVI System" {
 
-  component "API Gateway" as Gateway
+  component "API Gateway\n(gateway/)" as Gateway
 
-  component "Web Frontend (React/TypeScript)" as Webapp
+  component "Web Frontend\n(React/TypeScript)" as Webapp
 
-  component "User Service (Node.js/Express)" as Users
+  component "Authentication Service\n(Node.js/Express + JWT)" as Auth
 
-  component "Game Engine (Rust)" as Gamey
+  component "User Service\n(Node.js/Express)" as Users
+
+  component "Game Engine\n(Rust + Axum)" as Gamey
 
   database "MongoDB" as DB
 
   Gateway --> Webapp : serves static files
-  Gateway --> Users : routes /api/users/*
-  Gateway --> Gamey : routes /api/game/*
+  Gateway --> Auth : routes /register, /login, /verify
+  Gateway --> Gamey : routes /game/*
 
+  Auth --> Users : HTTP (user lookup/creation)
   Users --> DB : persists user data
   Gamey --> Gamey : (stateless)
 
@@ -67,8 +72,10 @@ package "YOVI System" {
     Single entry point
     Request routing
     SSL termination
+    Centralized CORS
   end note
 
+}
 @enduml
 ----
 
@@ -80,11 +87,13 @@ package "YOVI System" {
 (Controller). Essential for maintainability. | `webapp/src/` (React components as View, state as Model, event handlers
 as Controller)
 | **Strategy Pattern** | Bot AI implementation | Allows multiple difficulty levels/strategies without changing game core.
-New strategies = new classes, no modification to existing code. | `gamey/src/bot/` (each strategy implements common trait)
+New strategies = new classes, no modification to existing code. | `gamey/src/bot/` (each strategy implements `YBot` trait)
 | **Observer Pattern** | UI updates | When game state changes, UI must update automatically. React's virtual DOM and
 state management handle this efficiently. | `webapp/src/` (React hooks/state)
 | **Gateway/Router Pattern** | API Gateway | Single entry point routes requests to appropriate services. Simplifies
-client and adds security layer. | `gateway`
+client and adds security layer. | `gateway/`
+| **Middleware Pattern** | Authentication | JWT verification middleware (`authenticateToken`) intercepts requests to
+protected endpoints before they reach business logic. | `authentication/auth-service.js`
 |===
 
 === 4. Quality Goal Realization
@@ -93,12 +102,13 @@ This table shows how specific architectural decisions directly address the **qua
 
 |===
 | Quality Goal | How We Achieve It | Key Decisions | Verification
-| **Functionality** | Rust engine ensures correct game rules; multiple strategies in `gamey/src/bot/` | Rust for game logic; Strategy pattern for AI | Unit tests in `gamey/` verify rules; integration tests verify bot moves
-| **Usability** | React provides responsive UI; component design supports i18n | React frontend; Externalized strings | E2E tests verify user flows; usability testing with real users
-| **Modularity & Maintainability** | Microservices separation; Strategy pattern for extensions | Three-service architecture; Strategy pattern | Independent deployment possible; new strategies added without modifying core
+| **Functionality** | Rust engine ensures correct game rules; six strategies in `gamey/src/bot/` | Rust for game logic; Strategy pattern for AI | Unit tests in `gamey/` verify rules; integration tests verify bot moves
+| **Usability** | React provides responsive UI; custom i18n module supports EN/ES | React frontend; I18nProvider with translations.ts | E2E tests verify user flows; language toggle tested manually
+| **Modularity & Maintainability** | Microservices separation; Strategy pattern for extensions | Five-service architecture; Strategy pattern | Independent deployment possible; new strategies added without modifying core
 | **Deployability & Availability** | Docker containers; docker-compose; CI/CD | Containerization; GitHub Actions | `docker-compose up` works; CI pipeline runs on every push
-| **Testability** | Separation of concerns; dependency injection in Node.js; Rust's test framework | Microservices; Repository pattern | Unit tests: `cargo test`, `npm test`; Integration tests; E2E tests
-| **Interoperability** | REST API with YEN notation; documented for bot developers | Public API in `gamey`; OpenAPI docs | API tests verify YEN format; documentation generated automatically
+| **Testability** | Separation of concerns; Vitest (gateway), cargo test (Rust), Jest (users/auth) | Microservices; Middleware pattern | Unit tests: `cargo test`, `npm test`; Integration tests; E2E tests
+| **Interoperability** | REST API with YEN notation; documented for bot developers | Public API in `gamey`; versioned endpoints (/v1/) | API tests verify YEN format; documentation generated automatically
+| **Security** | JWT-based auth isolated in dedicated service; secrets in env vars | Authentication microservice; ADR-006 | Token verification on protected routes; GitHub Secrets for credentials
 |===
 
 
@@ -126,11 +136,14 @@ This table lists the most significant decisions that shape the architecture, wit
 
 |===
 | Decision | ADR | Summary | Status
-|**Modes of game available to the user** | ADR-001 | Basic funcionality to create a extendable project | Implemented
-|**MongoDB for user data** | ADR-002 | Schema flexibility for evolving requirements | Implemented
-|**Three-service architecture** | ADR-003 | Separate webapp, users, gamey services due to technology constraints | Implemented
-|**API Gateway** | ADR-004 | Single entry point for security and routing | Implemented
-|**Strategy Pattern for AI** | ADR-005 | Bot strategies as pluggable components | In progress
+|**Modes of game available to the user** | ADR-001 | Extensible architecture starting with PvM mode | Implemented ✅
+|**MongoDB for user data** | ADR-002 | Schema flexibility for evolving requirements | Implemented ✅
+|**Five-service architecture** | ADR-003 | Separate webapp, auth, users, gateway, gamey services | Implemented ✅ (updated)
+|**API Gateway** | ADR-004 | Single entry point for security and routing | Implemented ✅ (updated)
+|**Strategy Pattern for AI** | ADR-005 | Six bot strategies as pluggable components | Implemented ✅ (updated)
+|**Dedicated Authentication Microservice** | ADR-006 | JWT logic isolated from user data service | Implemented ✅
+|**Axum as HTTP framework for Rust** | ADR-007 | Ergonomic async HTTP for the game engine | Implemented ✅
+|**Custom i18n in frontend** | ADR-008 | Lightweight EN/ES support with zero dependencies | Implemented ✅
 |===
 
 === 7. Traceability to Constraints
@@ -140,18 +153,15 @@ This section links back to the constraints defined in section 2, showing how our
 |===
 | Constraint (from Section 2) | How Solution Strategy Addresses It
 | **TypeScript frontend** | React + TypeScript in `webapp/`
-| **Rust game engine** | `gamey/` service with core logic and bot strategies
+| **Rust game engine** | `gamey/` service with core logic and bot strategies (Axum HTTP server)
 | **JSON + YEN communication** | REST APIs with YEN validation in `gamey/`
-| **Public API for bots** | `gamey/` exposes `/api/game/*` endpoints via gateway
+| **Public API for bots** | `gamey/` exposes `/v1/game/*` and `/v1/ybot/*` endpoints via gateway
 | **Docker containerization** | Each service has Dockerfile; root `docker-compose.yml`
-| **User data persistence** | MongoDB in `users/` service
-| **Multiple AI strategies** | Strategy pattern in `gamey/src/bot/`
+| **User data persistence** | MongoDB in `users/` service via Mongoose
+| **JWT authentication** | Dedicated `authentication/` service (ADR-006)
+| **Multiple AI strategies** | Strategy pattern in `gamey/src/bot/` — six strategies implemented
 | **Testing requirements** | Unit, integration, E2E tests in all services
 | **CI/CD** | GitHub Actions workflows for test and deploy
 | **Documentation (Arc42 + ADRs)** | This document + ADRs in Github wiki
+| **Internationalization** | Custom i18n module in `webapp/src/i18n/` (EN + ES)
 |===
-
-
-
-
-
