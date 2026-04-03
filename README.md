@@ -1,158 +1,291 @@
 # yovi_en2c - Game Y at UniOvi
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Arquisoft/yovi_en2c/master/webapp/img/logo.png" alt="YOVI Logo" width="220"/>
+</p>
+
 [![Release — Test, Build, Publish, Deploy](https://github.com/arquisoft/yovi_en2c/actions/workflows/release-deploy.yml/badge.svg)](https://github.com/arquisoft/yovi_en2c/actions/workflows/release-deploy.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_en2c&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_en2c)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_en2c&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_en2c)
 
-This project is a template with some basic functionality for the ASW labs.
+**YOVI** is a web platform for playing **Game Y** — an abstract strategy board game where players compete to connect all three sides of a triangular board. The project is developed as part of the Software Architecture (ASW) course at the University of Oviedo.
+
+🎮 **Play here:** [http://13.60.227.214/](http://13.60.227.214/)
+
+## Contributors
+
+| Name | GitHub | Email |
+|------|--------|-------|
+| Ana Pérez Bango | [@AnaPB8](https://github.com/AnaPB8) | UO294100@uniovi.es |
+| Adriana García Suárez | [@Adrigarsu](https://github.com/Adrigarsu) | UO300042@uniovi.es |
+
+---
 
 ## Project Structure
 
-The project is divided into three main components, each in its own directory:
+The project follows a **microservices architecture** with five independent services orchestrated via Docker Compose:
 
-- `webapp/`: A frontend application built with React, Vite, and TypeScript.
-- `users/`: A backend service for managing users, built with Node.js and Express.
-- `gamey/`: A Rust game engine and bot service.
-- `docs/`: Architecture documentation sources following Arc42 template
+```
+yovi_en2c/
+├── webapp/          # React + TypeScript frontend (SPA)
+├── users/           # Node.js + Express user management service
+├── authentication/  # Node.js + Express JWT authentication service
+├── gateway/         # Node.js + Express API gateway
+├── gamey/           # Rust game engine and bot service
+└── docs/            # Architecture documentation (Arc42 + ADRs)
+```
 
-Each component has its own `package.json` file with the necessary scripts to run and test the application.
+---
 
-## Basic Features
+## Features
 
-- **User Registration**: The web application provides a simple form to register new users.
-- **User Service**: The user service receives the registration request, simulates some processing, and returns a welcome message.
-- **GameY**: A basic Game engine which only chooses a random piece.
+- **User registration and login** with JWT-based authentication
+- **Play Game Y vs AI bot** with 5 difficulty levels
+- **Variable board size** configurable by the user
+- **Match history and game results** stored in MongoDB
+- **Internationalization (i18n)** — English and Spanish supported
+- **Public REST API** for external bots using YEN notation
+- **Monitoring** with Prometheus and Grafana
+
+---
 
 ## Components
 
-### Webapp
+### Webapp (`webapp/`)
 
-The `webapp` is a single-page application (SPA) created with [Vite](https://vitejs.dev/) and [React](https://reactjs.org/).
+A single-page application (SPA) built with [Vite](https://vitejs.dev/), [React](https://reactjs.org/), and TypeScript.
 
-- `src/App.tsx`: The main component of the application.
-- `src/RegisterForm.tsx`: The component that renders the user registration form.
-- `package.json`: Contains scripts to run, build, and test the webapp.
-- `vite.config.ts`: Configuration file for Vite.
-- `Dockerfile`: Defines the Docker image for the webapp.
+- `src/App.tsx` — Main router with all application routes
+- `src/LoginForm.tsx` — Login form with JWT token handling
+- `src/RegistrationForm.tsx` — User registration form
+- `src/Home.tsx` — Home dashboard with session verification
+- `src/Game.tsx` — Main game board component
+- `src/SelectDifficulty.tsx` — Bot difficulty selection screen
+- `src/GameFinished.tsx` — End of game screen (win/loss/draw)
+- `src/i18n/` — Internationalization module (ES/EN)
+- `Dockerfile` — Docker image definition
 
-### Users Service
+### Users Service (`users/`)
 
-The `users` service is a simple REST API built with [Node.js](https://nodejs.org/) and [Express](https://expressjs.com/).
+A REST API built with [Node.js](https://nodejs.org/) and [Express](https://expressjs.com/), connected to MongoDB.
 
-- `users-service.js`: The main file for the user service. It defines an endpoint `/createuser` to handle user creation.
-- `package.json`: Contains scripts to start the service.
-- `Dockerfile`: Defines the Docker image for the user service.
+- `users-service.js` — Main service file
+- `models/User.js` — Mongoose user schema
+- `models/GameResult.js` — Mongoose game result schema
+- `db.js` — MongoDB connection setup
 
-### Gamey
+**Endpoints:**
 
-The `gamey` component is a Rust-based game engine with bot support, built with [Rust](https://www.rust-lang.org/) and [Cargo](https://doc.rust-lang.org/cargo/).
+| Method | Route | Description |
+|--------|-------|-------------|
+| `POST` | `/createuser` | Create a new user |
+| `GET` | `/users/:username` | Get user by username |
+| `GET` | `/users` | List all users |
+| `POST` | `/gameresult` | Save a game result |
+| `GET` | `/history/:username` | Get match history for a user |
+| `GET` | `/ranking` | Top 10 players by wins |
+| `GET` | `/health` | Health check |
 
-- `src/main.rs`: Entry point for the application.
-- `src/lib.rs`: Library exports for the gamey engine.
-- `src/bot/`: Bot implementation and registry.
-- `src/core/`: Core game logic including actions, coordinates, game state, and player management.
-- `src/notation/`: Game notation support (YEN, YGN).
-- `src/web/`: Web interface components.
-- `Cargo.toml`: Project manifest with dependencies and metadata.
-- `Dockerfile`: Defines the Docker image for the gamey service.
+### Authentication Service (`authentication/`)
+
+A Node.js service responsible for JWT token generation and validation.
+
+- `auth-service.js` — Main service file
+
+**Endpoints:**
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `POST` | `/register` | Validate credentials and create user via users service |
+| `POST` | `/login` | Authenticate user and return JWT |
+| `GET` | `/verify` | Verify a JWT token |
+| `GET` | `/health` | Health check |
+
+### Gateway (`gateway/`)
+
+A Node.js + Express API gateway — the single entry point for all external requests. Routes traffic to the appropriate internal service.
+
+- `gateway-service.js` — Main gateway file
+
+**Routes:**
+
+| Method | Route | Forwards to |
+|--------|-------|-------------|
+| `POST` | `/game/new` | gamey — create new game |
+| `POST` | `/game/pvb/move` | gamey — player vs bot move |
+| `POST` | `/game/bot/choose` | gamey — bot move selection |
+| `GET` | `/game/status` | gamey — health check |
+| `POST` | `/register` | authentication service |
+| `POST` | `/login` | authentication service |
+| `GET` | `/verify` | authentication service |
+
+### Game Engine (`gamey/`)
+
+A [Rust](https://www.rust-lang.org/) service implementing all Game Y logic: move validation, win condition detection, and AI bot strategies.
+
+- `src/main.rs` — Binary entry point (CLI and server modes)
+- `src/lib.rs` — Library exports
+- `src/core/` — Core game types: board, coordinates (barycentric), players, moves
+- `src/bot/` — Bot trait (`YBot`), registry, and all strategy implementations
+- `src/notation/` — YEN (Y Exchange Notation) serialization/deserialization
+- `src/game_server/` — Axum HTTP server with REST endpoints
+- `Cargo.toml` — Project manifest
+
+**Available bot strategies:**
+
+| Bot ID | Difficulty | Algorithm |
+|--------|-----------|-----------|
+| `random_bot` | — | Random valid move |
+| `heuristic_bot` | Easy | Side connection heuristic |
+| `minimax_bot` | Medium | Minimax (depth 3) |
+| `alfa_beta_bot` | Hard | Minimax with alpha-beta pruning |
+| `monte_carlo_hard` | Expert | Monte Carlo Tree Search |
+| `monte_carlo_extreme` | Extreme | Monte Carlo Tree Search (more iterations) |
+
+**Game API endpoints (prefix `/v1`):**
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/status` | Health check |
+| `POST` | `/game/new` | Create a new game, returns YEN |
+| `POST` | `/v1/game/pvb/{bot_id}` | Player move + bot response |
+| `POST` | `/v1/ybot/choose/{bot_id}` | Request bot move coordinates |
+
+All game state is exchanged in **YEN (Y Exchange Notation)** — a JSON format inspired by chess FEN:
+
+```json
+{
+  "size": 5,
+  "turn": 0,
+  "players": ["B", "R"],
+  "layout": "B/BR/.R./..../....."
+}
+```
+
+---
 
 ## Running the Project
 
-You can run this project using Docker (recommended) or locally without Docker.
+### With Docker (recommended)
 
-### With Docker
+Requires [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/).
 
-This is the easiest way to get the project running. You need to have [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed.
+**1. Set up environment variables:**
 
-1. **Build and run the containers:**
-    From the root directory of the project, run:
+Create a `.env` file in the root directory:
+
+```env
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/yovi
+JWT_SECRET=your_secret_key_here
+JWT_EXPIRES=24h
+```
+
+**2. Build and start all services:**
 
 ```bash
 docker-compose up --build
 ```
 
-This command will build the Docker images for both the `webapp` and `users` services and start them.
+**3. Access the application:**
 
-2.**Access the application:**
-- Web application: [http://localhost](http://localhost)
-- User service API: [http://localhost:3000](http://localhost:3000)
-- Gamey API: [http://localhost:4000](http://localhost:4000)
+| Service | URL |
+|---------|-----|
+| Web application | http://localhost |
+| Gateway API | http://localhost:8080 |
+| Users service | http://localhost:3000 |
+| Auth service | http://localhost:5000 |
+| Game engine | http://localhost:4000 |
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:9091 |
 
-### Without Docker
+---
 
-To run the project locally without Docker, you will need to run each component in a separate terminal.
+### Without Docker (local development)
 
-#### Prerequisites
+You need [Node.js](https://nodejs.org/), [npm](https://www.npmjs.com/), and [Rust](https://www.rust-lang.org/) installed.
 
-* [Node.js](https://nodejs.org/) and npm installed.
-
-#### 1. Running the User Service
-
-Navigate to the `users` directory:
+**1. Users service:**
 
 ```bash
 cd users
-```
-
-Install dependencies:
-
-```bash
 npm install
+npm start
+# Available at http://localhost:3000
 ```
 
-Run the service:
+**2. Authentication service:**
 
 ```bash
+cd authentication
+npm install
 npm start
+# Available at http://localhost:5000
 ```
 
-The user service will be available at `http://localhost:3000`.
+**3. Gateway:**
 
-#### 2. Running the Web Application
+```bash
+cd gateway
+npm install
+npm start
+# Available at http://localhost:8080
+```
 
-Navigate to the `webapp` directory:
+**4. Game engine:**
+
+```bash
+cd gamey
+cargo run -- --mode server --port 4000
+# Available at http://localhost:4000
+```
+
+**5. Web application:**
 
 ```bash
 cd webapp
-```
-
-Install dependencies:
-
-```bash
 npm install
-```
-
-Run the application:
-
-```bash
 npm run dev
+# Available at http://localhost:5173
 ```
 
-The web application will be available at `http://localhost:5173`.
-
-#### 3. Running the GameY application
-
-At this moment the GameY application is not needed but once it is needed you should also start it from the command line.
+---
 
 ## Available Scripts
 
-Each component has its own set of scripts defined in its `package.json`. Here are some of the most important ones:
+### Webapp (`webapp/`)
 
-### Webapp (`webapp/package.json`)
+```bash
+npm run dev        # Start development server
+npm test           # Run unit tests
+npm run test:e2e   # Run end-to-end tests (Playwright)
+npm run build      # Production build
+```
 
-- `npm run dev`: Starts the development server for the webapp.
-- `npm test`: Runs the unit tests.
-- `npm run test:e2e`: Runs the end-to-end tests.
-- `npm run start:all`: A convenience script to start both the `webapp` and the `users` service concurrently.
+### Users / Auth / Gateway (Node.js services)
 
-### Users (`users/package.json`)
+```bash
+npm start          # Start the service
+npm test           # Run tests
+```
 
-- `npm start`: Starts the user service.
-- `npm test`: Runs the tests for the service.
+### Game Engine (`gamey/`)
 
-### Gamey (`gamey/Cargo.toml`)
+```bash
+cargo build        # Build the project
+cargo test         # Run all tests
+cargo run          # Run in CLI mode (human vs human)
+cargo run -- --mode server --port 4000   # Run as HTTP server
+cargo doc --open   # Generate and open documentation
+```
 
-- `cargo build`: Builds the gamey application.
-- `cargo test`: Runs the unit tests.
-- `cargo run`: Runs the gamey application.
-- `cargo doc`: Generates documentation for the GameY engine application
+---
+
+## Architecture
+
+The system follows a **microservices architecture** with an API gateway as the single external entry point. All internal communication uses HTTP/REST with JSON payloads. External traffic uses HTTPS (port 443) terminated at the gateway.
+
+For detailed architecture documentation, see the [project wiki](https://github.com/Arquisoft/yovi_en2c/wiki) and the [Architecture Decision Records (ADRs)](https://github.com/Arquisoft/yovi_en2c/wiki/Architecture-Decision-Record).
+
+---
+
+
