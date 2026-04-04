@@ -95,6 +95,13 @@ export const translations: Record<Lang, Dict> = {
     "difficulty.expert": "Experto",
     "difficulty.extreme": "Extremo",
     "difficulty.start": "Jugar",
+
+    // Tamaño del tablero
+    "boardsize.title": "Tamaño del tablero",
+    "boardsize.subtitle": "Elige el tamaño o introduce uno personalizado",
+    "boardsize.custom.placeholder": "Tamaño personalizado",
+    "boardsize.warning.small": "El tablero es muy pequeño, la partida puede no ser divertida",
+    "boardsize.warning.large": "Los tableros grandes pueden ralentizar la respuesta del bot",
   },
 
   en: {
@@ -185,5 +192,12 @@ export const translations: Record<Lang, Dict> = {
     "difficulty.expert": "Expert",
     "difficulty.extreme": "Extreme ",
     "difficulty.start": "Play",
+
+    //Board size
+    "boardsize.title": "Board Size",
+    "boardsize.subtitle": "Choose a size or enter a custom one",
+    "boardsize.custom.placeholder": "Custom size",
+    "boardsize.warning.small": "Board too small, the game may not be fun",
+    "boardsize.warning.large": "Large boards may cause slow bot responses",
   },
 };
