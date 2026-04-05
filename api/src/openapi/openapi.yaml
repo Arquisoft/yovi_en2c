@@ -1,0 +1,202 @@
+openapi: 3.1.0
+info:
+  title: YOVI_EN2C Bot Interop API
+  version: 1.0.0
+  description: API pública para que bots externos compitan contra los bots de YOVI_EN2C.
+
+servers:
+  - url: http://localhost:4001
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+
+  /games:
+    post:
+      summary: Create a new active bot interop game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGameRequest"
+      responses:
+        "201":
+          description: Game created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+
+  /games/{gameId}:
+    get:
+      summary: Get the current state of an active game
+      parameters:
+        - in: path
+          name: gameId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current game state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+
+  /games/{gameId}/play:
+    post:
+      summary: Submit opponent move and receive updated state after local bot response
+      parameters:
+        - in: path
+          name: gameId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayMoveRequest"
+      responses:
+        "200":
+          description: Updated game state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+
+  /play:
+    post:
+      summary: Stateless play endpoint
+      description: Receives a YEN position and a bot_id, asks the local bot for its next move, and returns the updated YEN position.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayOnceRequest"
+      responses:
+        "200":
+          description: Updated YEN after local bot move
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayOnceResponse"
+
+components:
+  schemas:
+    Yen:
+      type: object
+      required:
+        - size
+        - turn
+        - players
+        - layout
+      properties:
+        size:
+          type: integer
+        turn:
+          type: integer
+        players:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 1
+        layout:
+          type: string
+
+    Coordinates:
+      type: object
+      required:
+        - x
+        - y
+        - z
+      properties:
+        x:
+          type: integer
+        y:
+          type: integer
+        z:
+          type: integer
+
+    CreateGameRequest:
+      type: object
+      required:
+        - size
+        - bot_id
+      properties:
+        size:
+          type: integer
+        bot_id:
+          type: string
+
+    PlayMoveRequest:
+      type: object
+      required:
+        - position
+      properties:
+        position:
+          $ref: "#/components/schemas/Yen"
+
+    PlayOnceRequest:
+      type: object
+      required:
+        - position
+        - bot_id
+      properties:
+        position:
+          $ref: "#/components/schemas/Yen"
+        bot_id:
+          type: string
+
+    GameState:
+      type: object
+      required:
+        - game_id
+        - bot_id
+        - position
+        - status
+      properties:
+        game_id:
+          type: string
+        bot_id:
+          type: string
+        position:
+          $ref: "#/components/schemas/Yen"
+        status:
+          type: string
+          enum:
+            - ONGOING
+            - BOT_WON
+            - OPPONENT_WON
+            - DRAW
+
+    PlayOnceResponse:
+      type: object
+      required:
+        - bot_id
+        - move
+        - position
+        - status
+      properties:
+        bot_id:
+          type: string
+        move:
+          $ref: "#/components/schemas/Coordinates"
+        position:
+          $ref: "#/components/schemas/Yen"
+        status:
+          type: string
+          enum:
+            - ONGOING
+            - BOT_WON
+            - OPPONENT_WON
+            - DRAW
