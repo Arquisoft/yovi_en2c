@@ -62,7 +62,7 @@ const Home: React.FC = () => {
   };
 
   const startQuickGame = () => {
-    navigate("/game", { state: { username, bot: "minimax_bot" } });
+    navigate("/game", { state: { username, bot: "minimax_bot", boardSize: 7 } });
   };
 
   if (checkingSession || !username || !token) return null;

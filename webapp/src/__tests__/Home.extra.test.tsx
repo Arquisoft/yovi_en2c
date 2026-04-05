@@ -1,5 +1,5 @@
 // Tests adicionales para Home.tsx — pégalos al final de Home.test.tsx
-// Cubren: botón "Select Difficulty" y el caso catch del fetch de verificación
+// Cubren: botón "Select Difficulty", fetch exception y token inválido
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -20,9 +20,9 @@ vi.mock("react-router-dom", async () => {
 });
 
 function renderHome(
-  usernameFromState?: string,
-  usernameInStorage?: string,
-  tokenInStorage = "fake-token"
+    usernameFromState?: string,
+    usernameInStorage?: string,
+    tokenInStorage = "fake-token"
 ) {
   localStorage.clear();
   if (usernameInStorage) localStorage.setItem("username", usernameInStorage);
@@ -34,16 +34,16 @@ function renderHome(
   } as Response);
 
   return render(
-    <I18nProvider>
-      <MemoryRouter
-        initialEntries={[{
-          pathname: "/home",
-          state: usernameFromState ? { username: usernameFromState } : undefined,
-        }]}
-      >
-        <Home />
-      </MemoryRouter>
-    </I18nProvider>
+      <I18nProvider>
+        <MemoryRouter
+            initialEntries={[{
+              pathname: "/home",
+              state: usernameFromState ? { username: usernameFromState } : undefined,
+            }]}
+        >
+          <Home />
+        </MemoryRouter>
+      </I18nProvider>
   );
 }
 
@@ -65,13 +65,25 @@ describe("Home — cobertura adicional", () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
-    // Esperar a que el componente cargue (verificación de sesión)
     await screen.findByRole("button", { name: /Partida rapida|Start quick game/i });
 
     const diffButton = screen.getByRole("button", { name: /Seleccionar dificultad|Select difficulty/i });
     await user.click(diffButton);
 
     expect(mockNavigate).toHaveBeenCalledWith("/select-difficulty");
+  });
+
+  test("quick game navigates with boardSize 7 by default", async () => {
+    const user = userEvent.setup();
+    renderHome("Pablo");
+
+    await screen.findByRole("button", { name: /Partida rapida|Start quick game/i });
+
+    await user.click(screen.getByRole("button", { name: /Partida rapida|Start quick game/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/game", {
+      state: { username: "Pablo", bot: "minimax_bot", boardSize: 7 },
+    });
   });
 
   // ─── Fetch lanza excepción (catch) → redirige a "/" ──────────────────────
@@ -83,11 +95,11 @@ describe("Home — cobertura adicional", () => {
     global.fetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
 
     render(
-      <I18nProvider>
-        <MemoryRouter initialEntries={[{ pathname: "/home", state: { username: "Pablo" } }]}>
-          <Home />
-        </MemoryRouter>
-      </I18nProvider>
+        <I18nProvider>
+          <MemoryRouter initialEntries={[{ pathname: "/home", state: { username: "Pablo" } }]}>
+            <Home />
+          </MemoryRouter>
+        </I18nProvider>
     );
 
     await waitFor(() => {
@@ -110,11 +122,11 @@ describe("Home — cobertura adicional", () => {
     } as Response);
 
     render(
-      <I18nProvider>
-        <MemoryRouter initialEntries={[{ pathname: "/home", state: { username: "Pablo" } }]}>
-          <Home />
-        </MemoryRouter>
-      </I18nProvider>
+        <I18nProvider>
+          <MemoryRouter initialEntries={[{ pathname: "/home", state: { username: "Pablo" } }]}>
+            <Home />
+          </MemoryRouter>
+        </I18nProvider>
     );
 
     await waitFor(() => {
