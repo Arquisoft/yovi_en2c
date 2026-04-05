@@ -19,10 +19,30 @@ const gameResultSchema = new mongoose.Schema({
             message: '{VALUE} is not a valid result'
         }
     },
+
+    winner: {
+        type: String,
+        default: null
+    },
     score: {
         type: Number,
         default: 0,
         min: [0, 'Score can not be negative']
+    },
+
+    boardSize: {
+        type: Number,
+        default: 7,
+        min: [1, 'Board size must be at least 1']
+    },
+
+    gameMode: {
+        type: String,
+        enum: {
+            values: ['pvb', 'pvp'],
+            message: '{VALUE} is not a valid game mode'
+        },
+        default: 'pvb'
     },
     date: {
         type: Date,
