@@ -99,11 +99,14 @@ const Game: React.FC = () => {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-  // FIX: use both a ref (always current, safe inside async closures) and state
-  // (drives re-renders for color display). The ref solves the stale closure problem
-  // where async functions capture fixedPlayers as null even after setFixedPlayers was called.
-  const [fixedPlayers, setFixedPlayersState] = useState<[string, string] | null>(null);
-  const fixedPlayersRef = useRef<[string, string] | null>(null);
+   
+    const [moveCount, setMoveCount] = useState(0);
+
+    // FIX: use both a ref (always current, safe inside async closures) and state
+    // (drives re-renders for color display). The ref solves the stale closure problem
+    // where async functions capture fixedPlayers as null even after setFixedPlayers was called.
+    const [fixedPlayers, setFixedPlayersState] = useState<[string, string] | null>(null);
+    const fixedPlayersRef = useRef<[string, string] | null>(null);
 
   const setFixedPlayers = (p: [string, string]) => {
     fixedPlayersRef.current = p;
