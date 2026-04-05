@@ -75,7 +75,7 @@ paths:
   /play:
     post:
       summary: Stateless play endpoint
-      description: Receives a YEN position and a bot_id, asks the local bot for its next move, and returns the updated YEN position.
+      description: Receives a YEN position and an optional bot_id, asks the local bot for its next move, and returns the updated YEN position.
       requestBody:
         required: true
         content:
@@ -89,7 +89,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PlayOnceResponse"
-    /remote-games/connect:
+
+  /remote-games/connect:
     post:
       summary: Connect to an existing remote game hosted by another team's API
       requestBody:
@@ -156,7 +157,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RemotePlayTurnResponse"
-                
+
 components:
   schemas:
     Yen:
@@ -217,12 +218,12 @@ components:
       type: object
       required:
         - position
-        - bot_id
       properties:
         position:
           $ref: "#/components/schemas/Yen"
         bot_id:
           type: string
+          description: Optional bot identifier to select which bot should play.
 
     GameState:
       type: object
@@ -249,7 +250,6 @@ components:
     PlayOnceResponse:
       type: object
       required:
-        - bot_id
         - move
         - position
         - status
@@ -267,7 +267,8 @@ components:
             - BOT_WON
             - OPPONENT_WON
             - DRAW
-        RemoteConnectRequest:
+
+    RemoteConnectRequest:
       type: object
       required:
         - base_url

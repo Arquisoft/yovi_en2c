@@ -6,7 +6,7 @@ export interface PlayOnceRequestDto {
 }
 
 export interface PlayOnceResponseDto {
-  bot_id: string;
+  bot_id?: string;
   move: CoordinatesDto;
   position: YenDto;
   status: "ONGOING" | "BOT_WON" | "OPPONENT_WON" | "DRAW";
