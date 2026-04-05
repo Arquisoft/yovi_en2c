@@ -4,6 +4,7 @@ import cors from "cors";
 import { healthRoutes } from "./routes/health.routes";
 import { gamesRoutes } from "./routes/games.routes";
 import { playRoutes } from "./routes/play.routes";
+import { remoteGamesRoutes } from "./routes/remote-games.routes";
 import { ErrorDto } from "./dtos/error.dto";
 
 export function createApp() {
@@ -15,6 +16,7 @@ export function createApp() {
   app.use("/health", healthRoutes);
   app.use("/games", gamesRoutes);
   app.use("/play", playRoutes);
+  app.use("/remote-games", remoteGamesRoutes);
 
   app.use((_req: Request, res: Response) => {
     const error: ErrorDto = {

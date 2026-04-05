@@ -89,7 +89,74 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PlayOnceResponse"
+    /remote-games/connect:
+    post:
+      summary: Connect to an existing remote game hosted by another team's API
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemoteConnectRequest"
+      responses:
+        "201":
+          description: Remote session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoteGameSession"
 
+  /remote-games/create:
+    post:
+      summary: Create a new remote game in another team's API and store the local session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemoteCreateRequest"
+      responses:
+        "201":
+          description: Remote session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoteGameSession"
+
+  /remote-games/{sessionId}:
+    get:
+      summary: Get a stored remote game session
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Remote game session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoteGameSession"
+
+  /remote-games/{sessionId}/play-turn:
+    post:
+      summary: Sync remote state and, if it is our turn, submit our bot move to the remote API
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Remote turn processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemotePlayTurnResponse"
+                
 components:
   schemas:
     Yen:
@@ -200,3 +267,94 @@ components:
             - BOT_WON
             - OPPONENT_WON
             - DRAW
+        RemoteConnectRequest:
+      type: object
+      required:
+        - base_url
+        - game_id
+        - local_bot_id
+        - our_player_index
+      properties:
+        base_url:
+          type: string
+        game_id:
+          type: string
+        local_bot_id:
+          type: string
+        our_player_index:
+          type: integer
+
+    RemoteCreateRequest:
+      type: object
+      required:
+        - base_url
+        - size
+        - remote_bot_id
+        - local_bot_id
+      properties:
+        base_url:
+          type: string
+        size:
+          type: integer
+        remote_bot_id:
+          type: string
+        local_bot_id:
+          type: string
+        our_player_index:
+          type: integer
+
+    RemoteGameSession:
+      type: object
+      required:
+        - session_id
+        - base_url
+        - remote_game_id
+        - local_bot_id
+        - our_player_index
+        - status
+        - created_at
+        - updated_at
+        - last_known_state
+      properties:
+        session_id:
+          type: string
+        base_url:
+          type: string
+        remote_game_id:
+          type: string
+        local_bot_id:
+          type: string
+        our_player_index:
+          type: integer
+        status:
+          type: string
+          enum:
+            - ONGOING
+            - BOT_WON
+            - OPPONENT_WON
+            - DRAW
+        created_at:
+          type: string
+        updated_at:
+          type: string
+        last_known_state:
+          anyOf:
+            - $ref: "#/components/schemas/GameState"
+            - type: "null"
+
+    RemotePlayTurnResponse:
+      type: object
+      required:
+        - action
+        - session
+      properties:
+        action:
+          type: string
+          enum:
+            - WAITING_OPPONENT
+            - MOVE_SUBMITTED
+            - GAME_FINISHED
+        move:
+          $ref: "#/components/schemas/Coordinates"
+        session:
+          $ref: "#/components/schemas/RemoteGameSession"
