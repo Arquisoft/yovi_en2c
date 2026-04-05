@@ -8,7 +8,7 @@
 //   - Validación del enum gameMode
 // ============================================================
 
-import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest'
 import request from 'supertest'
 import app from '../users-service.js'
 import mongoose from 'mongoose'
