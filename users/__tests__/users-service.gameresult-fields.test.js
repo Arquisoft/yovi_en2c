@@ -1,26 +1,13 @@
-// ============================================================
-// NUEVOS TESTS — Issue #59: Persistir resultados de partidas
-// Añadir al final de users-service.test.js
-// ============================================================
-// Cubren:
-//   - POST /gameresult con nuevos campos (winner, boardSize, gameMode)
-//   - Valores por defecto de boardSize y gameMode
-//   - Validación del enum gameMode
-// ============================================================
-
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest'
 import request from 'supertest'
 import app from '../users-service.js'
 import mongoose from 'mongoose'
 
-let isConnected = false;
-
 describe('POST /gameresult — nuevos campos (winner, boardSize, gameMode)', () => {
     beforeAll(async () => {
-        if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI;
+        const TEST_URI = process.env.MONGODB_URI;
+        if (mongoose.connection.readyState === 0) {
             await mongoose.connect(TEST_URI);
-            isConnected = true;
         }
 
         await mongoose.connection.collections['users']?.deleteMany({ username: 'jugador_new_fields' });
@@ -272,10 +259,4 @@ describe('POST /gameresult — nuevos campos (winner, boardSize, gameMode)', () 
         expect(res.body.game).toHaveProperty('date')
         expect(new Date(res.body.game.date).toString()).not.toBe('Invalid Date')
     })
-});
-
-afterAll(async () => {
-    if (isConnected) {
-        await mongoose.connection.close();
-    }
 });
