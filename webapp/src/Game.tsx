@@ -78,20 +78,26 @@ const Game: React.FC = () => {
     navigate("/", { replace: true });
   };
 
-  const [yen, setYen] = useState<any>(null);
-  const botId = useMemo(() => {
-      const stateBot = (location.state as { bot?: string } | null)?.bot;
-      if (stateBot) {
-          localStorage.setItem("selectedBot", stateBot);
-          return stateBot;
-      }
-      const saved = localStorage.getItem("selectedBot");
-      if (saved) return saved;
-      return "heuristic_bot";
-  }, [location.state]);
-  const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    const [yen, setYen] = useState<any>(null);
+    const botId = useMemo(() => {
+        const stateBot = (location.state as { bot?: string } | null)?.bot;
+        if (stateBot) {
+            localStorage.setItem("selectedBot", stateBot);
+            return stateBot;
+        }
+        const saved = localStorage.getItem("selectedBot");
+        if (saved) return saved;
+        return "heuristic_bot";
+    }, [location.state]);
+
+    const boardSizeFromState = useMemo(() => {
+        const st = (location.state as { boardSize?: number } | null) ?? null;
+        return st?.boardSize ?? 7;
+    }, [location.state]);
+
+    const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
   // FIX: use both a ref (always current, safe inside async closures) and state
   // (drives re-renders for color display). The ref solves the stale closure problem
