@@ -17,9 +17,9 @@ vi.mock("react-router-dom", async () => {
 });
 
 function renderHome(
-  usernameFromState?: string,
-  usernameInStorage?: string,
-  tokenInStorage = "fake-token"
+    usernameFromState?: string,
+    usernameInStorage?: string,
+    tokenInStorage = "fake-token"
 ) {
   localStorage.clear();
 
@@ -43,18 +43,18 @@ function renderHome(
   } as Response);
 
   return render(
-    <I18nProvider>
-      <MemoryRouter
-        initialEntries={[
-          {
-            pathname: "/home",
-            state: usernameFromState ? { username: usernameFromState } : undefined,
-          },
-        ]}
-      >
-        <Home />
-      </MemoryRouter>
-    </I18nProvider>
+      <I18nProvider>
+        <MemoryRouter
+            initialEntries={[
+              {
+                pathname: "/home",
+                state: usernameFromState ? { username: usernameFromState } : undefined,
+              },
+            ]}
+        >
+          <Home />
+        </MemoryRouter>
+      </I18nProvider>
   );
 }
 
@@ -77,10 +77,10 @@ describe("Home", () => {
     expect(screen.getAllByRole("img", { name: /GameY/i })).toHaveLength(2);
     expect(screen.getByText(/Juega al juego Y|Play the Game of Y/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Partida rapida|Start quick game/i })
+        screen.getByRole("button", { name: /Partida rapida|Start quick game/i })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Cambiar usuario|Change user/i })
+        screen.getByRole("button", { name: /Cambiar usuario|Change user/i })
     ).toBeInTheDocument();
   });
 
@@ -102,11 +102,11 @@ describe("Home", () => {
     global.fetch = vi.fn();
 
     render(
-      <I18nProvider>
-        <MemoryRouter initialEntries={[{ pathname: "/home" }]}>
-          <Home />
-        </MemoryRouter>
-      </I18nProvider>
+        <I18nProvider>
+          <MemoryRouter initialEntries={[{ pathname: "/home" }]}>
+            <Home />
+          </MemoryRouter>
+        </I18nProvider>
     );
 
     await waitFor(() => {
@@ -114,18 +114,18 @@ describe("Home", () => {
     });
   });
 
-  test("navigates to game when start button is clicked", async () => {
+  test("navigates to game with default board size when start button is clicked", async () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
     await screen.findByRole("button", { name: /Partida rapida|Start quick game/i });
 
     await user.click(
-      screen.getByRole("button", { name: /Partida rapida|Start quick game/i })
+        screen.getByRole("button", { name: /Partida rapida|Start quick game/i })
     );
 
     expect(mockNavigate).toHaveBeenCalledWith("/game", {
-      state: { username: "Pablo", bot: "minimax_bot" },
+      state: { username: "Pablo", bot: "minimax_bot", boardSize: 7 },
     });
   });
 
@@ -136,7 +136,7 @@ describe("Home", () => {
     await screen.findByRole("button", { name: /Cambiar usuario|Change user/i });
 
     await user.click(
-      screen.getByRole("button", { name: /Cambiar usuario|Change user/i })
+        screen.getByRole("button", { name: /Cambiar usuario|Change user/i })
     );
 
     expect(localStorage.getItem("username")).toBeNull();
@@ -151,7 +151,7 @@ describe("Home", () => {
     await screen.findByRole("button", { name: /Salir|Logout/i });
 
     await user.click(
-      screen.getByRole("button", { name: /Salir|Logout/i })
+        screen.getByRole("button", { name: /Salir|Logout/i })
     );
 
     expect(localStorage.getItem("username")).toBeNull();
