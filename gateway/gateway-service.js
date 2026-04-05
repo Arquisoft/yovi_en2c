@@ -21,6 +21,7 @@ const AUTH_BASE_URL = process.env.AUTH_BASE_URL || "http://authentication:5000" 
 const AUTH_REGISTER_URL = `${AUTH_BASE_URL}/register`;
 const AUTH_LOGIN_URL = `${AUTH_BASE_URL}/login`;
 const AUTH_VERIFY_URL = `${AUTH_BASE_URL}/verify`;
+const GAME_RESULT_URL = `${USERS_BASE_URL}/gameresult`;
 
 const PVB_MOVE_ROUTES = {
   random_bot: `${GAMEY_BASE_URL}/v1/game/pvb/random_bot`,
@@ -122,6 +123,15 @@ app.get("/game/status", async (req, res) => {
     });
   } catch (error) {
     return forwardAxiosError(res, error, "Game server unavailable");
+  }
+});
+
+app.post("/gameresult", async (req, res) => {
+  try {
+    const response = await axios.post(GAME_RESULT_URL, req.body); // NOSONAR
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
   }
 });
 
