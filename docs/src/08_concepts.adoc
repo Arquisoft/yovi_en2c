@@ -27,10 +27,10 @@ All game state across the system is represented using **YEN notation**, as manda
 
 * **Rationale**: Standardization ensures interoperability with external bots and consistency across services.
 
-
 === Internationalization
+
 For the application to be more accessible to a wider range of users, internationalization was implemented for the
-languages of english and spanish, with architecture designed for easy addition of new languages.
+languages of English and Spanish, with architecture designed for easy addition of new languages.
 
 * **Implementation**:
 ** All UI strings externalized to JSON files
@@ -52,15 +52,17 @@ languages of english and spanish, with architecture designed for easy addition o
 ----
 * **Fallback**: English as default if translation missing
 
-
 ==== Network Security
 
-|===
+With the addition of a **reverse proxy** (e.g., Nginx) in front of the API Gateway:
+
+|=== 
 | Layer | Measure | Purpose
-| **Transport** | HTTPS with TLS 1.3 | Encrypt all external traffic
+| **Transport** | HTTPS terminated at Nginx Reverse Proxy | Encrypt all external traffic
+| **Internal Traffic** | HTTP from Proxy → API Gateway → Services | Simplified internal routing; services never exposed externally
 | **Network isolation** | Docker networks (frontend/backend) | Prevent direct backend access
-| **Firewall** | Only ports 22(SSH) and 443(HTTPS) exposed | Minimize attack surface
-| **API Gateway** | Single entry point | Hide internal service topology
+| **Firewall** | Only ports 22 (SSH) and 443 (HTTPS) exposed externally | Minimize attack surface
+| **API Gateway** | Single internal entry point behind proxy | Route requests internally, hide service topology, log/monitor requests
 |===
 
 ==== Secrets Management
@@ -79,21 +81,21 @@ Example secrets:
 
 Already documented in Section 4, but summarized here for cross-cutting relevance:
 
-|===
+|=== 
 | Pattern | Application | Cross-cutting Concern
 | **Strategy Pattern** | Bot AI strategies | Extensibility (new strategies = new classes)
 | **Repository Pattern** | Data access in `users` service | Testability (mock repositories)
-| **Gateway/Router** | API Gateway | Security, routing, monitoring
+| **Gateway/Router** | API Gateway | Security, routing, monitoring (internal traffic behind proxy)
 | **Observer/Reactive** | UI updates via React state | Consistent UI across state changes
 |===
 
 ==== Error Handling Strategy
 
-Consistent error handling across all services:
+Consistent error handling across all services, now accounting for requests coming via the reverse proxy:
 
-API errors always return appropriate HTTP status codes:
+API errors always return appropriate HTTP status codes, propagated through the proxy:
 
-|===
+|=== 
 | Status Code | When | Example
 | 400 Bad Request | Invalid input format | Malformed YEN
 | 401 Unauthorized | Missing/invalid token | No JWT
@@ -101,7 +103,7 @@ API errors always return appropriate HTTP status codes:
 | 404 Not Found | Resource doesn't exist | Invalid game ID
 | 409 Conflict | Business rule violation | Username already exists
 | 500 Internal Error | Unexpected server error | Database connection lost
-| 503 Unavailable | Service temporarily down | Game engine unreachable
+| 503 Unavailable | Service temporarily down | Game engine unreachable (proxied)
 |===
 
 ==== Code Organization
@@ -109,7 +111,6 @@ API errors always return appropriate HTTP status codes:
 All services follow consistent structure:
 
 ----
-
 /service-name/
     src/            # Production code
     test/           # Unit tests
@@ -121,25 +122,12 @@ README.md
 
 ==== Testing Strategy
 
-|===
-| Test Type | Tool | Location | Coverage Target
-| Unit tests | Jest (Node), cargo test (Rust) | */.test.ts, *_test.rs | 80%+
-| Integration tests | Supertest (Node), custom (Rust) | /test/integration/ | Key paths
-| End-to-end tests | Playwright | webapp/e2e/ | Critical user journeys
-| API tests | Postman/Newman | /api-tests/ | All endpoints
+|=== 
+| Test Type | Tool | Location | Coverage Target | Note
+| Unit tests | Jest (Node), cargo test (Rust) | */.test.ts, *_test.rs | 80%+ | Same as before
+| Integration tests | Supertest (Node), custom (Rust) | /test/integration/ | Key paths | Include proxy routing
+| End-to-end tests | Playwright | webapp/e2e/ | Critical user journeys | Test via Proxy → Gateway → Services
+| API tests | Postman/Newman | /api-tests/ | All endpoints | Requests pass through proxy to catch misrouting/TLS issues
 |===
 
 CI Integration: All tests run on every PR via GitHub Actions
-
-==== Quality Assurance
-
-* **SonarQube** is integrated into the GitHub repository to:
-** Ensure proper code coverage
-** Detect code smells and potential bugs
-** Enforce coding standards
-** Monitor technical debt
-
-* **CI Integration**: All tests run on every pull request via GitHub Actions. The pipeline fails if:
-** Any test fails
-** Code coverage drops below threshold (80%)
-** SonarQube detects critical issues
