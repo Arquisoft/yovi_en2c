@@ -32,6 +32,7 @@ yovi_en2c/
 ├── authentication/  # Node.js + Express JWT authentication service
 ├── gateway/         # Node.js + Express API gateway
 ├── gamey/           # Rust game engine and bot service
+├── api/             # Interoperability API (bot vs bot)
 └── docs/            # Architecture documentation (Arc42 + ADRs)
 ```
 
@@ -45,6 +46,7 @@ yovi_en2c/
 - **Match history and game results** stored in MongoDB
 - **Internationalization (i18n)** — English and Spanish supported
 - **Public REST API** for external bots using YEN notation
+- **Bot interoperability API** for cross-team competitions
 - **Monitoring** with Prometheus and Grafana
 
 ---
@@ -162,6 +164,69 @@ All game state is exchanged in **YEN (Y Exchange Notation)** — a JSON format i
 }
 ```
 
+### Interoperability API (`api/`)
+
+A Node.js + Express service that enables **bot vs bot interoperability between teams**.
+
+This API acts as a bridge between external bots and the internal `gamey` engine, allowing:
+- external bots to play against our bots
+- our bots to play against other teams' APIs
+
+It follows a standardized contract based on **YEN (Y Exchange Notation)**.
+
+**Key responsibilities:**
+- expose public HTTP endpoints
+- manage active games (in-memory)
+- connect to remote APIs
+- translate requests to `gamey`
+- orchestrate game flow
+
+**Base public URL (deployment):** https://yovi.13.63.89.84.sslip.io/interop
+
+
+---
+
+### Local Endpoints
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `POST` | `/games` | Create a new local game |
+| `GET` | `/games/{id}` | Get game state |
+| `POST` | `/games/{id}/play` | Play a move |
+| `POST` | `/play` | Stateless move |
+| `GET` | `/health` | Health check |
+
+---
+
+### Remote Endpoints
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `POST` | `/remote-games/create` | Create remote game |
+| `POST` | `/remote-games/connect` | Connect to existing game |
+| `GET` | `/remote-games/{id}` | Get session info |
+| `POST` | `/remote-games/{id}/play-turn` | Play remote turn |
+
+---
+
+### Example (create game)
+
+```bash
+curl -X POST "https://yovi.13.63.89.84.sslip.io/interop/games" \
+  -H "Content-Type: application/json" \
+  -d '{"size":3,"bot_id":"random_bot"}'
+```
+---
+### YEN format
+```json
+{
+  "size": 3,
+  "turn": 0,
+  "players": ["B", "R"],
+  "layout": "./../..."
+}
+```
+
 ---
 
 ## Running the Project
@@ -195,6 +260,7 @@ docker-compose up --build
 | Users service | http://localhost:3000 |
 | Auth service | http://localhost:5000 |
 | Game engine | http://localhost:4000 |
+| Interop API (public) | https://localhost:4001 |
 | Prometheus | http://localhost:9090 |
 | Grafana | http://localhost:9091 |
 
