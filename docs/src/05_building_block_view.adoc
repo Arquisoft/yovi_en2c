@@ -12,8 +12,6 @@ This abstraction allows understanding the system structure without drowning in i
 
 === Level 1: Overall System White Box
 
-=== Level 1: Overall System White Box
-
 The YOVI system is decomposed into **five top-level building blocks**: Nginx reverse proxy, API gateway, three services, plus an external database.
 
 [plantuml,"Level 1 System White Box with Reverse Proxy",png]
