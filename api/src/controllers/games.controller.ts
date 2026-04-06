@@ -1,8 +1,8 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { interopService } from "../services/interop.service";
-import { CreateGameRequestDto } from "../dtos/create-game.dto";
-import { PlayMoveRequestDto } from "../dtos/play-move.dto";
-import { ErrorDto } from "../dtos/error.dto";
+import type { CreateGameRequestDto } from "../dtos/create-game.dto";
+import type { PlayMoveRequestDto } from "../dtos/play-move.dto";
+import type { ErrorDto } from "../dtos/error.dto";
 
 type GameParams = {
   gameId: string;
