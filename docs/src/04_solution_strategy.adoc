@@ -7,7 +7,6 @@ This section summarizes the fundamental decisions that shape the YOVI system arc
 specific **constraints** (from section 2) and **quality goals** (from section 1), and forms the foundation for detailed
 design decisions in later sections.
 
-
 === 1. Technology Decisions
 
 These decisions are primarily driven by the **technical constraints** defined in section 2 (TypeScript, Rust, Docker)
@@ -23,28 +22,29 @@ and the **quality goal of maintainability**.
 | **CI/CD: GitHub Actions** | Integrated with repository, automates testing and deployment, free for students. | Organizational Constraint: CI/CD; Quality: Testability | Jenkins (rejected: requires separate infrastructure)
 |===
 
-
 === 2. Top-Level Decomposition (Architectural Pattern)
 
-
-**Decision:** **Microservices architecture** with three independent services (`webapp`, `users`, `gamey`) plus an **API gateway**.
+**Decision:** **Microservices architecture** with three independent services (`webapp`, `users`, `gamey`) plus an **API gateway behind an Nginx reverse proxy**.
 
 **Reasons:**
-- The technology constraints (TypeScript + Rust) **force** a separation - they cannot run in the same process
+- Technology constraints (TypeScript + Rust) **force** separation—cannot run in same process
 - Separating user management from game logic allows independent scaling and development
-- The gateway provides a single entry point, hiding internal complexity (security constraint)
+- The **API gateway** provides a single entry point, hiding internal complexity and enforcing security
+- **Nginx reverse proxy** handles HTTPS termination and redirects HTTP → HTTPS
 
-**How it maps to quality goals**:
+**How it maps to quality goals:**
 
-* Maintainability: Services can be modified independently
-* Testability: Each service can be tested in isolation
-* Deployability: Services can be deployed independently or together via docker-compose
+* Maintainability: Services can be modified independently  
+* Testability: Each service can be tested in isolation  
+* Deployability: Services can be deployed independently or together via docker-compose  
+* Security: HTTPS handled at proxy, internal services not exposed  
 
-
-[plantuml,"Service Decomposition",png]
+[plantuml,"Service Decomposition with Reverse Proxy",png]
 ----
 @startuml
 package "YOVI System" {
+
+  component "Nginx Reverse Proxy (HTTPS termination)" as Proxy
 
   component "API Gateway" as Gateway
 
@@ -56,6 +56,7 @@ package "YOVI System" {
 
   database "MongoDB" as DB
 
+  Proxy --> Gateway : routes requests
   Gateway --> Webapp : serves static files
   Gateway --> Users : routes /api/users/*
   Gateway --> Gamey : routes /api/game/*
@@ -63,12 +64,16 @@ package "YOVI System" {
   Users --> DB : persists user data
   Gamey --> Gamey : (stateless)
 
-  note top of Gateway
-    Single entry point
-    Request routing
-    SSL termination
+  note top of Proxy
+    HTTPS termination
+    Redirect HTTP → HTTPS
   end note
 
+  note top of Gateway
+    Single entry point for services
+    Routing logic
+  end note
+}
 @enduml
 ----
 
@@ -76,66 +81,48 @@ package "YOVI System" {
 
 |===
 | Pattern | Application | Rationale | Location
-| **Model-View-Controller** | Webapp structure | Separates UI (View) from game state (Model) and user input handling
-(Controller). Essential for maintainability. | `webapp/src/` (React components as View, state as Model, event handlers
-as Controller)
-| **Strategy Pattern** | Bot AI implementation | Allows multiple difficulty levels/strategies without changing game core.
-New strategies = new classes, no modification to existing code. | `gamey/src/bot/` (each strategy implements common trait)
-| **Observer Pattern** | UI updates | When game state changes, UI must update automatically. React's virtual DOM and
-state management handle this efficiently. | `webapp/src/` (React hooks/state)
-| **Gateway/Router Pattern** | API Gateway | Single entry point routes requests to appropriate services. Simplifies
-client and adds security layer. | `gateway`
+| **Model-View-Controller** | Webapp structure | Separates UI (View) from game state (Model) and user input handling (Controller). Essential for maintainability. | `webapp/src/`
+| **Strategy Pattern** | Bot AI implementation | Allows multiple difficulty levels/strategies without changing game core. New strategies = new classes, no modification to existing code. | `gamey/src/bot/`
+| **Observer Pattern** | UI updates | When game state changes, UI must update automatically. React's virtual DOM and state management handle this efficiently. | `webapp/src/`
+| **Gateway/Router Pattern** | API Gateway + reverse proxy | Single entry point routes requests to appropriate services. Simplifies client and adds security layer. HTTPS enforced at reverse proxy. | `gateway/` + Nginx config
 |===
 
 === 4. Quality Goal Realization
 
-This table shows how specific architectural decisions directly address the **quality goals** defined in section 1.
-
 |===
 | Quality Goal | How We Achieve It | Key Decisions | Verification
-| **Functionality** | Rust engine ensures correct game rules; multiple strategies in `gamey/src/bot/` | Rust for game logic; Strategy pattern for AI | Unit tests in `gamey/` verify rules; integration tests verify bot moves
-| **Usability** | React provides responsive UI; component design supports i18n | React frontend; Externalized strings | E2E tests verify user flows; usability testing with real users
+| **Functionality** | Rust engine ensures correct game rules; multiple strategies in `gamey/src/bot/` | Rust for game logic; Strategy pattern for AI | Unit tests in `gamey/`; integration tests verify bot moves
+| **Usability** | React provides responsive UI; component design supports i18n | React frontend; Externalized strings | E2E tests verify user flows; usability testing
 | **Modularity & Maintainability** | Microservices separation; Strategy pattern for extensions | Three-service architecture; Strategy pattern | Independent deployment possible; new strategies added without modifying core
-| **Deployability & Availability** | Docker containers; docker-compose; CI/CD | Containerization; GitHub Actions | `docker-compose up` works; CI pipeline runs on every push
-| **Testability** | Separation of concerns; dependency injection in Node.js; Rust's test framework | Microservices; Repository pattern | Unit tests: `cargo test`, `npm test`; Integration tests; E2E tests
-| **Interoperability** | REST API with YEN notation; documented for bot developers | Public API in `gamey`; OpenAPI docs | API tests verify YEN format; documentation generated automatically
+| **Deployability & Availability** | Docker containers; docker-compose; CI/CD; HTTPS via Nginx | Containerization; GitHub Actions; Reverse proxy | `docker-compose up` works; CI pipeline runs; HTTPS verified
+| **Testability** | Separation of concerns; dependency injection; Rust test framework | Microservices; Repository pattern | Unit tests: `cargo test`, `npm test`; Integration tests; E2E tests
+| **Interoperability** | REST API with YEN notation; documented for bots | Public API in `gamey`; OpenAPI docs | API tests verify YEN format; documentation generated automatically
 |===
-
 
 === 5. Organizational and Process Decisions
 
 |===
 | Decision | Rationale | Impact | Constraint Addressed
-| **Iterative Development (2-week sprints)** | Early validation of gameplay; adapt to feedback | Regular demos;
-continuous integration | Course timeline; quality goals
-| **Kanban Board (GitHub Projects)** | Visualize work; identify bottlenecks | Issues tracked; clear priorities |
-Organizational: issue tracking
-| **Code Reviews via Pull Requests** | Catch issues early; share knowledge | All PRs require review; coding standards
-enforced | Quality: maintainability, reliability
-| **Pair Programming for Complex Features** | Rust game logic is critical; two minds better than one | Higher quality
-for core engine | Quality: functionality, reliability
-| **Architectural Decision Records (ADRs)** | Document why decisions were made | Github wiki with numbered ADRs |
-Organizational: documentation standard
-| **Definition of Done** | Feature = code + tests + docs + reviewed | Ensures completeness before merge | Quality:
-testability, maintainability
+| **Iterative Development (2-week sprints)** | Early validation of gameplay; adapt to feedback | Regular demos; continuous integration | Course timeline; quality goals
+| **Kanban Board (GitHub Projects)** | Visualize work; identify bottlenecks | Issues tracked; clear priorities | Organizational: issue tracking
+| **Code Reviews via Pull Requests** | Catch issues early; share knowledge | All PRs require review; coding standards enforced | Quality: maintainability, reliability
+| **Pair Programming for Complex Features** | Rust game logic is critical | Higher quality for core engine | Quality: functionality, reliability
+| **Architectural Decision Records (ADRs)** | Document why decisions were made | Github wiki with numbered ADRs | Organizational: documentation standard
+| **Definition of Done** | Feature = code + tests + docs + reviewed | Ensures completeness before merge | Quality: testability, maintainability
 |===
 
 === 6. Key Architectural Decisions Summary
 
-This table lists the most significant decisions that shape the architecture, with references to detailed ADRs.
-
 |===
 | Decision | ADR | Summary | Status
-|**Modes of game available to the user** | ADR-001 | Basic funcionality to create a extendable project | Implemented
-|**MongoDB for user data** | ADR-002 | Schema flexibility for evolving requirements | Implemented
-|**Three-service architecture** | ADR-003 | Separate webapp, users, gamey services due to technology constraints | Implemented
-|**API Gateway** | ADR-004 | Single entry point for security and routing | Implemented
-|**Strategy Pattern for AI** | ADR-005 | Bot strategies as pluggable components | In progress
+| **Modes of game available to the user** | ADR-001 | Basic functionality, extendable project | Implemented
+| **MongoDB for user data** | ADR-002 | Schema flexibility for evolving requirements | Implemented
+| **Three-service architecture** | ADR-003 | Separate webapp, users, gamey services due to technology constraints | Implemented
+| **API Gateway + Reverse Proxy** | ADR-004 | Single entry point, routing, HTTPS enforced | Implemented
+| **Strategy Pattern for AI** | ADR-005 | Bot strategies as pluggable components | In progress
 |===
 
 === 7. Traceability to Constraints
-
-This section links back to the constraints defined in section 2, showing how our solution strategy satisfies them.
 
 |===
 | Constraint (from Section 2) | How Solution Strategy Addresses It
@@ -149,9 +136,5 @@ This section links back to the constraints defined in section 2, showing how our
 | **Testing requirements** | Unit, integration, E2E tests in all services
 | **CI/CD** | GitHub Actions workflows for test and deploy
 | **Documentation (Arc42 + ADRs)** | This document + ADRs in Github wiki
+| **Secure HTTPS access** | Nginx reverse proxy terminates SSL; internal services not exposed | 
 |===
-
-
-
-
-
