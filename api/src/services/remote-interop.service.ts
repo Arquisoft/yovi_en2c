@@ -3,7 +3,7 @@ import { gameyClient } from "../clients/gamey.client";
 import { remoteGameSessionsStore } from "../store/remote-game-sessions.store";
 import { RemoteGameSession } from "../models/remote-game-session.model";
 import { RemoteConnectRequestDto } from "../dtos/remote-connect.dto";
-import { RemoteCreateRequestDto } from "../dtos/remote-create.dto.ts";
+import { RemoteCreateRequestDto } from "../dtos/remote-create.dto";
 import {
   RemoteGameSessionDto,
   RemotePlayTurnResponseDto
