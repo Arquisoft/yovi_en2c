@@ -11,7 +11,7 @@ services:
     depends_on:
       - webapp
       - gateway
-      - api
+      - botapi
     networks:
       - monitor-net
 
@@ -65,9 +65,9 @@ services:
     networks:
       - monitor-net
 
-  api:
-    image: ghcr.io/arquisoft/yovi_en2c-api:latest
-    container_name: api
+  botapi:
+    image: ghcr.io/arquisoft/yovi_en2c-botapi:latest
+    container_name: botapi
     environment:
       - GAMEY_BASE_URL=http://gamey:4000
       - GAMEY_API_VERSION=v1
