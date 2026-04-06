@@ -87,6 +87,27 @@ body {
   display: flex;
   flex-direction: column;
 }
+.page {
+  position: relative;
+  background-color: var(--bg);
+  overflow: hidden;
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: radial-gradient(var(--accent) 1px, transparent 1px);
+  background-size: 20px 20px; /* distance between dots */
+  z-index: 0;
+}
+.page-main {
+  position: relative;
+  z-index: 1; /* ensures content sits above the dots */
+}
 
 .page-main, .auth-body, .game-main, .finished-body {
   flex: 1;

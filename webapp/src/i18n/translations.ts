@@ -53,7 +53,7 @@ export const translations: Record<Lang, Dict> = {
 
     // Home
     "home.badge": "Estás en Gamey - Yovi_EN2C",
-    "home.welcome": "Hola {username}",
+    "home.welcome": "Bienvenido",
     "home.subtitle":
       "Juega al juego Y",
     "home.start": "Empezar partida",
@@ -178,7 +178,7 @@ export const translations: Record<Lang, Dict> = {
 
     // Home
     "home.badge": "You are in Gamey - Yovi_EN2C",
-    "home.welcome": "Hello {username}",
+    "home.welcome": "Welcome",
     "home.subtitle": "Play the Game of Y",
     "home.start": "Start game",
     "home.goBoard": "Go to board",
