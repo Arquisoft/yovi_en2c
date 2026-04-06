@@ -17,6 +17,7 @@ app.use(cors({
 // Internal network communication -> no need for https
 const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://gamey:4000" || "http://localhost:4000"; //NOSONAR
 const AUTH_BASE_URL = process.env.AUTH_BASE_URL || "http://authentication:5000" || "http://localhost:5000"; //NOSONAR
+const USERS_BASE_URL = process.env.USERS_BASE_URL || "http://users:3000" || "http://localhost:3000"; //NOSONAR
 
 const AUTH_REGISTER_URL = `${AUTH_BASE_URL}/register`;
 const AUTH_LOGIN_URL = `${AUTH_BASE_URL}/login`;
