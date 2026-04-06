@@ -11,6 +11,7 @@ services:
     depends_on:
       - webapp
       - gateway
+      - api
     networks:
       - monitor-net
 
@@ -61,6 +62,20 @@ services:
       - gamey
     expose:
       - "8080"
+    networks:
+      - monitor-net
+
+  api:
+    image: ghcr.io/arquisoft/yovi_en2c-api:latest
+    container_name: api
+    environment:
+      - GAMEY_BASE_URL=http://gamey:4000
+      - GAMEY_API_VERSION=v1
+      - PORT=4001
+    depends_on:
+      - gamey
+    expose:
+      - "4001"
     networks:
       - monitor-net
 

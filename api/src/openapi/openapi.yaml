@@ -1,0 +1,361 @@
+openapi: 3.1.0
+info:
+  title: YOVI_EN2C Bot Interop API
+  version: 1.0.0
+  description: API pública para que bots externos compitan contra los bots de YOVI_EN2C.
+
+servers:
+  - url: http://localhost:4001
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+
+  /games:
+    post:
+      summary: Create a new active bot interop game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGameRequest"
+      responses:
+        "201":
+          description: Game created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+
+  /games/{gameId}:
+    get:
+      summary: Get the current state of an active game
+      parameters:
+        - in: path
+          name: gameId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current game state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+
+  /games/{gameId}/play:
+    post:
+      summary: Submit opponent move and receive updated state after local bot response
+      parameters:
+        - in: path
+          name: gameId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayMoveRequest"
+      responses:
+        "200":
+          description: Updated game state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+
+  /play:
+    post:
+      summary: Stateless play endpoint
+      description: Receives a YEN position and an optional bot_id, asks the local bot for its next move, and returns the updated YEN position.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayOnceRequest"
+      responses:
+        "200":
+          description: Updated YEN after local bot move
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayOnceResponse"
+
+  /remote-games/connect:
+    post:
+      summary: Connect to an existing remote game hosted by another team's API
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemoteConnectRequest"
+      responses:
+        "201":
+          description: Remote session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoteGameSession"
+
+  /remote-games/create:
+    post:
+      summary: Create a new remote game in another team's API and store the local session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemoteCreateRequest"
+      responses:
+        "201":
+          description: Remote session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoteGameSession"
+
+  /remote-games/{sessionId}:
+    get:
+      summary: Get a stored remote game session
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Remote game session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoteGameSession"
+
+  /remote-games/{sessionId}/play-turn:
+    post:
+      summary: Sync remote state and, if it is our turn, submit our bot move to the remote API
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Remote turn processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemotePlayTurnResponse"
+
+components:
+  schemas:
+    Yen:
+      type: object
+      required:
+        - size
+        - turn
+        - players
+        - layout
+      properties:
+        size:
+          type: integer
+        turn:
+          type: integer
+        players:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 1
+        layout:
+          type: string
+
+    Coordinates:
+      type: object
+      required:
+        - x
+        - y
+        - z
+      properties:
+        x:
+          type: integer
+        y:
+          type: integer
+        z:
+          type: integer
+
+    CreateGameRequest:
+      type: object
+      required:
+        - size
+        - bot_id
+      properties:
+        size:
+          type: integer
+        bot_id:
+          type: string
+
+    PlayMoveRequest:
+      type: object
+      required:
+        - position
+      properties:
+        position:
+          $ref: "#/components/schemas/Yen"
+
+    PlayOnceRequest:
+      type: object
+      required:
+        - position
+      properties:
+        position:
+          $ref: "#/components/schemas/Yen"
+        bot_id:
+          type: string
+          description: Optional bot identifier to select which bot should play.
+
+    GameState:
+      type: object
+      required:
+        - game_id
+        - bot_id
+        - position
+        - status
+      properties:
+        game_id:
+          type: string
+        bot_id:
+          type: string
+        position:
+          $ref: "#/components/schemas/Yen"
+        status:
+          type: string
+          enum:
+            - ONGOING
+            - BOT_WON
+            - OPPONENT_WON
+            - DRAW
+
+    PlayOnceResponse:
+      type: object
+      required:
+        - move
+        - position
+        - status
+      properties:
+        bot_id:
+          type: string
+        move:
+          $ref: "#/components/schemas/Coordinates"
+        position:
+          $ref: "#/components/schemas/Yen"
+        status:
+          type: string
+          enum:
+            - ONGOING
+            - BOT_WON
+            - OPPONENT_WON
+            - DRAW
+
+    RemoteConnectRequest:
+      type: object
+      required:
+        - base_url
+        - game_id
+        - local_bot_id
+        - our_player_index
+      properties:
+        base_url:
+          type: string
+        game_id:
+          type: string
+        local_bot_id:
+          type: string
+        our_player_index:
+          type: integer
+
+    RemoteCreateRequest:
+      type: object
+      required:
+        - base_url
+        - size
+        - remote_bot_id
+        - local_bot_id
+      properties:
+        base_url:
+          type: string
+        size:
+          type: integer
+        remote_bot_id:
+          type: string
+        local_bot_id:
+          type: string
+        our_player_index:
+          type: integer
+
+    RemoteGameSession:
+      type: object
+      required:
+        - session_id
+        - base_url
+        - remote_game_id
+        - local_bot_id
+        - our_player_index
+        - status
+        - created_at
+        - updated_at
+        - last_known_state
+      properties:
+        session_id:
+          type: string
+        base_url:
+          type: string
+        remote_game_id:
+          type: string
+        local_bot_id:
+          type: string
+        our_player_index:
+          type: integer
+        status:
+          type: string
+          enum:
+            - ONGOING
+            - BOT_WON
+            - OPPONENT_WON
+            - DRAW
+        created_at:
+          type: string
+        updated_at:
+          type: string
+        last_known_state:
+          anyOf:
+            - $ref: "#/components/schemas/GameState"
+            - type: "null"
+
+    RemotePlayTurnResponse:
+      type: object
+      required:
+        - action
+        - session
+      properties:
+        action:
+          type: string
+          enum:
+            - WAITING_OPPONENT
+            - MOVE_SUBMITTED
+            - GAME_FINISHED
+        move:
+          $ref: "#/components/schemas/Coordinates"
+        session:
+          $ref: "#/components/schemas/RemoteGameSession"
