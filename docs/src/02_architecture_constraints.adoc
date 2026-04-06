@@ -3,12 +3,11 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-architecture-constraints]]
 == Architecture Constraints
 
-This section lists the main constraints that shape the architecture of the YOVI system. Unlike requirements , constraints define
+This section lists the main constraints that shape the architecture of the YOVI system. Unlike requirements, constraints define
 how it must be done or which technologies must be used. These are non-negotiable boundaries within which we must operate.
-.
 
 === Technical Constraints
-These constraints are imposed by the  client (Micrati). They dictate the technology stack and communication protocols.
+These constraints are imposed by the client (Micrati). They dictate the technology stack and communication protocols.
 
 |===
 | Constraint | Explanation | Rationale | Negotiable?
@@ -16,7 +15,7 @@ These constraints are imposed by the  client (Micrati). They dictate the technol
 | **Game Engine Language** | The game logic module MUST be implemented in **Rust**. | Performance and safety requirements for game state validation and AI strategies. |  No
 | **Communication Protocol** | All communication between the webapp and game engine MUST use **JSON messages** following **YEN notation** for game states. | Standardized format specified by the client for interoperability. |  No
 | **Public API** | The system MUST expose a documented public API that allows external bots to interact. | Core requirement from Micrati for third-party integration. |  No
-| **Deployment** | The complete system MUST be publicly accessible via the Web. | The client needs to demonstrate the working product. |  No
+| **Deployment** | The complete system MUST be publicly accessible via the Web using **HTTPS**. | Ensures secure communication and production readiness. |  No
 | **Containerization** | All services MUST be containerized using **Docker** with a root-level `docker-compose.yml`. | Ensures consistent deployment across environments. |  Partial (format flexible)
 | **Database** | User data MUST be persisted. **MongoDB** is the current implementation, but alternatives are possible. | Data persistence is mandatory; the specific database technology is negotiable. | Yes (technology choice)
 |===
@@ -41,7 +40,7 @@ These constraints govern our development process and team practices.
 |===
 | Constraint | Explanation | Rationale | Negotiable?
 | **Documentation Standard** | Architecture MUST be documented following the **Arc42 template**. | Course requirement for the ASR lab. |  No
-| **Decision Recording** | Architectural decisions MUST be recorded as **ADRs** (Architectural Decision Records) in the wiki of Github. | Ensures traceability and rationale documentation. |  No
+| **Decision Recording** | Architectural decisions MUST be recorded as **ADRs** (Architectural Decision Records) in the wiki of GitHub. | Ensures traceability and rationale documentation. |  No
 | **Version Control** | Development MUST use **Git** with the repository hosted on **GitHub** (`Arquisoft/yovi_en2c`). | Course requirement for collaboration and evaluation. |  No
 | **Branching Strategy** | A **branch-based workflow** MUST be followed (feature branches, pull requests, code reviews). | Ensures code quality and team coordination. |  Partial (specific workflow details negotiable)
 | **Testing Requirements** | The system MUST include **unit tests**, **integration tests**, and **end-to-end tests**. | Quality assurance requirement from course evaluation. |  No
@@ -56,7 +55,7 @@ These constraints come from external stakeholders and the operating environment.
 
 |===
 | Constraint | Explanation | Rationale | Negotiable?
-| **Bot Integration** | External bots can ONLY interact through the public API; no direct access to internal services. | Security and encapsulation requirement. |  No
+| **Bot Integration** | External bots can ONLY interact through the public API exposed via the secure **HTTPS endpoint**; no direct access to internal services is allowed. | Security and encapsulation requirement. |  No
 | **API Documentation** | The public API MUST be documented for third-party developers. | Enables external developers to build compatible bots. |  Partial (documentation format negotiable)
 | **YEN Notation Compliance** | Any system claiming to support Game Y MUST use YEN notation for game state representation. | Industry standard for this game family. |  No
 | **Public Accessibility** | The deployed system MUST be accessible without special network configuration. | End users and evaluators need to access the platform easily. |  No
@@ -79,6 +78,7 @@ These constraints collectively shape our architecture in specific ways:
 
 * **Three-service structure**: The technology constraints (TypeScript + Rust) force a separation between frontend (`webapp`) and game engine (`gamey`). The user management requirement adds a third service (`users`).
 * **API Gateway necessity**: Multiple services with public API exposure require a gateway for request routing and security.
+* **Reverse proxy layer**: A reverse proxy is required to handle HTTPS, enforce secure communication, and route external traffic to the appropriate internal services.
 * **Docker standardization**: The containerization constraint ensures consistent development and deployment environments.
 * **Documentation overhead**: Arc42 and ADR requirements mean we must invest time in documentation alongside development.
 * **Testing necessity**: The testing requirements force us to design for testability from the start.
