@@ -10,7 +10,7 @@
 
 **YOVI** is a web platform for playing **Game Y** — an abstract strategy board game where players compete to connect all three sides of a triangular board. The project is developed as part of the Software Architecture (ASW) course at the University of Oviedo.
 
-🎮 **Play here:** [http://13.60.227.214/](http://13.60.227.214/)
+🎮 **Play here:** [https://yovi.13.63.89.84.sslip.io](https://yovi.13.63.89.84.sslip.io)
 
 ## Contributors
 
@@ -23,7 +23,7 @@
 
 ## Project Structure
 
-The project follows a **microservices architecture** with five independent services orchestrated via Docker Compose:
+The project follows a **microservices architecture** with five independent services orchestrated via Docker Compose and exposed through an **NGINX reverse proxy**:
 
 ```
 yovi_en2c/
@@ -32,8 +32,29 @@ yovi_en2c/
 ├── authentication/  # Node.js + Express JWT authentication service
 ├── gateway/         # Node.js + Express API gateway
 ├── gamey/           # Rust game engine and bot service
+├── botapi/             # Interoperability API (bot vs bot)
+├── nginx/             # Reverse proxy
 └── docs/            # Architecture documentation (Arc42 + ADRs)
 ```
+
+---
+
+## Request Flow
+
+```
+Browser -> NGINX (80/443)
+            ├── /        -> webapp
+            ├── /api     -> gateway -> services (users, auth, gamey)
+            └── /interop -> botapi -> gamey
+```
+
+NGINX handles:
+- HTTPS termination (production)
+- HTTP → HTTPS redirect
+- routing
+
+- The **gateway is used only by the webapp** to access backend services.
+- The **interop API is independent** and communicates directly with `gamey`.
 
 ---
 
@@ -41,10 +62,11 @@ yovi_en2c/
 
 - **User registration and login** with JWT-based authentication
 - **Play Game Y vs AI bot** with 5 difficulty levels
-- **Variable board size** configurable by the user
+- **Variable board sizes** configurable by the user
 - **Match history and game results** stored in MongoDB
 - **Internationalization (i18n)** — English and Spanish supported
 - **Public REST API** for external bots using YEN notation
+- **Bot interoperability API** for cross-team competitions
 - **Monitoring** with Prometheus and Grafana
 
 ---
@@ -162,6 +184,69 @@ All game state is exchanged in **YEN (Y Exchange Notation)** — a JSON format i
 }
 ```
 
+### Interoperability API (`botapi/`)
+
+A Node.js + Express service that enables **bot vs bot interoperability between teams**.
+
+This API acts as a bridge between external bots and the internal `gamey` engine, allowing:
+- external bots to play against our bots
+- our bots to play against other teams' APIs
+
+It follows a standardized contract based on **YEN (Y Exchange Notation)**.
+
+**Key responsibilities:**
+- expose public HTTP endpoints
+- manage active games (in-memory)
+- connect to remote APIs
+- translate requests to `gamey`
+- orchestrate game flow
+
+**Base public URL (deployment):** https://yovi.13.63.89.84.sslip.io/interop
+
+
+---
+
+### Local Endpoints
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `POST` | `/games` | Create a new local game |
+| `GET` | `/games/{id}` | Get game state |
+| `POST` | `/games/{id}/play` | Play a move |
+| `POST` | `/play` | Stateless move |
+| `GET` | `/health` | Health check |
+
+---
+
+### Remote Endpoints
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `POST` | `/remote-games/create` | Create remote game |
+| `POST` | `/remote-games/connect` | Connect to existing game |
+| `GET` | `/remote-games/{id}` | Get session info |
+| `POST` | `/remote-games/{id}/play-turn` | Play remote turn |
+
+---
+
+### Example (create game)
+
+```bash
+curl -X POST "https://yovi.13.63.89.84.sslip.io/interop/games" \
+  -H "Content-Type: application/json" \
+  -d '{"size":3,"bot_id":"random_bot"}'
+```
+---
+### YEN format
+```json
+{
+  "size": 3,
+  "turn": 0,
+  "players": ["B", "R"],
+  "layout": "./../..."
+}
+```
+
 ---
 
 ## Running the Project
@@ -188,15 +273,17 @@ docker-compose up --build
 
 **3. Access the application:**
 
-| Service | URL |
-|---------|-----|
-| Web application | http://localhost |
-| Gateway API | http://localhost:8080 |
-| Users service | http://localhost:3000 |
-| Auth service | http://localhost:5000 |
-| Game engine | http://localhost:4000 |
-| Prometheus | http://localhost:9090 |
-| Grafana | http://localhost:9091 |
+| Service | Internal Port | External Access |
+|---------|-----|--------|
+| Web application | 80/443 | https://yovi.13.63.89.84.sslip.io |
+| Web application | 80 | via nginx (/) |
+| Gateway API | 8080 | via nginx (/api) |
+| botapi | 4001 | via nginx (/interop) |
+| Users service | 3000 | internal |
+| Auth service | 5000 | internal |
+| Game engine | 4000 | internal |
+| Prometheus | 9090 | http://localhost:9090 |
+| Grafana | 9091 | http://localhost:9091 |
 
 ---
 
@@ -282,7 +369,8 @@ cargo doc --open   # Generate and open documentation
 
 ## Architecture
 
-The system follows a **microservices architecture** with an API gateway as the single external entry point. All internal communication uses HTTP/REST with JSON payloads. External traffic uses HTTPS (port 443) terminated at the gateway.
+The system follows a microservices architecture with NGINX as the single external entry point.
+The gateway is used for webapp traffic, while the interop API provides a separate access path for external bots.
 
 For detailed architecture documentation, see the [project wiki](https://github.com/Arquisoft/yovi_en2c/wiki) and the [Architecture Decision Records (ADRs)](https://github.com/Arquisoft/yovi_en2c/wiki/Architecture-Decision-Record).
 
