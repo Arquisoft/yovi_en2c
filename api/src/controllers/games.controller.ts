@@ -9,6 +9,12 @@ type GameParams = {
 };
 
 class GamesController {
+  constructor() {
+    this.createGame = this.createGame.bind(this);
+    this.getGame = this.getGame.bind(this);
+    this.playGame = this.playGame.bind(this);
+  }
+
   async createGame(req: Request<{}, {}, CreateGameRequestDto>, res: Response) {
     try {
       const body = req.body;
