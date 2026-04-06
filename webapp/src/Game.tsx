@@ -8,201 +8,237 @@ import { useI18n } from "./i18n/I18nProvider";
 type WinningEdge = [[number, number], [number, number]];
 
 type GatewayResponse =
-  | {
-      ok: true;
-      yen?: any;
-      finished?: boolean;
-      winner?: string | null;
-      winning_edges?: WinningEdge[];
-      message?: string;
-    }
-  | { ok: false; error: string; details?: any };
+    | {
+    ok: true;
+    yen?: any;
+    finished?: boolean;
+    winner?: string | null;
+    winning_edges?: WinningEdge[];
+    message?: string;
+}
+    | { ok: false; error: string; details?: any };
 
 const API_URL = "/api";
 
 function parseLayout(layout: string) {
-  if (!layout) return [];
-  return layout.split("/").map((row) => [...row]);
+    if (!layout) return [];
+    return layout.split("/").map((row) => [...row]);
 }
 
 async function readGatewayResponse(res: Response): Promise<GatewayResponse> {
-  const text = await res.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { ok: false, error: text || `HTTP ${res.status}` };
-  }
+    const text = await res.text();
+    try {
+        return JSON.parse(text);
+    } catch {
+        return { ok: false, error: text || `HTTP ${res.status}` };
+    }
 }
 
 function useWindowSize() {
-  const [size, setSize] = React.useState(() => ({
-    w: window.innerWidth,
-    h: window.innerHeight,
-  }));
+    const [size, setSize] = React.useState(() => ({
+        w: window.innerWidth,
+        h: window.innerHeight,
+    }));
 
-  React.useEffect(() => {
-    const onResize = () => setSize({ w: window.innerWidth, h: window.innerHeight });
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+    React.useEffect(() => {
+        const onResize = () => setSize({ w: window.innerWidth, h: window.innerHeight });
+        window.addEventListener("resize", onResize);
+        return () => window.removeEventListener("resize", onResize);
+    }, []);
 
-  return size;
+    return size;
 }
 
 function normalizeEdges(edgesRaw: any): WinningEdge[] {
-  if (!Array.isArray(edgesRaw)) return [];
-  return edgesRaw
-    .filter((e: any) => Array.isArray(e) && e.length === 2 && Array.isArray(e[0]) && Array.isArray(e[1]))
-    .map((e: any) => [
-      [Number(e[0][0]), Number(e[0][1])],
-      [Number(e[1][0]), Number(e[1][1])],
-    ]);
+    if (!Array.isArray(edgesRaw)) return [];
+    return edgesRaw
+        .filter((e: any) => Array.isArray(e) && e.length === 2 && Array.isArray(e[0]) && Array.isArray(e[1]))
+        .map((e: any) => [
+            [Number(e[0][0]), Number(e[0][1])],
+            [Number(e[1][0]), Number(e[1][1])],
+        ]);
 }
 
 const Game: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { t } = useI18n();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { t } = useI18n();
 
-  const username = useMemo(() => {
-    const st = (location.state as { username?: string } | null) ?? null;
-    return st?.username ?? localStorage.getItem("username") ?? "";
-  }, [location.state]);
+    const username = useMemo(() => {
+        const st = (location.state as { username?: string } | null) ?? null;
+        return st?.username ?? localStorage.getItem("username") ?? "";
+    }, [location.state]);
 
-  useEffect(() => {
-    if (!username) navigate("/", { replace: true });
-  }, [username, navigate]);
+    useEffect(() => {
+        if (!username) navigate("/", { replace: true });
+    }, [username, navigate]);
 
-  const logout = () => {
-    localStorage.removeItem("username");
-    navigate("/", { replace: true });
-  };
+    const logout = () => {
+        localStorage.removeItem("username");
+        navigate("/", { replace: true });
+    };
 
-  const [yen, setYen] = useState<any>(null);
-  const botId = useMemo(() => {
-      const stateBot = (location.state as { bot?: string } | null)?.bot;
-      if (stateBot) {
-          localStorage.setItem("selectedBot", stateBot);
-          return stateBot;
-      }
-      const saved = localStorage.getItem("selectedBot");
-      if (saved) return saved;
-      return "heuristic_bot";
-  }, [location.state]);
-  const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    const [yen, setYen] = useState<any>(null);
+    const botId = useMemo(() => {
+        const stateBot = (location.state as { bot?: string } | null)?.bot;
+        if (stateBot) {
+            localStorage.setItem("selectedBot", stateBot);
+            return stateBot;
+        }
+        const saved = localStorage.getItem("selectedBot");
+        if (saved) return saved;
+        return "heuristic_bot";
+    }, [location.state]);
 
-  // FIX: use both a ref (always current, safe inside async closures) and state
-  // (drives re-renders for color display). The ref solves the stale closure problem
-  // where async functions capture fixedPlayers as null even after setFixedPlayers was called.
-  const [fixedPlayers, setFixedPlayersState] = useState<[string, string] | null>(null);
-  const fixedPlayersRef = useRef<[string, string] | null>(null);
+    const boardSizeFromState = useMemo(() => {
+        const st = (location.state as { boardSize?: number } | null) ?? null;
+        return st?.boardSize ?? 7;
+    }, [location.state]);
 
-  const setFixedPlayers = (p: [string, string]) => {
-    fixedPlayersRef.current = p;
-    setFixedPlayersState(p);
-  };
+    const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-  const { w: winW, h: winH } = useWindowSize();
 
-  const headerRef = React.useRef<HTMLDivElement | null>(null);
-  const [headerH, setHeaderH] = useState(0);
+    const [moveCount, setMoveCount] = useState(0);
 
-  const [winOverlay, setWinOverlay] = useState<{
-    winner: string;
-    edges: WinningEdge[];
-  } | null>(null);
+    // FIX: use both a ref (always current, safe inside async closures) and state
+    // (drives re-renders for color display). The ref solves the stale closure problem
+    // where async functions capture fixedPlayers as null even after setFixedPlayers was called.
+    const [fixedPlayers, setFixedPlayersState] = useState<[string, string] | null>(null);
+    const fixedPlayersRef = useRef<[string, string] | null>(null);
+
+    const setFixedPlayers = (p: [string, string]) => {
+        fixedPlayersRef.current = p;
+        setFixedPlayersState(p);
+    };
+
+    const { w: winW, h: winH } = useWindowSize();
+
+    const headerRef = React.useRef<HTMLDivElement | null>(null);
+    const [headerH, setHeaderH] = useState(0);
+
+    const [winOverlay, setWinOverlay] = useState<{
+        winner: string;
+        edges: WinningEdge[];
+    } | null>(null);
 
     const [gameOver, setGameOver] = useState<{
         result: "win" | "lost" | "draw";
         winner: string | null;
     } | null>(null);
 
-  const finishTimerRef = React.useRef<number | null>(null);
+    const finishTimerRef = React.useRef<number | null>(null);
 
-  useEffect(() => {
-    const el = headerRef.current;
-    if (!el) return;
+    useEffect(() => {
+        const el = headerRef.current;
+        if (!el) return;
 
-    const update = () => setHeaderH(el.getBoundingClientRect().height);
-    update();
+        const update = () => setHeaderH(el.getBoundingClientRect().height);
+        update();
 
-    const ro = new ResizeObserver(() => update());
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+        const ro = new ResizeObserver(() => update());
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
 
-  useEffect(() => {
-    return () => {
-      if (finishTimerRef.current !== null) {
-        window.clearTimeout(finishTimerRef.current);
-        finishTimerRef.current = null;
-      }
+    useEffect(() => {
+        return () => {
+            if (finishTimerRef.current !== null) {
+                window.clearTimeout(finishTimerRef.current);
+                finishTimerRef.current = null;
+            }
+        };
+    }, []);
+
+    // Helper: extract [humanToken, botToken] from a YEN object
+    const extractPlayers = (nextYen: any): [string, string] => {
+        const p = nextYen?.players;
+        if (Array.isArray(p) && p.length >= 2) {
+            return [String(p[0]), String(p[1])];
+        }
+        return ["B", "R"];
     };
-  }, []);
 
-  // Helper: extract [humanToken, botToken] from a YEN object
-  const extractPlayers = (nextYen: any): [string, string] => {
-    const p = nextYen?.players;
-    if (Array.isArray(p) && p.length >= 2) {
-      return [String(p[0]), String(p[1])];
-    }
-    return ["B", "R"];
-  };
+    const boardSize = yen?.size ?? boardSizeFromState;
 
-  const boardSize = yen?.size ?? 7;
+    const layoutMatrix = useMemo(() => {
+        if (!yen?.layout) return [];
+        return parseLayout(yen.layout);
+    }, [yen]);
 
-  const layoutMatrix = useMemo(() => {
-    if (!yen?.layout) return [];
-    return parseLayout(yen.layout);
-  }, [yen]);
+    const humanToken = useMemo(() => {
+        if (fixedPlayers) return fixedPlayers[0];
+        return yen?.players?.[0] ? String(yen.players[0]) : "B";
+    }, [yen, fixedPlayers]);
 
-  const humanToken = useMemo(() => {
-    if (fixedPlayers) return fixedPlayers[0];
-    return yen?.players?.[0] ? String(yen.players[0]) : "B";
-  }, [yen, fixedPlayers]);
+    const botToken = useMemo(() => {
+        if (fixedPlayers) return fixedPlayers[1];
+        return yen?.players?.[1] ? String(yen.players[1]) : "R";
+    }, [yen, fixedPlayers]);
 
-  const botToken = useMemo(() => {
-    if (fixedPlayers) return fixedPlayers[1];
-    return yen?.players?.[1] ? String(yen.players[1]) : "R";
-  }, [yen, fixedPlayers]);
+    const boardWidth = 540;
+    const padding = 50;
+    const usableWidth = boardWidth - padding * 2;
+    const cellSpacing = boardSize > 1 ? usableWidth / (boardSize - 1) : 0;
+    const rowHeight = cellSpacing * 0.85;
 
-  const boardWidth = 540;
-  const padding = 50;
-  const usableWidth = boardWidth - padding * 2;
-  const cellSpacing = boardSize > 1 ? usableWidth / (boardSize - 1) : 0;
-  const rowHeight = cellSpacing * 0.85;
+    const r = useMemo(() => {
+        const rr = cellSpacing * 0.12;
+        return Math.max(5.5, Math.min(8.5, rr));
+    }, [cellSpacing]);
 
-  const r = useMemo(() => {
-    const rr = cellSpacing * 0.12;
-    return Math.max(5.5, Math.min(8.5, rr));
-  }, [cellSpacing]);
+    const padPx = useMemo(() => Math.round(Math.max(12, Math.min(28, winW * 0.03))), [winW]);
 
-  const padPx = useMemo(() => Math.round(Math.max(12, Math.min(28, winW * 0.03))), [winW]);
+    const bottomGutter = 28;
+    const extraSafety = 10;
 
-  const bottomGutter = 28;
-  const extraSafety = 10;
+    const boardPx = useMemo(() => {
+        const byWidth = Math.floor(winW - padPx * 2);
+        const byHeight = Math.floor(winH - headerH - padPx * 3 - bottomGutter - extraSafety - 20);
+        return Math.max(220, Math.min(680, byWidth, byHeight));
+    }, [winW, winH, headerH, padPx]);
 
-  const boardPx = useMemo(() => {
-    const byWidth = Math.floor(winW - padPx * 2);
-    const byHeight = Math.floor(winH - headerH - padPx * 3 - bottomGutter - extraSafety - 20);
-    return Math.max(220, Math.min(680, byWidth, byHeight));
-  }, [winW, winH, headerH, padPx]);
+    const isEmptyCell = (row: number, col: number) => {
+        const rrow = layoutMatrix[row];
+        return !!rrow && rrow[col] === ".";
+    };
 
-  const isEmptyCell = (row: number, col: number) => {
-    const rrow = layoutMatrix[row];
-    return !!rrow && rrow[col] === ".";
-  };
+    const clearPendingFinish = () => {
+        if (finishTimerRef.current !== null) {
+            window.clearTimeout(finishTimerRef.current);
+            finishTimerRef.current = null;
+        }
+    };
 
-  const clearPendingFinish = () => {
-    if (finishTimerRef.current !== null) {
-      window.clearTimeout(finishTimerRef.current);
-      finishTimerRef.current = null;
-    }
-  };
+    // TODO: en el futuro considerar reintentos o notificación al usuario si el guardado falla
+    const saveGameResult = async (
+        result: "win" | "loss",
+        winner: string | null,
+        score: number,
+        currentBoardSize: number
+    ) => {
+        try {
+            await fetch(`${API_URL}/gameresult`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    username,
+                    opponent: botId,
+                    result,
+                    winner,
+                    score,
+                    boardSize: currentBoardSize,
+                    gameMode: "pvb",
+                }),
+            });
+        } catch {
+            // TODO: en el futuro añadir reintento o notificación al usuario
+            // Por ahora se ignora silenciosamente para no interrumpir la experiencia de juego
+        }
+    };
 
-    const applyFinishFromGateway = (payload: any, playersFixed: [string, string]) => {
+    const applyFinishFromGateway = (payload: any, playersFixed: [string, string], currentMoveCount: number, currentBoardSize: number) => {
         const finished = typeof payload?.finished === "boolean" ? payload.finished : false;
         if (!finished) return;
 
@@ -220,343 +256,365 @@ const Game: React.FC = () => {
         const result: "win" | "lost" | "draw" = winner ? (youWin ? "win" : "lost") : "draw";
 
         setGameOver({ result, winner });
+
+        if (result !== "draw") {
+            saveGameResult(
+                result === "win" ? "win" : "loss",
+                winner,
+                currentMoveCount,
+                currentBoardSize
+            );
+        }
     };
 
-  const newGame = async () => {
-    setBusy(true);
-    setError(null);
-    setWinOverlay(null);
-    clearPendingFinish();
+    // ✅ MODIFICADO — newGame
+    // Antes: body hardcodeado con size: 7
+    // Ahora: usa boardSizeFromState recibido desde SelectDifficulty o Home
+    // También resetea el contador de movimientos
+    const newGame = async () => {
+        setBusy(true);
+        setError(null);
+        setWinOverlay(null);
+        clearPendingFinish();
+        setMoveCount(0); // ✅ NUEVO — reset contador de movimientos
 
-    fixedPlayersRef.current = null;
-    setFixedPlayersState(null);
+        fixedPlayersRef.current = null;
+        setFixedPlayersState(null);
 
-    try {
-      const res = await fetch(`${API_URL}/game/new`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ size: 7 }),
-      });
+        try {
+            const res = await fetch(`${API_URL}/game/new`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ size: boardSizeFromState }), // ✅ MODIFICADO — usa boardSizeFromState
+            });
 
-      const data = await readGatewayResponse(res);
-      if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Game creation failed");
+            const data = await readGatewayResponse(res);
+            if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Game creation failed");
 
-      const nextYen = (data as any).yen;
-      const p = extractPlayers(nextYen);
+            const nextYen = (data as any).yen;
+            const p = extractPlayers(nextYen);
 
-      // setFixedPlayers updates BOTH the ref (immediately) and the state (next render)
-      setFixedPlayers(p);
-      setYen(nextYen);
-      setSelected(null);
+            // setFixedPlayers updates BOTH the ref (immediately) and the state (next render)
+            setFixedPlayers(p);
+            setYen(nextYen);
+            setSelected(null);
 
-      applyFinishFromGateway(data, p);
-    } catch (e: any) {
-      setError(e?.message ?? "Game creation failed");
-    } finally {
-      setBusy(false);
-    }
-  };
+            applyFinishFromGateway(data, p, 0, boardSizeFromState);
+        } catch (e: any) {
+            setError(e?.message ?? "Game creation failed");
+        } finally {
+            setBusy(false);
+        }
+    };
 
-  const sendMove = async (override?: { row: number; col: number } | null) => {
-    const target = override ?? selected;
-    if (!target || !yen || busy) return;
-    if (!isEmptyCell(target.row, target.col)) return;
+    // ✅ MODIFICADO — sendMove
+    // Antes: no contaba movimientos ni pasaba boardSize a applyFinishFromGateway
+    // Ahora: incrementa moveCount en cada movimiento del jugador y lo pasa al finish handler
+    const sendMove = async (override?: { row: number; col: number } | null) => {
+        const target = override ?? selected;
+        if (!target || !yen || busy) return;
+        if (!isEmptyCell(target.row, target.col)) return;
 
-    setBusy(true);
-    setError(null);
+        setBusy(true);
+        setError(null);
 
-    try {
-      const res = await fetch(`${API_URL}/game/pvb/move`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ yen, bot: botId, row: target.row, col: target.col }),
-      });
+        // ✅ NUEVO — Incrementar contador de movimientos del jugador
+        const newMoveCount = moveCount + 1;
+        setMoveCount(newMoveCount);
 
-      const data = await readGatewayResponse(res);
-      if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Backend error");
+        try {
+            const res = await fetch(`${API_URL}/game/pvb/move`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ yen, bot: botId, row: target.row, col: target.col }),
+            });
 
-      const nextYen = (data as any).yen;
+            const data = await readGatewayResponse(res);
+            if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Backend error");
 
-      const p: [string, string] = fixedPlayersRef.current ?? extractPlayers(nextYen);
-      if (!fixedPlayersRef.current) setFixedPlayers(p);
+            const nextYen = (data as any).yen;
 
-      setYen(nextYen);
-      setSelected(null);
+            const p: [string, string] = fixedPlayersRef.current ?? extractPlayers(nextYen);
+            if (!fixedPlayersRef.current) setFixedPlayers(p);
 
-      applyFinishFromGateway(data, p);
-    } catch (e: any) {
-      setError(e?.message ?? "Backend error");
-    } finally {
-      setBusy(false);
-    }
-  };
+            setYen(nextYen);
+            setSelected(null);
 
-  if (!username) return null;
+            // ✅ MODIFICADO — se pasan newMoveCount y boardSizeFromState
+            applyFinishFromGateway(data, p, newMoveCount, boardSizeFromState);
+        } catch (e: any) {
+            setError(e?.message ?? "Backend error");
+        } finally {
+            setBusy(false);
+        }
+    };
 
-  const overlayStroke = (token: string) => {
-    if (token === humanToken) return "#1e88e5";
-    if (token === botToken) return "#d32f2f";
-    return "#111";
-  };
+    if (!username) return null;
 
-  return (
-    <div className="page" style={{ height: "100dvh", overflow: "auto", display: "flex", flexDirection: "column" }}>
-      <Navbar username={username} onLogout={logout} />
+    const overlayStroke = (token: string) => {
+        if (token === humanToken) return "#1e88e5";
+        if (token === botToken) return "#d32f2f";
+        return "#111";
+    };
 
-      <main
-        style={{
-          flex: "1 1 auto",
-          minHeight: 0,
-          padding: `${padPx}px`,
-          paddingBottom: `${padPx}px`,
-          fontFamily: "system-ui",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 12,
-          overflow: "auto",
-          boxSizing: "border-box",
-        }}
-      >
-        <div
-          ref={headerRef}
-          style={{
-            width: "100%",
-            maxWidth: 980,
-            position: "relative",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => navigate("/home", { state: { username } })}
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              padding: "8px 12px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,.18)",
-              background: "rgba(255,255,255,.06)",
-              color: "white",
-              fontWeight: 800,
-              cursor: "pointer",
-            }}
-          >
-            {t("game.back")}
-          </button>
+    return (
+        <div className="page" style={{ height: "100dvh", overflow: "auto", display: "flex", flexDirection: "column" }}>
+            <Navbar username={username} onLogout={logout} />
 
-          <h1 style={{ margin: 0, textAlign: "center", paddingTop: 6 }}>{t("app.brand")}</h1>
-
-          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 10 }}>
-            <button
-              onClick={newGame}
-              disabled={busy}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 12,
-                background: "#A52019",
-                color: "white",
-                border: "none",
-                opacity: busy ? 0.7 : 1,
-                cursor: busy ? "not-allowed" : "pointer",
-              }}
+            <main
+                style={{
+                    flex: "1 1 auto",
+                    minHeight: 0,
+                    padding: `${padPx}px`,
+                    paddingBottom: `${padPx}px`,
+                    fontFamily: "system-ui",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 12,
+                    overflow: "auto",
+                    boxSizing: "border-box",
+                }}
             >
-              {t("game.new")}
-            </button>
-
-            <button
-              onClick={() => sendMove(null)}
-              disabled={!selected || busy || !yen}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 12,
-                background: "#FF681F",
-                color: "white",
-                border: "none",
-                opacity: !selected || busy || !yen ? 0.5 : 1,
-                cursor: !selected || busy || !yen ? "not-allowed" : "pointer",
-              }}
-            >
-              {busy ? t("game.sending") : t("game.send")}
-            </button>
-          </div>
-
-          {error && <div style={{ color: "red", textAlign: "center", fontWeight: 600, marginTop: 10 }}>{error}</div>}
-        </div>
-
-        <div
-          style={{
-            width: `${boardPx}px`,
-            height: `${boardPx}px`,
-            maxWidth: "100%",
-            maxHeight: "100%",
-            borderRadius: 18,
-            background: "linear-gradient(135deg, #FCF5E3, #F5F5F5)",
-            overflow: "hidden",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flex: "0 0 auto",
-            marginBottom: 0,
-          }}
-        >
-          <svg
-            viewBox={`0 0 ${boardWidth} ${boardWidth}`}
-            width="100%"
-            height="100%"
-            preserveAspectRatio="xMidYMid meet"
-            style={{ display: "block", touchAction: "manipulation" }}
-          >
-            {/* Winner overlay */}
-            {winOverlay?.edges?.map(([[r1, c1], [r2, c2]], i) => {
-              const row1 = layoutMatrix[r1];
-              const row2 = layoutMatrix[r2];
-              if (!row1 || !row2) return null;
-
-              const offsetX1 = padding + ((boardSize - row1.length) * cellSpacing) / 2;
-              const offsetX2 = padding + ((boardSize - row2.length) * cellSpacing) / 2;
-
-              const x1 = offsetX1 + c1 * cellSpacing;
-              const y1 = padding + r1 * rowHeight;
-              const x2 = offsetX2 + c2 * cellSpacing;
-              const y2 = padding + r2 * rowHeight;
-
-              return (
-                <line
-                  key={`wedge-${i}`}
-                  x1={x1}
-                  y1={y1}
-                  x2={x2}
-                  y2={y2}
-                  stroke={overlayStroke(winOverlay.winner)}
-                  strokeWidth={Math.max(3, r * 0.95)}
-                  strokeLinecap="round"
-                  opacity={0.85}
-                />
-              );
-            })}
-
-            {layoutMatrix.map((row, rowIndex) => {
-              const offsetX = padding + ((boardSize - row.length) * cellSpacing) / 2;
-
-              return row.map((cell, colIndex) => {
-                const x = offsetX + colIndex * cellSpacing;
-                const y = padding + rowIndex * rowHeight;
-
-                let fill = "#9e9e9e";
-                if (cell === humanToken) fill = "#1e88e5";
-                if (cell === botToken) fill = "#d32f2f";
-
-                const isSelected = !!selected && selected.row === rowIndex && selected.col === colIndex;
-                if (isSelected && cell === ".") fill = "#FF681F";
-
-                  const clickable = cell === "." && !busy && !!yen && !gameOver;
-
-                return (
-                  <circle
-                    key={`${rowIndex}-${colIndex}`}
-                    cx={x}
-                    cy={y}
-                    r={r}
-                    fill={fill}
-                    stroke="#3B3B3B"
-                    strokeWidth={1.5}
-                    onClick={() => {
-                      if (!clickable) return;
-                      setSelected({ row: rowIndex, col: colIndex });
+                <div
+                    ref={headerRef}
+                    style={{
+                        width: "100%",
+                        maxWidth: 980,
+                        position: "relative",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
                     }}
-                    onDoubleClick={() => {
-                      if (!clickable) return;
-                      sendMove({ row: rowIndex, col: colIndex });
+                >
+                    <button
+                        type="button"
+                        onClick={() => navigate("/home", { state: { username } })}
+                        style={{
+                            position: "absolute",
+                            left: 0,
+                            top: 0,
+                            padding: "8px 12px",
+                            borderRadius: 12,
+                            border: "1px solid rgba(255,255,255,.18)",
+                            background: "rgba(255,255,255,.06)",
+                            color: "white",
+                            fontWeight: 800,
+                            cursor: "pointer",
+                        }}
+                    >
+                        {t("game.back")}
+                    </button>
+
+                    <h1 style={{ margin: 0, textAlign: "center", paddingTop: 6 }}>{t("app.brand")}</h1>
+
+                    <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 10 }}>
+                        <button
+                            onClick={newGame}
+                            disabled={busy}
+                            style={{
+                                padding: "8px 14px",
+                                borderRadius: 12,
+                                background: "#A52019",
+                                color: "white",
+                                border: "none",
+                                opacity: busy ? 0.7 : 1,
+                                cursor: busy ? "not-allowed" : "pointer",
+                            }}
+                        >
+                            {t("game.new")}
+                        </button>
+
+                        <button
+                            onClick={() => sendMove(null)}
+                            disabled={!selected || busy || !yen}
+                            style={{
+                                padding: "8px 14px",
+                                borderRadius: 12,
+                                background: "#FF681F",
+                                color: "white",
+                                border: "none",
+                                opacity: !selected || busy || !yen ? 0.5 : 1,
+                                cursor: !selected || busy || !yen ? "not-allowed" : "pointer",
+                            }}
+                        >
+                            {busy ? t("game.sending") : t("game.send")}
+                        </button>
+                    </div>
+
+                    {error && <div style={{ color: "red", textAlign: "center", fontWeight: 600, marginTop: 10 }}>{error}</div>}
+                </div>
+
+                <div
+                    style={{
+                        width: `${boardPx}px`,
+                        height: `${boardPx}px`,
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        borderRadius: 18,
+                        background: "linear-gradient(135deg, #FCF5E3, #F5F5F5)",
+                        overflow: "hidden",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flex: "0 0 auto",
+                        marginBottom: 0,
                     }}
-                    style={{ cursor: clickable ? "pointer" : "default" }}
-                  />
-                );
-              });
-            })}
-          </svg>
+                >
+                    <svg
+                        viewBox={`0 0 ${boardWidth} ${boardWidth}`}
+                        width="100%"
+                        height="100%"
+                        preserveAspectRatio="xMidYMid meet"
+                        style={{ display: "block", touchAction: "manipulation" }}
+                    >
+                        {/* Winner overlay */}
+                        {winOverlay?.edges?.map(([[r1, c1], [r2, c2]], i) => {
+                            const row1 = layoutMatrix[r1];
+                            const row2 = layoutMatrix[r2];
+                            if (!row1 || !row2) return null;
+
+                            const offsetX1 = padding + ((boardSize - row1.length) * cellSpacing) / 2;
+                            const offsetX2 = padding + ((boardSize - row2.length) * cellSpacing) / 2;
+
+                            const x1 = offsetX1 + c1 * cellSpacing;
+                            const y1 = padding + r1 * rowHeight;
+                            const x2 = offsetX2 + c2 * cellSpacing;
+                            const y2 = padding + r2 * rowHeight;
+
+                            return (
+                                <line
+                                    key={`wedge-${i}`}
+                                    x1={x1}
+                                    y1={y1}
+                                    x2={x2}
+                                    y2={y2}
+                                    stroke={overlayStroke(winOverlay.winner)}
+                                    strokeWidth={Math.max(3, r * 0.95)}
+                                    strokeLinecap="round"
+                                    opacity={0.85}
+                                />
+                            );
+                        })}
+
+                        {layoutMatrix.map((row, rowIndex) => {
+                            const offsetX = padding + ((boardSize - row.length) * cellSpacing) / 2;
+
+                            return row.map((cell, colIndex) => {
+                                const x = offsetX + colIndex * cellSpacing;
+                                const y = padding + rowIndex * rowHeight;
+
+                                let fill = "#9e9e9e";
+                                if (cell === humanToken) fill = "#1e88e5";
+                                if (cell === botToken) fill = "#d32f2f";
+
+                                const isSelected = !!selected && selected.row === rowIndex && selected.col === colIndex;
+                                if (isSelected && cell === ".") fill = "#FF681F";
+
+                                const clickable = cell === "." && !busy && !!yen && !gameOver;
+
+                                return (
+                                    <circle
+                                        key={`${rowIndex}-${colIndex}`}
+                                        cx={x}
+                                        cy={y}
+                                        r={r}
+                                        fill={fill}
+                                        stroke="#3B3B3B"
+                                        strokeWidth={1.5}
+                                        onClick={() => {
+                                            if (!clickable) return;
+                                            setSelected({ row: rowIndex, col: colIndex });
+                                        }}
+                                        onDoubleClick={() => {
+                                            if (!clickable) return;
+                                            sendMove({ row: rowIndex, col: colIndex });
+                                        }}
+                                        style={{ cursor: clickable ? "pointer" : "default" }}
+                                    />
+                                );
+                            });
+                        })}
+                    </svg>
+                </div>
+                {/* Game Over Overlay */}
+                {gameOver && (
+                    <div
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            zIndex: 100,
+                            background: "rgba(0,0,0,0.72)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                    >
+                        <div
+                            style={{
+                                background: "linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.04))",
+                                border: "1px solid rgba(255,255,255,.18)",
+                                borderRadius: 20,
+                                padding: "40px 48px",
+                                textAlign: "center",
+                                boxShadow: "0 24px 60px rgba(0,0,0,.6)",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 24,
+                                minWidth: 260,
+                            }}
+                        >
+                            <div style={{ fontSize: 56 }}>
+                                {gameOver.result === "win" ? "🏆" : gameOver.result === "lost" ? "💀" : "🤝"}
+                            </div>
+                            <h2 style={{ margin: 0, fontSize: 28, color: "white" }}>
+                                {gameOver.result === "win"
+                                    ? t("game.finished.win")
+                                    : gameOver.result === "lost"
+                                        ? t("game.finished.lost")
+                                        : t("game.finished.draw")}
+                            </h2>
+                            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+                                <button
+                                    onClick={() => navigate("/home", { state: { username } })}
+                                    style={{
+                                        padding: "12px 22px",
+                                        borderRadius: 12,
+                                        background: "#A52019",
+                                        color: "white",
+                                        border: "none",
+                                        fontWeight: 800,
+                                        fontSize: 16,
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    {t("game.finished.back")}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setGameOver(null);
+                                        newGame();
+                                    }}
+                                    style={{
+                                        padding: "12px 22px",
+                                        borderRadius: 12,
+                                        background: "rgba(67,195,221,.20)",
+                                        color: "white",
+                                        border: "1px solid rgba(67,195,221,.55)",
+                                        fontWeight: 800,
+                                        fontSize: 16,
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    {t("game.new")}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </main>
         </div>
-          {/* Game Over Overlay */}
-          {gameOver && (
-              <div
-                  style={{
-                      position: "fixed",
-                      inset: 0,
-                      zIndex: 100,
-                      background: "rgba(0,0,0,0.72)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                  }}
-              >
-                  <div
-                      style={{
-                          background: "linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.04))",
-                          border: "1px solid rgba(255,255,255,.18)",
-                          borderRadius: 20,
-                          padding: "40px 48px",
-                          textAlign: "center",
-                          boxShadow: "0 24px 60px rgba(0,0,0,.6)",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 24,
-                          minWidth: 260,
-                      }}
-                  >
-                      <div style={{ fontSize: 56 }}>
-                          {gameOver.result === "win" ? "🏆" : gameOver.result === "lost" ? "💀" : "🤝"}
-                      </div>
-                      <h2 style={{ margin: 0, fontSize: 28, color: "white" }}>
-                          {gameOver.result === "win"
-                              ? t("game.finished.win")
-                              : gameOver.result === "lost"
-                                  ? t("game.finished.lost")
-                                  : t("game.finished.draw")}
-                      </h2>
-                      <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-                          <button
-                              onClick={() => navigate("/home", { state: { username } })}
-                              style={{
-                                  padding: "12px 22px",
-                                  borderRadius: 12,
-                                  background: "#A52019",
-                                  color: "white",
-                                  border: "none",
-                                  fontWeight: 800,
-                                  fontSize: 16,
-                                  cursor: "pointer",
-                              }}
-                          >
-                              {t("game.finished.back")}
-                          </button>
-                          <button
-                              onClick={() => {
-                                  setGameOver(null);
-                                  newGame();
-                              }}
-                              style={{
-                                  padding: "12px 22px",
-                                  borderRadius: 12,
-                                  background: "rgba(67,195,221,.20)",
-                                  color: "white",
-                                  border: "1px solid rgba(67,195,221,.55)",
-                                  fontWeight: 800,
-                                  fontSize: 16,
-                                  cursor: "pointer",
-                              }}
-                          >
-                              {t("game.new")}
-                          </button>
-                      </div>
-                  </div>
-              </div>
-          )}
-      </main>
-    </div>
-  );
+    );
 };
 
 export default Game;

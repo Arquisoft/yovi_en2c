@@ -1,4 +1,3 @@
-
 const express = require('express');
 const mongoose = require('mongoose');
 require('dotenv').config();
@@ -150,12 +149,14 @@ app.get('/users', async (req, res) => {
 /**
  * POST /gameresult
  * SAVE RESULT from a game into the db
+ *
  */
 app.post('/gameresult', async (req, res) => {
     try {
-        const { username, opponent, result, score } = req.body;
+        // ✅ MODIFICADO — Se extraen los nuevos campos del body
+        const { username, opponent, result, score, winner, boardSize, gameMode } = req.body;
 
-        // validation of mandatory field s
+        // validation of mandatory fields
         if (!username || !opponent || !result) {
             return res.status(400).json({
                 success: false,
@@ -172,12 +173,14 @@ app.post('/gameresult', async (req, res) => {
             });
         }
 
-        // Save game results
         const game = new GameResult({
             username,
             opponent,
             result,
-            score: score || 0
+            winner: winner ?? null,
+            score: score || 0,
+            boardSize: boardSize || 7,
+            gameMode: gameMode || 'pvb'
         });
 
         const savedGame = await game.save();
