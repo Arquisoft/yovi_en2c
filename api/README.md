@@ -1,117 +1,117 @@
 # YOVI_EN2C API
 
-API pública para interoperabilidad entre bots en el juego Y.
+Public API for bot interoperability in the Y game.
 
-Este servicio permite la comunicación entre:
-- bots externos que quieren jugar contra nuestros bots
-- nuestros bots, cuando necesitan jugar contra la API de otro equipo
+This service enables communication between:
+- external bots that want to play against our bots
+- our bots, when they need to play against another team's API
 
-La API actúa como una capa intermedia entre clientes HTTP y el motor del juego (`gamey`), que es el responsable de aplicar reglas, validar jugadas y calcular movimientos.
-
----
-
-## 🧠 ¿Qué es esta API?
-
-Esta API es una **capa de interoperabilidad** cuyo objetivo es permitir partidas **bot vs bot entre equipos**.
-
-No contiene la lógica del juego, sino que:
-- recibe peticiones externas
-- valida inputs básicos
-- gestiona partidas activas
-- delega la lógica al motor `gamey`
-- puede actuar tanto como **servidor** como **cliente** de interoperabilidad
+The API acts as an intermediate layer between HTTP clients and the game engine (`gamey`), which is responsible for applying the rules, validating moves, and computing bot decisions.
 
 ---
 
-## 🧱 Arquitectura
+## 🧠 What is this API?
 
-### Modo servidor
-BOT Externo -> API -> Gamey
+This API is an **interoperability layer** whose goal is to enable **bot vs bot matches between teams**.
 
-En este modo, bots de otros equipos se conectan a nuestra API para jugar contra uno de nuestros bots.
-
-### Modo cliente remoto
-Nuestro Bot -> API -> API Rival -> Motor Rival
-
-En este modo, nuestra API se conecta a la API de otro equipo, consulta el estado remoto y utiliza uno de nuestros bots para enviar jugadas a esa API externa.
+It does not contain the game logic itself. Instead, it:
+- receives external requests
+- validates basic inputs
+- manages active games
+- delegates the logic to the `gamey` engine
+- can act both as an **interop server** and as an **interop client**
 
 ---
 
-## ⚙️ Responsabilidades
+## 🧱 Architecture
 
-### API (este servicio)
-- Exponer endpoints HTTP públicos
-- Gestionar partidas activas locales (en memoria)
-- Gestionar sesiones de partidas remotas (en memoria)
-- Traducir peticiones al formato de `gamey`
-- Orquestar el flujo de la partida
-- Permitir que bots externos jueguen contra nuestros bots
-- Permitir que nuestros bots jueguen contra la API de otro equipo
+### Server mode
+External Bot -> API -> Gamey
+
+In this mode, bots from other teams connect to our API in order to play against one of our bots.
+
+### Remote client mode
+Our Bot -> API -> Rival API -> Rival Engine
+
+In this mode, our API connects to another team's API, retrieves the remote game state, and uses one of our bots to send moves to that external API.
+
+---
+
+## ⚙️ Responsibilities
+
+### API (this service)
+- Expose public HTTP endpoints
+- Manage local active games (in memory)
+- Manage remote game sessions (in memory)
+- Translate requests into the format expected by `gamey`
+- Orchestrate the game flow
+- Allow external bots to play against our bots
+- Allow our bots to play against another team's API
 
 ### gamey (Rust)
-- Validar jugadas
-- Aplicar movimientos
-- Calcular jugadas del bot
-- Detectar ganador
-- Trabajar con formato YEN
+- Validate moves
+- Apply moves
+- Compute bot moves
+- Detect the winner
+- Work with the YEN format
 
 ---
 
-## 📦 Estructura de la API
+## 📦 API structure
 
 src/
-- app.ts -> Configuración de Express, middlewares y registro de rutas
-- server.ts -> Punto de entrada del servicio
+- app.ts -> Express configuration, middlewares, and route registration
+- server.ts -> Service entry point
 
 src/config/
-- env.ts -> Variables de entorno
+- env.ts -> Environment variables
 
 src/routes/
-- games.routes.ts -> Rutas para partidas locales expuestas a bots externos
-- play.routes.ts -> Ruta stateless
+- games.routes.ts -> Routes for local games exposed to external bots
+- play.routes.ts -> Stateless route
 - health.routes.ts -> Health check
-- remote-games.routes.ts -> Rutas para gestionar partidas remotas contra otras APIs
+- remote-games.routes.ts -> Routes to manage remote games against other APIs
 
 src/controllers/
-- games.controller.ts -> Controller de partidas locales
-- play.controller.ts -> Controller del endpoint stateless
-- health.controller.ts -> Controller de health check
-- remote-games.controller.ts -> Controller de sesiones remotas
+- games.controller.ts -> Controller for local games
+- play.controller.ts -> Controller for the stateless endpoint
+- health.controller.ts -> Health check controller
+- remote-games.controller.ts -> Controller for remote sessions
 
 src/services/
-- interop.service.ts -> Lógica principal de interop local
-- remote-interop.service.ts -> Lógica de interop cuando jugamos contra otra API
+- interop.service.ts -> Main logic for local interoperability
+- remote-interop.service.ts -> Interop logic when playing against another API
 
 src/clients/
-- gamey.client.ts -> Cliente HTTP hacia `gamey`
-- remote-interop.client.ts -> Cliente HTTP hacia la API de otro equipo
+- gamey.client.ts -> HTTP client for `gamey`
+- remote-interop.client.ts -> HTTP client for another team's API
 
 src/store/
-- active-games.store.ts -> Almacenamiento en memoria de partidas locales activas
-- remote-game-sessions.store.ts -> Almacenamiento en memoria de sesiones remotas
+- active-games.store.ts -> In-memory storage for local active games
+- remote-game-sessions.store.ts -> In-memory storage for remote sessions
 
 src/models/
-- active-game.model.ts -> Modelo interno de partida local
-- remote-game-session.model.ts -> Modelo interno de sesión remota
+- active-game.model.ts -> Internal model for a local game
+- remote-game-session.model.ts -> Internal model for a remote session
 
 src/dtos/
-- *.dto.ts -> Tipos de entrada y salida de la API
-- remote-connect.dto.ts -> DTO para conectarse a una partida remota existente
-- remote-create.dto.ts -> DTO para crear una partida remota
-- remote-session.dto.ts -> DTOs de respuesta de sesiones remotas
+- *.dto.ts -> API input/output types
+- remote-connect.dto.ts -> DTO to connect to an existing remote game
+- remote-create.dto.ts -> DTO to create a remote game
+- remote-session.dto.ts -> DTOs for remote session responses
 
 src/utils/
-- ids.ts -> Generación de IDs
-- yen.ts -> Lógica auxiliar de notación YEN
+- ids.ts -> ID generation
+- yen.ts -> Auxiliary YEN notation logic
 
 src/openapi/
-- openapi.yaml -> Documentación de la API
+- openapi.yaml -> API documentation
 
 ---
 
-## 🎮 Formato de juego: YEN
+## 🎮 Game format: YEN
 
-La API usa **YEN (Y Exchange Notation)** para representar el estado del juego:
+The API uses **YEN (Y Exchange Notation)** to represent the game state:
 
 ```json
 {
@@ -122,11 +122,11 @@ La API usa **YEN (Y Exchange Notation)** para representar el estado del juego:
 }
 ```
 
-## ⏺️ Endpoints locales
+## ⏺️ Local endpoints
 
-Estos endpoints permiten que bots externos jueguen contra nuestros bots.
+These endpoints allow external bots to play against our bots.
 
-### Crear partida
+### Create game
 
 POST /games
 
@@ -136,19 +136,19 @@ Request:
   "bot_id": "random_bot"
 }
 
-Crea una partida local activa en memoria y selecciona qué bot nuestro jugará.
+Creates a local active game in memory and selects which of our bots will play.
 
 ---
 
-### Obtener estado
+### Get state
 
 GET /games/{gameId}
 
-Devuelve el estado actual de una partida local activa.
+Returns the current state of a local active game.
 
 ---
 
-### Jugar turno
+### Play turn
 
 POST /games/{gameId}/play
 
@@ -157,15 +157,15 @@ Request:
   "position": { ...YEN... }
 }
 
-Recibe una nueva posición propuesta por el rival, detecta la jugada realizada y delega en gamey para:
-- validar la jugada
-- aplicar la jugada del rival
-- calcular la respuesta de nuestro bot
-- devolver el nuevo estado
+Receives a new position proposed by the opponent, detects the move that was played, and delegates to gamey to:
+- validate the move
+- apply the opponent's move
+- compute our bot's response
+- return the updated state
 
 ---
 
-### Modo stateless
+### Stateless mode
 
 POST /play
 
@@ -175,7 +175,7 @@ Request:
   "bot_id": "random_bot"
 }
 
-Recibe una posición y un bot, calcula una jugada y devuelve la nueva posición sin guardar estado en memoria.
+Receives a position and a bot, computes a move, and returns the updated position without storing state in memory.
 
 ---
 
@@ -183,161 +183,161 @@ Recibe una posición y un bot, calcula una jugada y devuelve la nueva posición 
 
 GET /health
 
-Comprueba si el servicio está activo.
+Checks whether the service is running.
 
 ---
 
-## 🌍 Endpoints remotos
+## 🌍 Remote endpoints
 
-Estos endpoints permiten que uno de nuestros bots juegue contra la API de otro equipo.
+These endpoints allow one of our bots to play against another team's API.
 
 ---
 
-### Conectarse a una partida remota existente
+### Connect to an existing remote game
 
 POST /remote-games/connect
 
 Request:
 {
-  "base_url": "http://equipo-rival:4001",
+  "base_url": "http://rival-team:4001",
   "game_id": "abc123",
   "local_bot_id": "random_bot",
   "our_player_index": 0
 }
 
-Crea una sesión local que apunta a una partida ya existente en la API de otro equipo.
+Creates a local session that points to an already existing game in another team's API.
 
 ---
 
-### Crear una partida remota
+### Create a remote game
 
 POST /remote-games/create
 
 Request:
 {
-  "base_url": "http://equipo-rival:4001",
+  "base_url": "http://rival-team:4001",
   "size": 5,
   "remote_bot_id": "heuristic_bot",
   "local_bot_id": "random_bot",
   "our_player_index": 0
 }
 
-Pide a la API rival que cree una partida y guarda localmente una sesión asociada.
+Asks the rival API to create a game and stores a local session associated with it.
 
 ---
 
-### Obtener una sesión remota
+### Get a remote session
 
 GET /remote-games/{sessionId}
 
-Devuelve la información de una sesión remota guardada localmente.
+Returns the information of a remote session stored locally.
 
 ---
 
-### Jugar un turno remoto
+### Play a remote turn
 
 POST /remote-games/{sessionId}/play-turn
 
-Este endpoint:
-1. consulta el estado actual en la API rival
-2. comprueba si es nuestro turno
-3. si es nuestro turno:
-   - pide jugada a gamey
-   - construye la nueva posición
-   - la envía a la API rival
-4. guarda el estado remoto más reciente
+This endpoint:
+1. retrieves the current state from the rival API
+2. checks whether it is our turn
+3. if it is our turn:
+   - requests a move from gamey
+   - builds the new position
+   - sends it to the rival API
+4. stores the most recent remote state
 
-Posibles respuestas:
-- WAITING_OPPONENT → no es nuestro turno
-- MOVE_SUBMITTED → jugada enviada correctamente
-- GAME_FINISHED → la partida ya ha terminado
-
----
-
-## 🔄 Flujo de una partida local
-
-1. Se crea una partida (POST /games)
-2. El rival consulta estado (GET /games/{id})
-3. El rival envía jugada (POST /games/{id}/play)
-4. La API:
-   - detecta la jugada
-   - llama a gamey
-   - obtiene la respuesta del bot
-5. Devuelve el nuevo estado
+Possible responses:
+- WAITING_OPPONENT → it is not our turn
+- MOVE_SUBMITTED → move sent successfully
+- GAME_FINISHED → the game is already over
 
 ---
 
-## 🔄 Flujo de una partida remota
+## 🔄 Local game flow
 
-1. Se crea o conecta una sesión remota (POST /remote-games/create o /connect)
-2. La API consulta el estado remoto
-3. Si es nuestro turno:
-   - pide la jugada a gamey
-   - construye la nueva posición
-   - la envía a la API rival
-4. Guarda el estado remoto más reciente
-5. Se repite el proceso llamando a /play-turn
-
----
-
-## 🧩 Modos de funcionamiento
-
-Esta API soporta dos modos:
-
-1. Servidor de interoperabilidad
-   Permite que otros equipos jueguen contra nuestros bots.
-
-2. Cliente de interoperabilidad
-   Permite que nuestros bots jueguen contra la API de otro equipo.
-
-Esto hace que el sistema sea bidireccional:
-- otros bots pueden jugar contra nosotros
-- nosotros podemos jugar contra otros
+1. A game is created (POST /games)
+2. The opponent queries the state (GET /games/{id})
+3. The opponent sends a move (POST /games/{id}/play)
+4. The API:
+   - detects the move
+   - calls gamey
+   - gets the bot response
+5. Returns the updated state
 
 ---
 
-## 📝 Persistencia
+## 🔄 Remote game flow
 
-Actualmente, esta API almacena la información en memoria.
-
-Esto implica:
-- las partidas se pierden si el servicio se reinicia
-- las sesiones remotas también
+1. A remote session is created or connected (POST /remote-games/create or /connect)
+2. The API retrieves the remote state
+3. If it is our turn:
+   - requests the move from gamey
+   - builds the new position
+   - sends it to the rival API
+4. Stores the latest remote state
+5. The process is repeated by calling /play-turn
 
 ---
 
-## 🚫 Qué no hace esta API
+## 🧩 Operating modes
 
-Esta API no gestiona:
-- autenticación
-- usuarios
+This API supports two modes:
+
+1. Interoperability server  
+   Allows other teams to play against our bots.
+
+2. Interoperability client  
+   Allows our bots to play against another team's API.
+
+This makes the system bidirectional:
+- other bots can play against us
+- we can play against others
+
+---
+
+## 📝 Persistence
+
+At the moment, this API stores information in memory.
+
+This implies:
+- games are lost if the service restarts
+- remote sessions are also lost if the service restarts
+
+---
+
+## 🚫 What this API does not do
+
+This API does not handle:
+- authentication
+- users
 - rankings
-- estadísticas
-- historial persistente
+- statistics
+- persistent match history
 
-Estas responsabilidades están separadas en otros servicios.
-
----
-
-## 🔧 Variables de entorno
-
-- PORT: puerto del servicio API
-- GAMEY_BASE_URL: URL base del servicio Rust gamey
-- GAMEY_API_VERSION: versión de la API de gamey
-
-Ejemplo:
-
-PORT=4001
-GAMEY_BASE_URL=http://localhost:4000
-GAMEY_API_VERSION=v1
+These responsibilities are handled by other services.
 
 ---
 
-## 🚀 Resumen
+## 🔧 Environment variables
 
-Esta API:
-- expone endpoints HTTP para bots
-- usa YEN como formato estándar
-- delega la lógica en gamey
-- soporta partidas locales y remotas
-- permite interoperabilidad completa entre equipos
+- PORT: API service port  
+- GAMEY_BASE_URL: base URL of the Rust `gamey` service  
+- GAMEY_API_VERSION: version of the `gamey` API  
+
+Example:
+
+PORT=4001  
+GAMEY_BASE_URL=http://localhost:4000  
+GAMEY_API_VERSION=v1  
+
+---
+
+## 🚀 Summary
+
+This API:
+- exposes HTTP endpoints for bots  
+- uses YEN as the standard game format  
+- delegates the logic to gamey  
+- supports both local and remote games  
+- enables full interoperability between teams  
