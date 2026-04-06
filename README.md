@@ -10,7 +10,7 @@
 
 **YOVI** is a web platform for playing **Game Y** — an abstract strategy board game where players compete to connect all three sides of a triangular board. The project is developed as part of the Software Architecture (ASW) course at the University of Oviedo.
 
-🎮 **Play here:** [http://13.60.227.214/](http://13.60.227.214/)
+🎮 **Play here:** [https://yovi.13.63.89.84.sslip.io](https://yovi.13.63.89.84.sslip.io)
 
 ## Contributors
 
