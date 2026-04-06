@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [webapp, users, gateway, authentication]
+        service: [webapp, users, gateway, authentication, api]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -105,6 +105,23 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
           workdir: gateway
+  
+  docker-push-api:
+    name: Publish api image
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish api
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-api
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: api
 
   docker-push-webapp:
     name: Publish webapp image
@@ -150,6 +167,7 @@ jobs:
       - docker-push-gateway
       - docker-push-webapp
       - docker-push-gamey
+      - docker-push-api
     steps:
       - name: Checkout
         uses: actions/checkout@v4
