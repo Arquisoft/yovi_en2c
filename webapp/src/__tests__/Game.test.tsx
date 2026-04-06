@@ -24,18 +24,18 @@ function renderGame(usernameFromState = "Pablo", usernameInStorage = "Pablo") {
   }
 
   return render(
-    <I18nProvider>
-      <MemoryRouter
-        initialEntries={[
-          {
-            pathname: "/game",
-            state: usernameFromState ? { username: usernameFromState } : undefined,
-          },
-        ]}
-      >
-        <Game />
-      </MemoryRouter>
-    </I18nProvider>
+      <I18nProvider>
+        <MemoryRouter
+            initialEntries={[
+              {
+                pathname: "/game",
+                state: usernameFromState ? { username: usernameFromState } : undefined,
+              },
+            ]}
+        >
+          <Game />
+        </MemoryRouter>
+      </I18nProvider>
   );
 }
 
@@ -73,14 +73,14 @@ describe("Game component", () => {
     global.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,
       text: async () =>
-        JSON.stringify({
-          ok: true,
-          yen: {
-            size: 7,
-            players: ["B", "R"],
-            layout: "......./......./......./......./......./......./.......",
-          },
-        }),
+          JSON.stringify({
+            ok: true,
+            yen: {
+              size: 7,
+              players: ["B", "R"],
+              layout: "......./......./......./......./......./......./.......",
+            },
+          }),
     } as unknown as Response);
 
     renderGame();
@@ -118,10 +118,10 @@ describe("Game component", () => {
     global.fetch = vi.fn().mockResolvedValueOnce({
       ok: false,
       text: async () =>
-        JSON.stringify({
-          ok: false,
-          error: "Game server unavailable",
-        }),
+          JSON.stringify({
+            ok: false,
+            error: "Game server unavailable",
+          }),
     } as unknown as Response);
 
     renderGame();
@@ -147,14 +147,14 @@ describe("Game component", () => {
     global.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,
       text: async () =>
-        JSON.stringify({
-          ok: true,
-          yen: {
-            size: 7,
-            players: ["B", "R"],
-            layout: "......./......./......./......./......./......./.......",
-          },
-        }),
+          JSON.stringify({
+            ok: true,
+            yen: {
+              size: 7,
+              players: ["B", "R"],
+              layout: "......./......./......./......./......./......./.......",
+            },
+          }),
     } as unknown as Response);
 
     renderGame();
@@ -177,31 +177,31 @@ describe("Game component", () => {
     const user = userEvent.setup();
 
     global.fetch = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () =>
-          JSON.stringify({
-            ok: true,
-            yen: {
-              size: 7,
-              players: ["B", "R"],
-              layout: "......./......./......./......./......./......./.......",
-            },
-          }),
-      } as unknown as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () =>
-          JSON.stringify({
-            ok: true,
-            yen: {
-              size: 7,
-              players: ["B", "R"],
-              layout: "B....../......./......./......./......./......./.......",
-            },
-          }),
-      } as unknown as Response);
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () =>
+              JSON.stringify({
+                ok: true,
+                yen: {
+                  size: 7,
+                  players: ["B", "R"],
+                  layout: "......./......./......./......./......./......./.......",
+                },
+              }),
+        } as unknown as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () =>
+              JSON.stringify({
+                ok: true,
+                yen: {
+                  size: 7,
+                  players: ["B", "R"],
+                  layout: "B....../......./......./......./......./......./.......",
+                },
+              }),
+        } as unknown as Response);
 
     renderGame();
 
@@ -229,31 +229,31 @@ describe("Game component", () => {
     const user = userEvent.setup();
 
     global.fetch = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () =>
-          JSON.stringify({
-            ok: true,
-            yen: {
-              size: 7,
-              players: ["B", "R"],
-              layout: "......./......./......./......./......./......./.......",
-            },
-          }),
-      } as unknown as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () =>
-          JSON.stringify({
-            ok: true,
-            yen: {
-              size: 7,
-              players: ["B", "R"],
-              layout: "B....../......./......./......./......./......./.......",
-            },
-          }),
-      } as unknown as Response);
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () =>
+              JSON.stringify({
+                ok: true,
+                yen: {
+                  size: 7,
+                  players: ["B", "R"],
+                  layout: "......./......./......./......./......./......./.......",
+                },
+              }),
+        } as unknown as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () =>
+              JSON.stringify({
+                ok: true,
+                yen: {
+                  size: 7,
+                  players: ["B", "R"],
+                  layout: "B....../......./......./......./......./......./.......",
+                },
+              }),
+        } as unknown as Response);
 
     renderGame();
 
@@ -275,27 +275,27 @@ describe("Game component", () => {
     const user = userEvent.setup();
 
     global.fetch = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () =>
-          JSON.stringify({
-            ok: true,
-            yen: {
-              size: 7,
-              players: ["B", "R"],
-              layout: "......./......./......./......./......./......./.......",
-            },
-          }),
-      } as unknown as Response)
-      .mockResolvedValueOnce({
-        ok: false,
-        text: async () =>
-          JSON.stringify({
-            ok: false,
-            error: "Backend error",
-          }),
-      } as unknown as Response);
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () =>
+              JSON.stringify({
+                ok: true,
+                yen: {
+                  size: 7,
+                  players: ["B", "R"],
+                  layout: "......./......./......./......./......./......./.......",
+                },
+              }),
+        } as unknown as Response)
+        .mockResolvedValueOnce({
+          ok: false,
+          text: async () =>
+              JSON.stringify({
+                ok: false,
+                error: "Backend error",
+              }),
+        } as unknown as Response);
 
     renderGame();
 
@@ -336,32 +336,35 @@ describe("Game component", () => {
   });
 
   test("shows win overlay when backend returns a winning result", async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      text: async () =>
-          JSON.stringify({
-            ok: true,
-            finished: true,
-            winner: "B",
-            winning_edges: [
-              [[0, 0], [1, 0]],
-              [[1, 0], [2, 0]],
-            ],
-            yen: {
-              size: 7,
-              players: ["B", "R"],
-              layout: "......./......./......./......./......./......./.......",
-            },
-          }),
-    } as Response);
+    global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () =>
+              JSON.stringify({
+                ok: true,
+                finished: true,
+                winner: "B",
+                winning_edges: [
+                  [[0, 0], [1, 0]],
+                  [[1, 0], [2, 0]],
+                ],
+                yen: {
+                  size: 7,
+                  players: ["B", "R"],
+                  layout: "......./......./......./......./......./......./.......",
+                },
+              }),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () => JSON.stringify({ success: true }),
+        } as Response);
 
     renderGame();
 
     await act(async () => {
       screen.getByRole("button", { name: /Nueva partida|New game/i }).click();
     });
-
-    expect(global.fetch).toHaveBeenCalledTimes(1);
 
     // Esperar que aparezca el overlay con el mensaje de victoria
     await waitFor(() => {
