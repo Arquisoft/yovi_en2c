@@ -32,7 +32,7 @@ yovi_en2c/
 ├── authentication/  # Node.js + Express JWT authentication service
 ├── gateway/         # Node.js + Express API gateway
 ├── gamey/           # Rust game engine and bot service
-├── api/             # Interoperability API (bot vs bot)
+├── botapi/             # Interoperability API (bot vs bot)
 ├── nginx/             # Reverse proxy
 └── docs/            # Architecture documentation (Arc42 + ADRs)
 ```
@@ -45,7 +45,7 @@ yovi_en2c/
 Browser -> NGINX (80/443)
             ├── /        -> webapp
             ├── /api     -> gateway -> services (users, auth, gamey)
-            └── /interop -> api -> gamey
+            └── /interop -> botapi -> gamey
 ```
 
 NGINX handles:
@@ -184,7 +184,7 @@ All game state is exchanged in **YEN (Y Exchange Notation)** — a JSON format i
 }
 ```
 
-### Interoperability API (`api/`)
+### Interoperability API (`botapi/`)
 
 A Node.js + Express service that enables **bot vs bot interoperability between teams**.
 
@@ -278,7 +278,7 @@ docker-compose up --build
 | Web application | 80/443 | https://yovi.13.63.89.84.sslip.io |
 | Web application | 80 | via nginx (/) |
 | Gateway API | 8080 | via nginx (/api) |
-| api | 4001 | via nginx (/interop) |
+| botapi | 4001 | via nginx (/interop) |
 | Users service | 3000 | internal |
 | Auth service | 5000 | internal |
 | Game engine | 4000 | internal |
