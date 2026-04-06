@@ -43,15 +43,18 @@ yovi_en2c/
 
 ```
 Browser -> NGINX (80/443)
-            ├── /webapp
-            ├── gateway -> services
-            └── /api -> gamey
+            ├── /        -> webapp
+            ├── /api     -> gateway -> services (users, auth, gamey)
+            └── /interop -> api -> gamey
 ```
 
 NGINX handles:
 - HTTPS termination (production)
 - HTTP → HTTPS redirect
 - routing
+
+- The **gateway is used only by the webapp** to access backend services.
+- The **interop API is independent** and communicates directly with `gamey`.
 
 ---
 
@@ -273,7 +276,7 @@ docker-compose up --build
 | Service | Internal Port | External Access |
 |---------|-----|--------|
 | Web application | 80/443 | https://yovi.13.63.89.84.sslip.io |
-| Web application | 80 | via nginx |
+| Web application | 80 | via nginx (/) |
 | Gateway API | 8080 | via nginx (/api) |
 | api | 4001 | via nginx (/interop) |
 | Users service | 3000 | internal |
@@ -366,7 +369,8 @@ cargo doc --open   # Generate and open documentation
 
 ## Architecture
 
-The system follows a **microservices architecture** with an API gateway as the single external entry point. All internal communication uses HTTP/REST with JSON payloads. External traffic uses HTTPS (port 443) terminated at the gateway.
+The system follows a microservices architecture with NGINX as the single external entry point.
+The gateway is used for webapp traffic, while the interop API provides a separate access path for external bots.
 
 For detailed architecture documentation, see the [project wiki](https://github.com/Arquisoft/yovi_en2c/wiki) and the [Architecture Decision Records (ADRs)](https://github.com/Arquisoft/yovi_en2c/wiki/Architecture-Decision-Record).
 
