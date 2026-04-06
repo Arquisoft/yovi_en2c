@@ -29,9 +29,9 @@ describe("remoteInteropClient", () => {
       )
     });
 
-    const result = await remoteInteropClient.getGame("http://rival-api:4001/", "g1");
+    const result = await remoteInteropClient.getGame("http://localhost:4001/", "g1");
 
-    expect(fetchMock).toHaveBeenCalledWith("http://rival-api:4001/games/g1");
+    expect(fetchMock).toHaveBeenCalledWith("http://localhost:4001/games/g1");
     expect(result.game_id).toBe("g1");
   });
 
@@ -56,13 +56,13 @@ describe("remoteInteropClient", () => {
     });
 
     const result = await remoteInteropClient.playMove(
-      "http://rival-api:4001",
+      "http://localhost:4001",
       "g1",
       position
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://rival-api:4001/games/g1/play",
+      "http://localhost:4001/games/g1/play",
       {
         method: "POST",
         headers: {
@@ -93,12 +93,12 @@ describe("remoteInteropClient", () => {
       )
     });
 
-    const result = await remoteInteropClient.createGame("http://rival-api:4001", {
+    const result = await remoteInteropClient.createGame("http://localhost:4001", {
       size: 5,
       bot_id: "remote_bot"
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://rival-api:4001/games", {
+    expect(fetchMock).toHaveBeenCalledWith("http://localhost:4001/games", {
       method: "POST",
       headers: {
         "content-type": "application/json"
@@ -124,7 +124,7 @@ describe("remoteInteropClient", () => {
     });
 
     await expect(
-      remoteInteropClient.getGame("http://rival-api:4001", "missing")
+      remoteInteropClient.getGame("http://localhost:4001", "missing")
     ).rejects.toThrow("Remote game not found");
   });
 
@@ -136,7 +136,7 @@ describe("remoteInteropClient", () => {
     });
 
     await expect(
-      remoteInteropClient.getGame("http://rival-api:4001", "g1")
+      remoteInteropClient.getGame("http://localhost:4001", "g1")
     ).rejects.toThrow("remote API request failed with status 500");
   });
 });
