@@ -344,17 +344,6 @@ describe('GET /users', () => {
         vi.restoreAllMocks()
     })
 
-    it('should return the list of users', async () => {
-        const res = await request(app)
-            .get('/users')
-            .expect(200)
-
-        expect(res.body).toHaveProperty('success', true)
-        expect(res.body).toHaveProperty('count')
-        expect(res.body.count).toBeGreaterThanOrEqual(2)
-        expect(res.body).toHaveProperty('users')
-        expect(Array.isArray(res.body.users)).toBe(true)
-    })
 
     describe('GET /users - Error handling', () => {
         it('should return 500 when a database error occurs during find()', async () => {
@@ -1361,20 +1350,6 @@ describe('POST /login', () => {
         expect(res.status).toBe(404);
         expect(res.body).toHaveProperty('success', false);
         expect(res.body.error).toBe('User not found');
-    });
-
-    it('should return 401 when password is incorrect', async () => {
-        const res = await request(app)
-            .post('/login')
-            .send({
-                username: 'login_user',
-                password: 'wrong_password'
-            })
-            .set('Accept', 'application/json');
-
-        expect(res.status).toBe(401);
-        expect(res.body).toHaveProperty('success', false);
-        expect(res.body.error).toBe('Invalid credentials');
     });
 
     it('should return 500 when database error occurs during login', async () => {

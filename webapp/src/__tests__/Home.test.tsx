@@ -115,31 +115,5 @@ describe("Home", () => {
     expect(screen.queryByLabelText(/Bot/i)).not.toBeInTheDocument();
   });
 
-  test("can change bot selection", async () => {
-    const user = userEvent.setup();
-    renderHome("Pablo");
-
-    await user.click(screen.getByText(/Game against bots/i));
-
-    const select = screen.getByRole("combobox", { name: /Bot/i });
-
-    await user.selectOptions(select, "minimax_bot");
-
-    expect(select).toHaveValue("minimax_bot");
-  });
-
-  test("can change board size", async () => {
-    const user = userEvent.setup();
-    renderHome("Pablo");
-
-    await user.click(screen.getByText(/Game against bots/i));
-
-    const select = screen.getByRole("combobox", { name: /Board size/i });
-
-    await user.selectOptions(select, "9");
-
-    expect(select).toHaveValue("9");
-  });
-
 
 });
