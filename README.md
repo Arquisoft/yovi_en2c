@@ -23,7 +23,7 @@
 
 ## Project Structure
 
-The project follows a **microservices architecture** with five independent services orchestrated via Docker Compose:
+The project follows a **microservices architecture** with five independent services orchestrated via Docker Compose and exposed through an **NGINX reverse proxy**:
 
 ```
 yovi_en2c/
@@ -33,8 +33,25 @@ yovi_en2c/
 ├── gateway/         # Node.js + Express API gateway
 ├── gamey/           # Rust game engine and bot service
 ├── api/             # Interoperability API (bot vs bot)
+├── nginx/             # Reverse proxy
 └── docs/            # Architecture documentation (Arc42 + ADRs)
 ```
+
+---
+
+## Request Flow
+
+```
+Browser -> NGINX (80/443)
+            ├── /webapp
+            ├── gateway -> services
+            └── /api -> gamey
+```
+
+NGINX handles:
+- HTTPS termination (production)
+- HTTP → HTTPS redirect
+- routing
 
 ---
 
@@ -42,7 +59,7 @@ yovi_en2c/
 
 - **User registration and login** with JWT-based authentication
 - **Play Game Y vs AI bot** with 5 difficulty levels
-- **Variable board size** configurable by the user
+- **Variable board sizes** configurable by the user
 - **Match history and game results** stored in MongoDB
 - **Internationalization (i18n)** — English and Spanish supported
 - **Public REST API** for external bots using YEN notation
@@ -253,16 +270,17 @@ docker-compose up --build
 
 **3. Access the application:**
 
-| Service | URL |
-|---------|-----|
-| Web application | http://localhost |
-| Gateway API | http://localhost:8080 |
-| Users service | http://localhost:3000 |
-| Auth service | http://localhost:5000 |
-| Game engine | http://localhost:4000 |
-| Interop API (public) | https://localhost:4001 |
-| Prometheus | http://localhost:9090 |
-| Grafana | http://localhost:9091 |
+| Service | Internal Port | External Access |
+|---------|-----|--------|
+| Web application | 80/443 | https://yovi.13.63.89.84.sslip.io |
+| Web application | 80 | via nginx |
+| Gateway API | 8080 | via nginx (/api) |
+| api | 4001 | via nginx (/interop) |
+| Users service | 3000 | internal |
+| Auth service | 5000 | internal |
+| Game engine | 4000 | internal |
+| Prometheus | 9090 | http://localhost:9090 |
+| Grafana | 9091 | http://localhost:9091 |
 
 ---
 
