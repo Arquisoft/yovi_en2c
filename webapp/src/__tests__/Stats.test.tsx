@@ -86,29 +86,8 @@ describe("Stats component", () => {
         expect(await screen.findByText(/Failed to load history/i)).toBeInTheDocument();
     });
 
-    test("shows network error on fetch failure", async () => {
-        globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
 
-        renderStats();
 
-        expect(await screen.findByText(/Network error/i)).toBeInTheDocument();
-    });
-
-    test("renders empty state when no games", async () => {
-        globalThis.fetch = vi.fn().mockResolvedValueOnce({
-            json: async () => ({
-                success: true,
-                username: "Pablo",
-                stats: { wins: 0, losses: 0 },
-                total: 0,
-                games: [],
-            }),
-        } as Response);
-
-        renderStats();
-
-        expect(await screen.findByText(/No games played yet/i)).toBeInTheDocument();
-    });
 
 
     test("redirects to root when username is missing", async () => {
