@@ -1,5 +1,5 @@
 {
-  "name": "yovi-en2c-api",
+  "name": "yovi-en2c-botapi",
   "version": "1.0.0",
   "description": "Public bot interop API for YOVI_EN2C",
   "main": "dist/server.js",

@@ -24,7 +24,7 @@ jobs:
       - run: npm --prefix webapp ci
       - run: npm --prefix gateway ci
       - run: npm --prefix authentication ci
-      - run: npm --prefix api ci
+      - run: npm --prefix botapi ci
 
       - name: Run users tests with MongoDB
         run: npm --prefix users run test:coverage
@@ -37,8 +37,8 @@ jobs:
       - name: Run gateway tests
         run: npm --prefix gateway run test:coverage
 
-      - name: Run api tests
-        run: npm --prefix api run test:coverage
+      - name: Run botapi tests
+        run: npm --prefix botapi run test:coverage
 
       - name: Run authentication tests
         run: npm --prefix authentication run test:coverage
