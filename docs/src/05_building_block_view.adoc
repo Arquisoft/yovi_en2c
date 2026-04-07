@@ -11,7 +11,7 @@ This abstraction allows understanding the system structure without drowning in i
 
 === Level 1: Overall System White Box
 
-The YOVI system is decomposed into **five top-level building blocks** plus an external database.
+The YOVI system is decomposed into **several top-level building blocks** plus an external database and a public reverse proxy.
 
 [plantuml,"Level 1 System White Box",png]
 ----
@@ -22,6 +22,10 @@ skinparam componentStyle rectangle
 skinparam backgroundColor #FEFEFE
 
 package "YOVI System (Level 1)" {
+
+  component "Nginx Reverse Proxy (nginx/)" as Nginx <<gateway>>
+  
+  component "Bot API Service (botapi/)" as BotAPI <<backend>>
 
   component "API Gateway (gateway/)" as Gateway <<gateway>>
 
@@ -35,23 +39,26 @@ package "YOVI System (Level 1)" {
 
   database "MongoDB (database)" as DB <<database>>
 
-  Gateway --> Webapp : "serves static files\n(HTTP)"
+  Nginx --> Webapp : "serves static files\n(HTTP)"
+  Nginx --> Gateway : "routes /api/*\n(HTTP)"
+  Nginx --> BotAPI : "routes /interop/*\n(HTTP)"
+  
+  Gateway --> Users : "HTTP internal\n(user operations)"
+  BotAPI --> Gamey : "HTTP internal\n(interoperability)"
   Gateway --> Auth : "routes /register, /login, /verify\n(HTTP)"
-  Gateway --> Gamey : "routes /game/*\n(HTTP)"
 
   Auth --> Users : "HTTP internal\n(user lookup/creation)"
   Users --> DB : "MongoDB Wire Protocol\n(persistence)"
 
-  Webapp --> Gateway : "API calls to backend\n(HTTP, internal)"
+  Webapp --> Gateway : "API calls via /api\n(HTTP, internal)"
 
-  note top of Gateway
+  note top of Nginx
     **Provided Interfaces:**
     * Public Web UI (port 443)
-    * Public Bot API (port 443)
+    * Public access to backend services
     **Responsibilities:**
-    * SSL termination
+    * HTTPS termination
     * Request routing
-    * Centralized CORS
   end note
 
   note bottom of Webapp
@@ -94,8 +101,8 @@ package "YOVI System (Level 1)" {
 actor "Human Player" as Human
 actor "External Bot" as Bot
 
-Human --> Gateway : "HTTPS"
-Bot --> Gateway : "HTTPS (API calls)"
+Human --> Nginx : "HTTPS"
+Bot --> Nginx : "HTTPS (API calls)"
 
 @enduml
 ----
@@ -152,6 +159,17 @@ Bot --> Gateway : "HTTPS (API calls)"
 * **Directory/File Location**: `/users/users-service.js`
 * **Fulfilled Requirements**: User registration (data), match history, statistics, ranking
 * **Open Issues**: `/profile/:id` and `/:id/stats` endpoints pending implementation
+
+===== Bot API Service
+
+* **Purpose/Responsibility**: Exposes the public interoperability API for external bots. Receives bot requests through the reverse proxy and delegates game-related operations to the Game Engine Service.
+* **Interface(s)**:
+** *Provided*: Public REST interoperability API under `/interop/*`
+** *Required*: Game Engine Service (internal HTTP)
+* **Quality/Performance Characteristics**: Must be stable and predictable for third-party integrations. Stateless and easy to test independently.
+* **Directory/File Location**: `/botapi/`
+* **Fulfilled Requirements**: Public API for bots, interoperability, encapsulation of internal services
+* **Open Issues**: API versioning and long-term compatibility policy
 
 ===== Game Engine Service
 
@@ -370,8 +388,8 @@ This table summarizes the key interfaces between building blocks, showing the **
 
 |===
 | Interface | Provider | Consumer | Protocol | Data Format | Purpose
-| **Public Web UI** | Gateway | Browser | HTTPS | HTML/CSS/JS | Serve frontend to users
-| **Public Bot API** | Gateway | External Bot | HTTPS | JSON (YEN) | Bot integration
+| **Public Web UI** | Nginx | Browser | HTTPS | HTML/CSS/JS | Serve frontend to users
+| **Public Bot API** | Nginx | External Bot | HTTPS | JSON (YEN) | Public access to bot interoperability API
 | **Auth API** | Auth Service | Gateway | HTTP (internal) | JSON + JWT | Register, login, verify token
 | **User Data API** | Users Service | Auth Service | HTTP (internal) | JSON | User lookup and creation
 | **Game API** | Gamey Service | Gateway | HTTP (internal) | JSON (YEN) | Game logic and bot moves
@@ -384,10 +402,10 @@ This table shows how the building blocks fulfill the key requirements from secti
 
 |===
 | Requirement | Primary Building Block | Supporting Building Blocks
-| Web frontend (TypeScript/React) | Web Frontend Service | Gateway
+| Web frontend (TypeScript/React) | Web Frontend Service | Nginx, Gateway
 | Rust game engine | Game Engine Service | (none)
 | JSON + YEN communication | Game Engine Service | Webapp (client), Gateway (routing)
-| Public API for bots | Gateway | Game Engine Service
+| Public API for bots | Bot API Service | Nginx, Game Engine Service
 | User registration | Authentication Service | User Service, MongoDB
 | User authentication (JWT) | Authentication Service | (none)
 | Match history | User Service | MongoDB, Webapp (UI)
