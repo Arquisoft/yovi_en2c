@@ -490,8 +490,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#section-runtime-view">6. Runtime View</a>
 <ul class="sectlevel2">
-<li><a href="#_runtime_scenario_1_user_registration_in_development">6.1. Runtime Scenario 1: User Registration (In development)</a></li>
-<li><a href="#_runtime_scenario_2_playthgough_of_a_game_against_two_players">6.2. Runtime Scenario 2: Playthgough of a Game against two players</a></li>
+<li><a href="#_runtime_scenario_1_user_registration">6.1. Runtime Scenario 1: User Registration</a></li>
+<li><a href="#_runtime_scenario_2_playthrough_of_a_game_against_two_players">6.2. Runtime Scenario 2: Playthrough of a Game against two players</a></li>
 <li><a href="#_runtime_scenario_3_play_game_vs_ai_bot">6.3. Runtime Scenario 3: Play Game vs. AI Bot</a></li>
 <li><a href="#_runtime_scenario_4_error_and_exception_handling">6.4. Runtime Scenario 4: Error and Exception Handling</a></li>
 <li><a href="#_summary_of_runtime_scenarios">6.5. Summary of Runtime Scenarios</a></li>
@@ -519,10 +519,13 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#_adr_001_game_modes_available_to_the_user">9.1. ADR-001: Game Modes Available to the User</a></li>
 <li><a href="#_adr_002_mongodb_for_user_data_persistence">9.2. ADR-002: MongoDB for User Data Persistence</a></li>
-<li><a href="#_adr_003_three_service_microservices_architecture">9.3. ADR-003: Three-Service Microservices Architecture</a></li>
+<li><a href="#_adr_003_five_service_microservices_architecture">9.3. ADR-003: Five-Service Microservices Architecture</a></li>
 <li><a href="#_adr_004_api_gateway_as_single_entry_point">9.4. ADR-004: API Gateway as Single Entry Point</a></li>
 <li><a href="#_adr_005_strategy_pattern_for_ai_bot_behaviors">9.5. ADR-005: Strategy Pattern for AI Bot Behaviors</a></li>
-<li><a href="#_summary_of_architectural_decisions">9.6. Summary of Architectural Decisions</a></li>
+<li><a href="#_adr_006_dedicated_authentication_microservice">9.6. ADR-006: Dedicated Authentication Microservice</a></li>
+<li><a href="#_adr_007_axum_as_http_framework_for_the_rust_game_engine">9.7. ADR-007: Axum as HTTP Framework for the Rust Game Engine</a></li>
+<li><a href="#_adr_008_custom_i18n_implementation_in_the_frontend">9.8. ADR-008: Custom i18n Implementation in the Frontend</a></li>
+<li><a href="#_summary_of_architectural_decisions">9.9. Summary of Architectural Decisions</a></li>
 </ul>
 </li>
 <li><a href="#section-quality-scenarios">10. Quality Requirements</a>
@@ -601,15 +604,15 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <h2 id="section-introduction-and-goals">1. Introduction and Goals</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>We are a team of four Software Engineering students from the University of Oviedo developing YOVI, a web-based gaming
+<p>We are a team of two Software Engineering students from the University of Oviedo developing YOVI, a web-based gaming
 platform for the company Micrati
-as part of our Architecture of Software Systems (ASR) course project.</p>
+as part of our Architecture of Software Systems (ASW) course project.</p>
 </div>
 <div class="paragraph">
-<p>The platform will allow users to play Game Y against AI opponents with strategies and track
-their games via their own account. Our solution is built with a service-oriented
-architecture comprising three main components: a React frontend (webapp/), a Node.js user service (users/), and a Rust
-game engine (gamey/), all orchestrated via an API gateway. This architecture ensures clarity, maintainability, and
+<p>The platform will allow users to play Game Y against AI opponents, interact with external bots, and track their games via their own account. Our solution follows a service-oriented
+architecture composed of a React frontend (webapp/), a Node.js user service (users/), a Rust
+game engine (gamey/), and a dedicated interoperability API for bots (botapi/). Public access is handled through an Nginx reverse proxy, which provides HTTPS termination and routes requests to the appropriate internal services.
+This architecture ensures clarity, maintainability, and
 scalability while fulfilling both academic requirements and player expectations.</p>
 </div>
 <div class="paragraph">
@@ -637,10 +640,13 @@ allow users to play matches against the machine or via bots, with support for re
 <p>Implementation of a Rust module to verify the game state and suggest moves to the bot.</p>
 </li>
 <li>
-<p>User registration and access to match history.</p>
+<p>User registration, JWT-based authentication, and access to match history.</p>
 </li>
 <li>
 <p>Support for multiple strategies and difficulty levels in the vs. machine mode.</p>
+</li>
+<li>
+<p>Exposure of a public interoperability API for external bots.</p>
 </li>
 </ul>
 </div>
@@ -656,20 +662,19 @@ allow users to play matches against the machine or via bots, with support for re
 <p><strong>Functionality</strong>: The system must correctly implement Game Y rules and provide at least one working AI strategies.</p>
 </li>
 <li>
-<p><strong>Usability</strong>: The React-based interface must be intuitive for players. The component-based architecture of the webapp
-supports future internationalization (i18n)</p>
+<p><strong>Usability</strong>: The React-based interface must be intuitive for players. The component-based architecture of the webapp supports internationalization (i18n)</p>
 </li>
 <li>
-<p><strong>Modularity &amp; Maintainability</strong>: The clear separation into services ensures that components can be developed, tested,
-and extended independently.</p>
+<p><strong>Modularity &amp; Maintainability</strong>: The clear separation into services ensures that components can be developed, tested, and extended independently.</p>
 </li>
 <li>
-<p><strong>Deployability &amp; Availability</strong>: Using Docker and Docker Compose ensures that the multi-service application can be
-consistently deployed in any environment. The gateway provides a single entry point, simplifying deployment</p>
+<p><strong>Deployability &amp; Availability</strong>: Using Docker and Docker Compose ensures that the multi-service application can be consistently deployed in any environment. The gateway provides a single entry point, simplifying deployment. Nginx centralizes public access, HTTPS termination, and request routing.</p>
 </li>
 <li>
-<p><strong>Testability</strong>: The separation of concerns allows for comprehensive testing at multiple levels: unit tests in Rust
-and Node.js, integration tests between services, and end-to-end tests for the webapp</p>
+<p><strong>Security</strong>: JWT-based authentication protects user-specific operations, while the reverse proxy limits direct exposure of internal services.</p>
+</li>
+<li>
+<p><strong>Testability</strong>: The separation of concerns allows for comprehensive testing at multiple levels: unit tests in Rust and Node.js, integration tests between services, and end-to-end tests for the webapp.</p>
 </li>
 </ul>
 </div>
@@ -767,8 +772,8 @@ how it must be done or which technologies must be used. These are non-negotiable
 <td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Public API</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The system MUST expose a documented public API that allows external bots to interact.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Public Interoperability API</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The system MUST expose a documented public interoperability API (botapi) that allows external bots to interact.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core requirement from Micrati for third-party integration.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
 </tr>
@@ -789,6 +794,12 @@ how it must be done or which technologies must be used. These are non-negotiable
 <td class="tableblock halign-left valign-top"><p class="tableblock">User data MUST be persisted. <strong>MongoDB</strong> is the current implementation, but alternatives are possible.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data persistence is mandatory; the specific database technology is negotiable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Yes (technology choice)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Authentication</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User operations MUST be secured using <strong>JWT-based authentication</strong>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ensures secure access to user-specific data and actions.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
 </tr>
 </tbody>
 </table>
@@ -936,13 +947,13 @@ how it must be done or which technologies must be used. These are non-negotiable
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Bot Integration</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External bots can ONLY interact through the public API; no direct access to internal services.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External bots can ONLY interact through the public interoperability API (botapi); no direct access to internal services.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Security and encapsulation requirement.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>API Documentation</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The public API MUST be documented for third-party developers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The public interoperability API (botapi) MUST be documented for third-party developers.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Enables external developers to build compatible bots.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Partial (documentation format negotiable)</p></td>
 </tr>
@@ -1012,7 +1023,7 @@ how it must be done or which technologies must be used. These are non-negotiable
 <p><strong>Three-service structure</strong>: The technology constraints (TypeScript + Rust) force a separation between frontend (<code>webapp</code>) and game engine (<code>gamey</code>). The user management requirement adds a third service (<code>users</code>).</p>
 </li>
 <li>
-<p><strong>API Gateway necessity</strong>: Multiple services with public API exposure require a gateway for request routing and security.</p>
+<p><strong>Reverse proxy and routing</strong>: Public access is centralized through an Nginx reverse proxy, which handles HTTPS termination and routes requests to the appropriate internal services (webapp, gateway, botapi).</p>
 </li>
 <li>
 <p><strong>Docker standardization</strong>: The containerization constraint ensures consistent development and deployment environments.</p>
@@ -1050,7 +1061,7 @@ propositions:</p>
 performance.</p>
 </li>
 <li>
-<p><strong>For bot developers</strong>: A public API that allows automated bots to interact with the game engine, request moves, and
+<p><strong>For bot developers</strong>: A public interoperability API (botapi) that allows automated bots to interact with the game engine, request moves, and
 play matches.</p>
 </li>
 </ul>
@@ -1127,15 +1138,14 @@ logic, user management, and AI strategies are implemented within the YOVI system
 <div class="sect2">
 <h3 id="_technical_context">3.2. Technical Context</h3>
 <div class="paragraph">
-<p>From a technical perspective, the YOVI system is implemented as <strong>three independent services</strong> communicating via
-HTTP/REST, plus an <strong>API gateway</strong> that routes external requests. This section describes the technical channels and
+<p>From a technical perspective, the YOVI system is implemented as multiple independent services communicating via HTTP/REST. Public access is handled through an <strong>Nginx reverse proxy</strong>, which routes external requests to the appropriate services (webapp, gateway, botapi). This section describes the technical channels and
 protocols that enable the business interfaces defined above.</p>
 </div>
 <div class="sect3">
 <h4 id="_technical_context_diagram">3.2.1. Technical Context Diagram</h4>
 <div class="imageblock">
 <div class="content">
-<img src="./images/Technical%20Context%20Diagram%20-%20YOVI%20System.png" alt="Technical Context Diagram   YOVI System" width="944" height="668">
+<img src="./images/Technical%20Context%20Diagram%20-%20YOVI%20System.png" alt="Technical Context Diagram   YOVI System" width="965" height="890">
 </div>
 </div>
 </div>
@@ -1160,43 +1170,43 @@ protocols that enable the business interfaces defined above.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Game Play UI</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Browser ↔ Gateway</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Browser ↔ Nginx ↔ Webapp</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">HTTPS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">HTML/CSS/JS + JSON</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>User Management</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Gateway ↔ Users Service</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">HTTP (internal)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">JSON</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>User Registration</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Browser ↔ Gateway ↔ Users</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">HTTPS → HTTP → JSON</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Browser ↔ Gateway ↔ Auth ↔ Users</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HTTPS → HTTP → HTTP</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">JSON</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>User Login</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Browser ↔ Gateway ↔ Users</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">HTTPS → HTTP → JSON</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Browser ↔ Gateway ↔ Auth ↔ Users</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HTTPS → HTTP → HTTP</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">JSON</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Token Verification</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Browser ↔ Gateway ↔ Auth</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HTTPS → HTTP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JSON (JWT)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Statistics Retrieval</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Browser ↔ Gateway ↔ Users</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">HTTPS → HTTP → JSON</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HTTPS → HTTP</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">JSON</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Bot API - Move Request</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bot ↔ Gateway ↔ Gamey</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bot ↔ Nginx ↔ BotAPI ↔ Gamey</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">HTTPS → HTTP → JSON</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">JSON (YEN)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Bot API - Game State</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bot ↔ Gateway ↔ Gamey</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bot ↔ Nginx ↔ BotAPI ↔ Gamey</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">HTTPS → HTTP → JSON</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">JSON (YEN)</p></td>
 </tr>
@@ -1232,22 +1242,37 @@ protocols that enable the business interfaces defined above.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Web Frontend</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">React + TypeScript</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Client requirement, component reusability</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Client requirement, component reusability, i18n support</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Authentication Service</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Node.js + Express + jsonwebtoken</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lightweight, JWT generation and validation isolated from user data</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>User Service</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Node.js + Express</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Node.js + Express + Mongoose</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lightweight, npm ecosystem, quick development</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Game Engine</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Rust</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Rust + Axum</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Performance, memory safety, required by client</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Reverse Proxy</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nginx</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HTTPS termination and request routing</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>API Gateway</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Nginx (or Express Gateway)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Simple reverse proxy, request routing</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Node.js + Express</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Backend entry point for webapp</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Bot API Service</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Node.js + Express</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Public interoperability API for bots</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Database</strong></p></td>
@@ -1284,13 +1309,13 @@ protocols that enable the business interfaces defined above.</p>
 <p>Multiple AI strategies (difficulties), user-selectable</p>
 </li>
 <li>
-<p>User registration and authentication</p>
+<p>User registration and authentication via dedicated JWT-based auth service</p>
 </li>
 <li>
 <p>Match history and basic statistics (games played, wins/losses)</p>
 </li>
 <li>
-<p>Public REST API for bots with YEN notation</p>
+<p>Public interoperability API (botapi) for bots with YEN notation</p>
 </li>
 <li>
 <p>Docker containerization and docker-compose deployment</p>
@@ -1300,6 +1325,9 @@ protocols that enable the business interfaces defined above.</p>
 </li>
 <li>
 <p>Public web deployment</p>
+</li>
+<li>
+<p>Internationalization (i18n) — English and Spanish supported</p>
 </li>
 </ul>
 </div>
@@ -1313,9 +1341,6 @@ protocols that enable the business interfaces defined above.</p>
 </li>
 <li>
 <p>User ranking/leaderboard system - optional</p>
-</li>
-<li>
-<p>Internationalization (i18n) - optional</p>
 </li>
 <li>
 <p>Mobile applications</p>
@@ -1334,13 +1359,13 @@ protocols that enable the business interfaces defined above.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Bot strategies</strong>: Initial implementation includes random move</p>
+<p><strong>Bot strategies</strong>: Six strategies implemented (random, heuristic, minimax, alfa-beta, monte carlo hard/extreme)</p>
 </li>
 <li>
-<p><strong>Statistics</strong>: Basic counters only, not visible yet for the user, no advanced metrics</p>
+<p><strong>Statistics</strong>: Basic counters only, not yet visible to the user in the UI</p>
 </li>
 <li>
-<p><strong>Authentication</strong>: Simple JWT-based, no OAuth/social login</p>
+<p><strong>Authentication</strong>: Simple JWT-based, no OAuth/social login, bcrypt hashing pending</p>
 </li>
 </ul>
 </div>
@@ -1379,9 +1404,15 @@ and the <strong>quality goal of maintainability</strong>.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Frontend: React + TypeScript</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">React&#8217;s component model enables UI reuse and supports future i18n. TypeScript is mandatory per client.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">React&#8217;s component model enables UI reuse and i18n support. TypeScript is mandatory per client.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Technical Constraint: TypeScript; Quality: Usability, Maintainability</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Vue, Angular (rejected due to team familiarity)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Authentication Service: Node.js/Express + JWT</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Isolated JWT logic improves testability and single responsibility.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Quality: Security, Testability</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Auth inside users service (rejected: violates SRP)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>User Service: Node.js/Express</strong></p></td>
@@ -1390,16 +1421,34 @@ and the <strong>quality goal of maintainability</strong>.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Python/Flask, Java/Spring (rejected: heavier, slower for simple CRUD)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Game Engine: Rust</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Mandated by client. Provides memory safety and performance for game logic and AI.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Game Engine: Rust + Axum</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mandated by client. Provides memory safety and performance for game logic and AI. Axum provides ergonomic async HTTP.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Technical Constraint: Rust; Quality: Performance, Reliability</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">C++, Go (not allowed by constraint)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">C++, Go (not allowed by constraint); Actix-web (rejected: more complex)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Reverse Proxy: Nginx</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Centralizes public access, HTTPS termination, and request routing to internal services.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Quality: Security, Deployability, Availability</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Exposing services directly (rejected: less secure); Express-only routing (rejected: less suitable for TLS termination)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>API Gateway</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Node.js + Express</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Backend entry point for webapp requests and internal request routing</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Quality: Security, Maintainability</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Database: MongoDB</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Schema flexibility for user data, easy integration with Node.js, quick setup.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Quality: Development speed, Deployability</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PostgreSQL (rejected: schema changes slower for evolving requirements)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Bot API Service</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Node.js + Express</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dedicated public interoperability API for external bots</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Quality: Interoperability, Maintainability, Testability</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Containerization: Docker + docker-compose</strong></p></td>
@@ -1419,13 +1468,14 @@ and the <strong>quality goal of maintainability</strong>.</p>
 <div class="sect2">
 <h3 id="_2_top_level_decomposition_architectural_pattern">4.2. 2. Top-Level Decomposition (Architectural Pattern)</h3>
 <div class="paragraph">
-<p><strong>Decision:</strong> <strong>Microservices architecture</strong> with three independent services (<code>webapp</code>, <code>users</code>, <code>gamey</code>) plus an <strong>API gateway</strong>.</p>
+<p><strong>Decision:</strong> <strong>Service-oriented architecture</strong> with dedicated components for <code>webapp</code>, <code>users</code>, <code>gateway</code>, <code>botapi</code>, and <code>gamey</code>, exposed through an Nginx reverse proxy.</p>
 </div>
 <div class="paragraph">
 <p><strong>Reasons:</strong>
-- The technology constraints (TypeScript + Rust) <strong>force</strong> a separation - they cannot run in the same process
+- The technology constraints (TypeScript + Rust) <strong>force</strong> a separation — they cannot run in the same process
 - Separating user management from game logic allows independent scaling and development
-- The gateway provides a single entry point, hiding internal complexity (security constraint)</p>
+- Separating authentication from user data management improves testability and single responsibility
+- Nginx provides the public entry point, handling HTTPS termination and routing external traffic to the appropriate internal service</p>
 </div>
 <div class="paragraph">
 <p><strong>How it maps to quality goals</strong>:</p>
@@ -1439,13 +1489,13 @@ and the <strong>quality goal of maintainability</strong>.</p>
 <p>Testability: Each service can be tested in isolation</p>
 </li>
 <li>
-<p>Deployability: Services can be deployed independently or together via docker-compose</p>
+<p>Deployability: Components can be deployed independently or together via docker-compose</p>
 </li>
 </ul>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="./images/Service%20Decomposition.png" alt="Service Decomposition" width="806" height="398">
+<img src="./images/Service%20Decomposition.png" alt="Service Decomposition" width="637" height="657">
 </div>
 </div>
 </div>
@@ -1478,7 +1528,7 @@ as Controller)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Bot AI implementation</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Allows multiple difficulty levels/strategies without changing game core.
 New strategies = new classes, no modification to existing code.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/src/bot/</code> (each strategy implements common trait)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/src/bot/</code> (each strategy implements <code>YBot</code> trait)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Observer Pattern</strong></p></td>
@@ -1489,10 +1539,15 @@ state management handle this efficiently.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Gateway/Router Pattern</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">API Gateway</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Single entry point routes requests to appropriate services. Simplifies
-client and adds security layer.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gateway</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nginx + gateway + botapi routing</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Public traffic is routed through Nginx, while internal request flows remain separated for web and bot clients.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>nginx/</code>, <code>gateway/</code>, <code>botapi/</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Middleware Pattern</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Authentication</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JWT verification middleware intercepts protected requests before they reach business logic.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>users/</code> and/or <code>gateway/</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -1518,20 +1573,20 @@ client and adds security layer.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Functionality</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Rust engine ensures correct game rules; multiple strategies in <code>gamey/src/bot/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Rust engine ensures correct game rules; six strategies in <code>gamey/src/bot/</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Rust for game logic; Strategy pattern for AI</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Unit tests in <code>gamey/</code> verify rules; integration tests verify bot moves</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Usability</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">React provides responsive UI; component design supports i18n</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">React frontend; Externalized strings</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">E2E tests verify user flows; usability testing with real users</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">React provides responsive UI; custom i18n module supports EN/ES</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">React frontend; I18nProvider with translations.ts</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">E2E tests verify user flows; language toggle tested manually</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Modularity &amp; Maintainability</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Microservices separation; Strategy pattern for extensions</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Three-service architecture; Strategy pattern</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Separation of responsibilities across webapp, users, gateway, botapi, authentication and gamey; Strategy pattern for extensions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Service-oriented architecture; Strategy pattern</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Independent deployment possible; new strategies added without modifying core</p></td>
 </tr>
 <tr>
@@ -1542,15 +1597,21 @@ client and adds security layer.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Testability</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Separation of concerns; dependency injection in Node.js; Rust&#8217;s test framework</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Microservices; Repository pattern</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Separation of concerns; Vitest/Jest in Node services, cargo test in Rust</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Service separation; Middleware pattern</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Unit tests: <code>cargo test</code>, <code>npm test</code>; Integration tests; E2E tests</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Interoperability</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">REST API with YEN notation; documented for bot developers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Public API in <code>gamey</code>; OpenAPI docs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Public interoperability API in <code>botapi</code>; versioned endpoints</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">API tests verify YEN format; documentation generated automatically</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Security</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JWT-based auth isolated in dedicated service; secrets in env vars</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Authentication microservice; ADR-006</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Token verification on protected routes; GitHub Secrets for credentials</p></td>
 </tr>
 </tbody>
 </table>
@@ -1636,32 +1697,50 @@ testability, maintainability</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Modes of game available to the user</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ADR-001</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Basic funcionality to create a extendable project</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extensible architecture starting with PvM mode</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>MongoDB for user data</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ADR-002</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Schema flexibility for evolving requirements</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Three-service architecture</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Service-oriented architecture</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ADR-003</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Separate webapp, users, gamey services due to technology constraints</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Separate webapp, users, gateway, botapi, and gamey responsibilities</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅ (updated)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>API Gateway</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Public reverse proxy and routing</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ADR-004</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Single entry point for security and routing</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nginx as public entry point, with separate routing for web and bot traffic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅ (updated)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Strategy Pattern for AI</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ADR-005</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bot strategies as pluggable components</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">In progress</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Six bot strategies as pluggable components</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅ (updated)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Dedicated Authentication Microservice</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ADR-006</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JWT logic isolated from user data service</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Axum as HTTP framework for Rust</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ADR-007</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ergonomic async HTTP for the game engine</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Custom i18n in frontend</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ADR-008</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lightweight EN/ES support with zero dependencies</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅</p></td>
 </tr>
 </tbody>
 </table>
@@ -1687,7 +1766,7 @@ testability, maintainability</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Rust game engine</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/</code> service with core logic and bot strategies</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/</code> service with core logic and bot strategies (Axum HTTP server)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>JSON + YEN communication</strong></p></td>
@@ -1695,7 +1774,7 @@ testability, maintainability</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Public API for bots</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/</code> exposes <code>/api/game/*</code> endpoints via gateway</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>botapi/</code> exposes the interoperability endpoints and communicates with <code>gamey/</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Docker containerization</strong></p></td>
@@ -1703,11 +1782,15 @@ testability, maintainability</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>User data persistence</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MongoDB in <code>users/</code> service</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MongoDB in <code>users/</code> service via Mongoose</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>JWT authentication</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dedicated <code>authentication/</code> service (ADR-006)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Multiple AI strategies</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Strategy pattern in <code>gamey/src/bot/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Strategy pattern in <code>gamey/src/bot/</code> — six strategies implemented</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Testing requirements</strong></p></td>
@@ -1720,6 +1803,10 @@ testability, maintainability</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Documentation (Arc42 + ADRs)</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">This document + ADRs in Github wiki</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Internationalization</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Custom i18n module in <code>webapp/src/i18n/</code> (EN + ES)</p></td>
 </tr>
 </tbody>
 </table>
@@ -1750,11 +1837,11 @@ we present a <strong>hierarchical view</strong>:</p>
 <div class="sect2">
 <h3 id="_level_1_overall_system_white_box">5.1. Level 1: Overall System White Box</h3>
 <div class="paragraph">
-<p>The YOVI system is decomposed into <strong>four top-level building blocks</strong>: three services and an API gateway, plus an external database.</p>
+<p>The YOVI system is decomposed into <strong>five top-level building blocks</strong> plus an external database.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="./images/Level%201%20System%20White%20Box.png" alt="Level 1 System White Box" width="894" height="572">
+<img src="./images/Level%201%20System%20White%20Box.png" alt="Level 1 System White Box" width="950" height="801">
 </div>
 </div>
 <div class="sect3">
@@ -1764,7 +1851,7 @@ we present a <strong>hierarchical view</strong>:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Purpose/Responsibility</strong>: Acts as the single entry point to the system. Routes external requests to the appropriate internal service, handles SSL termination, and provides a security layer.</p>
+<p><strong>Purpose/Responsibility</strong>: Acts as the single entry point to the system. Routes external requests to the appropriate internal service, handles CORS centrally, and provides a security layer.</p>
 </li>
 <li>
 <p><strong>Interface(s)</strong>:</p>
@@ -1791,7 +1878,7 @@ we present a <strong>hierarchical view</strong>:</p>
 <p>Web Frontend Service (internal HTTP)</p>
 </li>
 <li>
-<p>User Service (internal HTTP)</p>
+<p>Authentication Service (internal HTTP)</p>
 </li>
 <li>
 <p>Game Engine Service (internal HTTP)</p>
@@ -1806,10 +1893,10 @@ we present a <strong>hierarchical view</strong>:</p>
 <p><strong>Quality/Performance Characteristics</strong>: Must handle all external traffic; availability is critical. Stateless, can be scaled horizontally.</p>
 </li>
 <li>
-<p><strong>Directory/File Location</strong>: <code>/gateway/</code> (nginx config or Express Gateway config)</p>
+<p><strong>Directory/File Location</strong>: <code>/gateway/gateway-service.js</code></p>
 </li>
 <li>
-<p><strong>Fulfilled Requirements</strong>: Public deployment, single entry point</p>
+<p><strong>Fulfilled Requirements</strong>: Public deployment, single entry point, centralized CORS</p>
 </li>
 <li>
 <p><strong>Open Issues</strong>: SSL certificate management in production</p>
@@ -1822,7 +1909,7 @@ we present a <strong>hierarchical view</strong>:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Purpose/Responsibility</strong>: Provides the user interface for human players. Handles game rendering, user interaction, and orchestrates calls to backend services.</p>
+<p><strong>Purpose/Responsibility</strong>: Provides the user interface for human players. Handles game rendering, user interaction, language switching, and orchestrates calls to backend services via the gateway.</p>
 </li>
 <li>
 <p><strong>Interface(s)</strong>:</p>
@@ -1836,10 +1923,10 @@ we present a <strong>hierarchical view</strong>:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>User Service API</p>
+<p>Authentication Service API (via gateway)</p>
 </li>
 <li>
-<p>Game Engine API</p>
+<p>Game Engine API (via gateway)</p>
 </li>
 </ul>
 </div>
@@ -1848,16 +1935,51 @@ we present a <strong>hierarchical view</strong>:</p>
 </div>
 </li>
 <li>
-<p><strong>Quality/Performance Characteristics</strong>: Responsive UI (&lt; 100ms for interactions). Must support i18n. Stateless for scalability.</p>
+<p><strong>Quality/Performance Characteristics</strong>: Responsive UI (&lt; 100ms for interactions). Supports EN/ES via custom i18n module. Stateless for scalability.</p>
 </li>
 <li>
 <p><strong>Directory/File Location</strong>: <code>/webapp/</code> (React + TypeScript source)</p>
 </li>
 <li>
-<p><strong>Fulfilled Requirements</strong>: Web frontend, game visualization, strategy selection UI</p>
+<p><strong>Fulfilled Requirements</strong>: Web frontend, game visualization, strategy selection UI, internationalization</p>
 </li>
 <li>
 <p><strong>Open Issues</strong>: Real-time updates for future multiplayer features</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_authentication_service">Authentication Service</h5>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Purpose/Responsibility</strong>: Handles all identity-related operations: JWT token generation and validation, registration payload validation, and login credential verification. Delegates user data persistence to the User Service.</p>
+</li>
+<li>
+<p><strong>Interface(s)</strong>:</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Provided</strong>: REST API with endpoints <code>/register</code>, <code>/login</code>, <code>/verify</code>, <code>/health</code></p>
+</li>
+<li>
+<p><strong>Required</strong>: User Service (internal HTTP — user lookup and creation)</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Quality/Performance Characteristics</strong>: Response time &lt; 200ms. Stateless (JWT-based). Token expiration configurable via <code>JWT_EXPIRES</code> env var.</p>
+</li>
+<li>
+<p><strong>Directory/File Location</strong>: <code>/authentication/auth-service.js</code></p>
+</li>
+<li>
+<p><strong>Fulfilled Requirements</strong>: User authentication, JWT generation and validation</p>
+</li>
+<li>
+<p><strong>Open Issues</strong>: Password comparison currently in plain text — bcrypt hashing pending (tracked as TD-5)</p>
 </li>
 </ul>
 </div>
@@ -1867,14 +1989,14 @@ we present a <strong>hierarchical view</strong>:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Purpose/Responsibility</strong>: Manages all user-related data: registration, authentication, profile information, match history, and statistics.</p>
+<p><strong>Purpose/Responsibility</strong>: Manages all user data persistence: user profiles, game results, match history, and statistics. Acts as a pure data store — no authentication logic.</p>
 </li>
 <li>
 <p><strong>Interface(s)</strong>:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Provided</strong>: REST API  with endpoints for register, login, profile, stats</p>
+<p><strong>Provided</strong>: REST API with endpoints <code>/createuser</code>, <code>/users/:username</code>, <code>/users</code>, <code>/gameresult</code>, <code>/history/:username</code>, <code>/ranking</code>, <code>/health</code></p>
 </li>
 <li>
 <p><strong>Required</strong>: MongoDB for data persistence</p>
@@ -1886,13 +2008,13 @@ we present a <strong>hierarchical view</strong>:</p>
 <p><strong>Quality/Performance Characteristics</strong>: Must persist data reliably. Response time &lt; 200ms for typical operations.</p>
 </li>
 <li>
-<p><strong>Directory/File Location</strong>: <code>/users/</code> (Node.js + Express)</p>
+<p><strong>Directory/File Location</strong>: <code>/users/users-service.js</code></p>
 </li>
 <li>
-<p><strong>Fulfilled Requirements</strong>: User registration, match history, statistics</p>
+<p><strong>Fulfilled Requirements</strong>: User registration (data), match history, statistics, ranking</p>
 </li>
 <li>
-<p><strong>Open Issues</strong>: Authentication token expiration and refresh strategy</p>
+<p><strong>Open Issues</strong>: <code>/profile/:id</code> and <code>/:id/stats</code> endpoints pending implementation</p>
 </li>
 </ul>
 </div>
@@ -1902,14 +2024,14 @@ we present a <strong>hierarchical view</strong>:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Purpose/Responsibility</strong>: Encapsulates all Game Y logic: move validation, win condition checking, and AI move calculation with multiple strategies.</p>
+<p><strong>Purpose/Responsibility</strong>: Encapsulates all Game Y logic: move validation, win condition checking (connecting three sides of the triangular board), and AI move calculation with six strategies.</p>
 </li>
 <li>
 <p><strong>Interface(s)</strong>:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Provided</strong>: REST API (<code>/api/game/*</code>) using YEN notation for game states</p>
+<p><strong>Provided</strong>: REST API using YEN notation — <code>POST /game/new</code>, <code>POST /v1/game/pvb/{bot_id}</code>, <code>POST /v1/ybot/choose/{bot_id}</code>, <code>GET /status</code></p>
 </li>
 <li>
 <p><strong>Required</strong>: None (stateless, no external dependencies)</p>
@@ -1918,16 +2040,16 @@ we present a <strong>hierarchical view</strong>:</p>
 </div>
 </li>
 <li>
-<p><strong>Quality/Performance Characteristics</strong>: Low latency (&lt; 500ms for move calculation). High correctness (100% rule compliance). Memory safety critical.</p>
+<p><strong>Quality/Performance Characteristics</strong>: Low latency (&lt; 2s for move calculation per QS-01). High correctness (100% rule compliance). Memory safety guaranteed by Rust.</p>
 </li>
 <li>
-<p><strong>Directory/File Location</strong>: <code>/gamey/</code> (Rust)</p>
+<p><strong>Directory/File Location</strong>: <code>/gamey/</code> (Rust + Axum)</p>
 </li>
 <li>
-<p><strong>Fulfilled Requirements</strong>: Game rule verification, AI move suggestion, multiple strategies, YEN notation</p>
+<p><strong>Fulfilled Requirements</strong>: Game rule verification, AI move suggestion, six bot strategies, YEN notation, public bot API</p>
 </li>
 <li>
-<p><strong>Open Issues</strong>: Performance optimization for large boards</p>
+<p><strong>Open Issues</strong>: Performance optimization for large boards with complex bots</p>
 </li>
 </ul>
 </div>
@@ -1937,7 +2059,7 @@ we present a <strong>hierarchical view</strong>:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Purpose/Responsibility</strong>: Persists user data, including profiles, authentication credentials, match history, and statistics.</p>
+<p><strong>Purpose/Responsibility</strong>: Persists user data, including profiles, authentication credentials, game results, match history, and statistics.</p>
 </li>
 <li>
 <p><strong>Interface(s)</strong>:</p>
@@ -1959,7 +2081,7 @@ we present a <strong>hierarchical view</strong>:</p>
 <p><strong>Directory/File Location</strong>: Managed via Docker (not in repo)</p>
 </li>
 <li>
-<p><strong>Fulfilled Requirements</strong>: User data persistence</p>
+<p><strong>Fulfilled Requirements</strong>: User data persistence, game results, ranking aggregation</p>
 </li>
 <li>
 <p><strong>Open Issues</strong>: Backup and recovery strategy</p>
@@ -1978,11 +2100,11 @@ we present a <strong>hierarchical view</strong>:</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="./images/Webapp%20Internal%20Structure.png" alt="Webapp Internal Structure" width="636" height="453">
+<img src="./images/Webapp%20Internal%20Structure.png" alt="Webapp Internal Structure" width="805" height="424">
 </div>
 </div>
 <div class="sect4">
-<h5 id="_black_box_descriptions_webapp_internals_in_development">Black Box Descriptions (Webapp Internals) (In development)</h5>
+<h5 id="_black_box_descriptions_webapp_internals">Black Box Descriptions (Webapp Internals)</h5>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -2001,30 +2123,24 @@ we present a <strong>hierarchical view</strong>:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>UI Components</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Render all user interfaces; handle user input events</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Props/State callbacks</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>webapp/src/components/</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>State Management</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maintain application state (user, game, UI)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Context API / Redux store</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>webapp/src/store/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>webapp/src/</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>API Client</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Communicate with backend services</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">HTTP methods (GET, POST)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>webapp/src/services/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Communicate with backend services via gateway</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HTTP fetch calls to <code>/api/*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>webapp/src/</code> (inline in components)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Routing</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Handle navigation between views</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">URL paths</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>webapp/src/routes/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">URL paths (<code>/</code>, <code>/register</code>, <code>/home</code>, <code>/game</code>, <code>/select-difficulty</code>, <code>/game/finished</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>webapp/src/App.tsx</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>i18n Module</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Provide internationalization support</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Translation keys → strings</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Provide EN/ES internationalization via React Context</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>useI18n()</code> hook → <code>t(key)</code> function</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>webapp/src/i18n/</code></p></td>
 </tr>
 </tbody>
@@ -2038,7 +2154,7 @@ we present a <strong>hierarchical view</strong>:</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="./images/Game%20Engine%20Internal%20Structure.png" alt="Game Engine Internal Structure" width="600" height="484">
+<img src="./images/Game%20Engine%20Internal%20Structure.png" alt="Game Engine Internal Structure" width="394" height="578">
 </div>
 </div>
 <div class="sect4">
@@ -2059,96 +2175,58 @@ we present a <strong>hierarchical view</strong>:</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>HTTP Server</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Expose REST endpoints; handle requests/responses</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>POST /move</code>, <code>GET /strategies</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/src/web/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Expose REST endpoints via Axum; handle requests/responses</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>POST /game/new</code>, <code>POST /v1/game/pvb/{bot_id}</code>, <code>POST /v1/ybot/choose/{bot_id}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/src/game_server/</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>YEN Parser</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Parse and validate YEN notation; serialize to YEN</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>parse()</code>, <code>serialize()</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/src/notation/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Parse and validate YEN notation; serialize game state to YEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GameY::try_from(yen)</code>, <code>YEN::from(&amp;game)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/src/notation/yen.rs</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Game Core</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Implement Game Y rules; validate moves; check wins</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>apply_move()</code>, <code>is_game_over()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implement Game Y rules; validate moves; check win conditions (3 sides connected)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>add_move()</code>, <code>available_cells()</code>, <code>get_player_positions_coords()</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/src/core/</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Board Model</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Represent board state; manage cells</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>get_cell()</code>, <code>set_cell()</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/src/core/board.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>AI Strategies</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implement different bot behaviors via <code>YBot</code> trait</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>choose_move(&amp;GameY) &#8594; Option&lt;Coordinates&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/src/bot/bot_implementations/</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>AI Strategies</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Implement different bot behaviors</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>calculate_move()</code> (trait)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/src/bot/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Bot Registry</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Store and retrieve bot implementations by name</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>find(name) &#8594; Option&lt;Arc&lt;dyn YBot&gt;&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/src/bot/ybot_registry.rs</code></p></td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_white_box_user_service_users">5.2.3. White Box: User Service (<code>users/</code>)</h4>
+<h4 id="_white_box_authentication_service_authentication">5.2.3. White Box: Authentication Service (<code>authentication/</code>)</h4>
 <div class="paragraph">
-<p>The user service follows a typical <strong>layered architecture</strong> for REST APIs.</p>
+<p>The authentication service is a thin layer responsible exclusively for identity operations.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="./images/User%20Service%20Internal%20Structure.png" alt="User Service Internal Structure" width="413" height="622">
+<img src="./images/Authentication%20Service%20Internal%20Structure.png" alt="Authentication Service Internal Structure" width="629" height="259">
 </div>
 </div>
-<div class="sect4">
-<h5 id="_black_box_descriptions_user_service_internals_in_development">Black Box Descriptions (User Service Internals) (In development)</h5>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
-<col style="width: 25%;">
-</colgroup>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Building Block</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Responsibility</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Key Interfaces</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Location</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>API Routes</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Define HTTP endpoints and HTTP methods</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Express route handlers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>users/src/routes/</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Controllers</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Handle requests, validate input, format responses</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Controller functions</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>users/src/controllers/</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Services</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Implement business logic (password hashing, etc.)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Service methods</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>users/src/services/</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Repositories</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Abstract database operations</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CRUD operations</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>users/src/repositories/</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Models</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Define data schemas and validation</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Mongoose schemas</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>users/src/models/</code></p></td>
-</tr>
-</tbody>
-</table>
+</div>
+<div class="sect3">
+<h4 id="_white_box_user_service_users">5.2.4. White Box: User Service (<code>users/</code>)</h4>
+<div class="paragraph">
+<p>The user service follows a simple <strong>flat architecture</strong> for REST APIs with Mongoose models.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/User%20Service%20Internal%20Structure.png" alt="User Service Internal Structure" width="566" height="398">
+</div>
 </div>
 </div>
 </div>
@@ -2192,20 +2270,28 @@ we present a <strong>hierarchical view</strong>:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Bot integration</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>User API</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Auth API</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Auth Service</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Gateway</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HTTP (internal)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JSON + JWT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register, login, verify token</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>User Data API</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Users Service</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Webapp</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Auth Service</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">HTTP (internal)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">JSON</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">User management</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User lookup and creation</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Game API</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Gamey Service</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Webapp</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Gateway</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">HTTP (internal)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">JSON (YEN)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Game logic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Game logic and bot moves</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Database Interface</strong></p></td>
@@ -2214,14 +2300,6 @@ we present a <strong>hierarchical view</strong>:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">MongoDB Wire</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BSON</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data persistence</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Internal Gateway Calls</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Gateway</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Webapp/Users/Gamey</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">HTTP (internal)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">JSON</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Service communication</p></td>
 </tr>
 </tbody>
 </table>
@@ -2265,8 +2343,13 @@ we present a <strong>hierarchical view</strong>:</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">User registration</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">User Service</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MongoDB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Authentication Service</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User Service, MongoDB</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User authentication (JWT)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Authentication Service</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(none)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Match history</p></td>
@@ -2277,6 +2360,11 @@ we present a <strong>hierarchical view</strong>:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Multiple AI strategies</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Game Engine Service</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">(none)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Internationalization</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Web Frontend Service</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">(none — custom i18n module)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Docker deployment</p></td>
@@ -2309,7 +2397,10 @@ we present a <strong>hierarchical view</strong>:</p>
 <p><strong>Key interactions</strong>: How building blocks cooperate</p>
 </li>
 <li>
-<p><strong>Error scenarios</strong>: How the system handles failures* <strong>Operation scenarios</strong>: System startup and shutdown</p>
+<p><strong>Error scenarios</strong>: How the system handles failures</p>
+</li>
+<li>
+<p><strong>Operation scenarios</strong>: System startup and shutdown</p>
 </li>
 </ul>
 </div>
@@ -2317,14 +2408,13 @@ we present a <strong>hierarchical view</strong>:</p>
 <p>These scenarios demonstrate how the building blocks defined in Section 5 collaborate at runtime.</p>
 </div>
 <div class="sect2">
-<h3 id="_runtime_scenario_1_user_registration_in_development">6.1. Runtime Scenario 1: User Registration (In development)</h3>
+<h3 id="_runtime_scenario_1_user_registration">6.1. Runtime Scenario 1: User Registration</h3>
 <div class="paragraph">
-<p>This scenario shows how a new user creates an account in the system. This is one of the main objective of the prject,
-at the moment the user only needs username to register but the verifications works in the same way.</p>
+<p>This scenario shows how a new user creates an account in the system. The authentication service validates credentials and delegates user creation to the users service, then generates a JWT token.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="./images/User%20Registration%20Sequence.png" alt="User Registration Sequence" width="1022" height="939">
+<img src="./images/User%20Registration%20Sequence.png" alt="User Registration Sequence" width="1547" height="1327">
 </div>
 </div>
 <div class="paragraph">
@@ -2336,125 +2426,47 @@ at the moment the user only needs username to register but the verifications wor
 <p>User fills registration form in the web frontend</p>
 </li>
 <li>
-<p>Frontend performs basic validation (format)</p>
+<p>Frontend performs basic validation (client-side)</p>
 </li>
 <li>
-<p>Frontend sends registration request to API Gateway</p>
+<p>Frontend sends registration request to API Gateway at <code>POST /register</code></p>
 </li>
 <li>
-<p>Gateway routes request to User Service</p>
+<p>Gateway forwards to Authentication Service</p>
 </li>
 <li>
-<p>User Service hashes the password (never stored in plain text)</p>
+<p>Auth service validates payload (required fields, password length, passwords match)</p>
 </li>
 <li>
-<p>Service checks if username already exists</p>
+<p><strong>Alternative 1 (validation error)</strong>: Returns 400, UI shows error</p>
 </li>
 <li>
-<p><strong>Alternative 1 (user exists)</strong>: Returns 409 Conflict, UI shows error</p>
+<p>Auth service calls User Service at <code>POST /createuser</code></p>
 </li>
 <li>
-<p><strong>Alternative 2 (new user)</strong>: Inserts user document in MongoDB</p>
+<p><strong>Alternative 2 (user exists)</strong>: User Service returns 400, error propagated to UI</p>
 </li>
 <li>
-<p>Generates JWT token for automatic login</p>
+<p><strong>Alternative 3 (new user)</strong>: User Service inserts document in MongoDB</p>
 </li>
 <li>
-<p>Returns success response with token</p>
+<p>Auth service generates JWT token and returns 201 with token</p>
 </li>
 <li>
-<p>Gateway forwards to frontend</p>
-</li>
-<li>
-<p>Frontend stores token and redirects user to dashboard</p>
+<p>Frontend stores token and username in localStorage, redirects to <code>/home</code></p>
 </li>
 </ol>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_runtime_scenario_2_playthgough_of_a_game_against_two_players">6.2. Runtime Scenario 2: Playthgough of a Game against two players</h3>
+<h3 id="_runtime_scenario_2_playthrough_of_a_game_against_two_players">6.2. Runtime Scenario 2: Playthrough of a Game against two players</h3>
 <div class="paragraph">
-<p>The following diagram shows the flow of a normal playthrough of a game with two players going against eachother :</p>
+<p>The following diagram shows the flow of a normal playthrough of a game with two players going against each other (planned feature — not yet implemented):</p>
 </div>
 <div class="imageblock">
 <div class="content">
 <img src="./images/User%20VS%20User%20Game%20Diagram.png" alt="User VS User Game Diagram" width="859" height="1351">
 </div>
-</div>
-<div class="paragraph">
-<p>As such the standard gameplay would be as follows:</p>
-</div>
-<div class="paragraph">
-<p>Initialization:</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>User1 navigates to game initialization.</p>
-</li>
-<li>
-<p>The backend creates a new game session and stores it.</p>
-</li>
-<li>
-<p>User2 joins the session.</p>
-</li>
-<li>
-<p>The backend confirms that both players are connected.</p>
-</li>
-<li>
-<p>The game loop is initialized.</p>
-</li>
-<li>
-<p>Both users see the initialized game state.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>Turns:</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>The active player makes a move.</p>
-</li>
-<li>
-<p>The move is sent to the backend.</p>
-</li>
-<li>
-<p>The backend validates and updates the game state.</p>
-</li>
-<li>
-<p>The updated state is sent to the opponent.</p>
-</li>
-<li>
-<p>The opponent’s GUI renders the updated game state.</p>
-</li>
-<li>
-<p>The turn switches to the other player.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>Finalization:</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>The backend stores the result of the game in the database (User1 victory or User2 victory).</p>
-</li>
-<li>
-<p>The backend sends the final result to both GUIs.</p>
-</li>
-<li>
-<p>The winner sees a victory screen.</p>
-</li>
-<li>
-<p>The loser sees a defeat screen.</p>
-</li>
-<li>
-<p>The game session is closed and resources are released.</p>
-</li>
-</ol>
 </div>
 </div>
 <div class="sect2">
@@ -2464,7 +2476,7 @@ at the moment the user only needs username to register but the verifications wor
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="./images/Game%20vs%20Bot%20Sequence.png" alt="Game vs Bot Sequence" width="1123" height="1868">
+<img src="./images/Game%20vs%20Bot%20Sequence.png" alt="Game vs Bot Sequence" width="1369" height="1599">
 </div>
 </div>
 <div class="paragraph">
@@ -2476,13 +2488,13 @@ at the moment the user only needs username to register but the verifications wor
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>User selects game mode, board size, and AI strategy</p>
+<p>User selects bot difficulty and board size</p>
 </li>
 <li>
-<p>Frontend requests new game session</p>
+<p>Frontend requests new game session via <code>POST /game/new</code></p>
 </li>
 <li>
-<p>Game engine creates initial state and returns game ID</p>
+<p>Game engine creates initial YEN state and returns it</p>
 </li>
 </ol>
 </div>
@@ -2492,16 +2504,16 @@ at the moment the user only needs username to register but the verifications wor
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>Player makes a move (validated by game engine)</p>
+<p>Player clicks a cell — frontend sends move via <code>POST /game/pvb/move</code> with YEN + row/col + bot id</p>
 </li>
 <li>
-<p>If move invalid → error, player tries again</p>
+<p>Gateway forwards to <code>POST /v1/game/pvb/{bot_id}</code> on the game engine</p>
 </li>
 <li>
-<p>If move valid → game engine updates state and checks win</p>
+<p>Game engine validates player move and checks win condition</p>
 </li>
 <li>
-<p>If player won → game ends, show victory</p>
+<p>If player won → game ends, show victory screen</p>
 </li>
 <li>
 <p>If game continues → engine calculates bot move using selected strategy</p>
@@ -2510,10 +2522,10 @@ at the moment the user only needs username to register but the verifications wor
 <p>Bot move applied, win condition checked</p>
 </li>
 <li>
-<p>If bot won → game ends, show defeat</p>
+<p>If bot won → game ends, show defeat screen</p>
 </li>
 <li>
-<p>If game continues → updated board shown to player</p>
+<p>If game continues → updated YEN returned and board re-rendered</p>
 </li>
 </ol>
 </div>
@@ -2523,22 +2535,19 @@ at the moment the user only needs username to register but the verifications wor
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>Game result sent to user service</p>
+<p>Game result sent to users service via <code>POST /gameresult</code></p>
 </li>
 <li>
-<p>Match history updated in MongoDB</p>
-</li>
-<li>
-<p>UI updates local statistics</p>
+<p>Result stored in MongoDB</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
 <p><strong>Architectural significance:</strong>
 - Shows <strong>Rust engine</strong> in action (move validation, AI calculation)
-- Demonstrates <strong>strategy pattern</strong> for bot behavior
-- Illustrates <strong>YEN notation</strong> for game state (implicit in API calls)
-- Shows <strong>complete flow</strong> from UI → gateway → engine → database</p>
+- Demonstrates <strong>Strategy Pattern</strong> for bot behavior — bot selected by name via <code>YBotRegistry</code>
+- Illustrates <strong>YEN notation</strong> for game state exchange across all service boundaries
+- Shows <strong>complete flow</strong> from UI → gateway → engine → users service → database</p>
 </div>
 </div>
 <div class="sect2">
@@ -2550,15 +2559,15 @@ at the moment the user only needs username to register but the verifications wor
 <h4 id="_scenario_4_1_game_engine_unavailable">6.4.1. Scenario 4.1: Game Engine Unavailable</h4>
 <div class="imageblock">
 <div class="content">
-<img src="./images/Game%20Engine%20Down.png" alt="Game Engine Down" width="850" height="588">
+<img src="./images/Game%20Engine%20Down.png" alt="Game Engine Down" width="782" height="508">
 </div>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_scenario_4_2_invalid_move_business_rule_violation_in_development">6.4.2. Scenario 4.2: Invalid Move (Business Rule Violation) (In development)</h4>
+<h4 id="_scenario_4_2_invalid_move_business_rule_violation">6.4.2. Scenario 4.2: Invalid Move (Business Rule Violation)</h4>
 <div class="imageblock">
 <div class="content">
-<img src="./images/Invalid%20Move.png" alt="Invalid Move" width="741" height="501">
+<img src="./images/Invalid%20Move.png" alt="Invalid Move" width="741" height="517">
 </div>
 </div>
 </div>
@@ -2566,7 +2575,15 @@ at the moment the user only needs username to register but the verifications wor
 <h4 id="_scenario_4_3_database_connection_lost">6.4.3. Scenario 4.3: Database Connection Lost</h4>
 <div class="imageblock">
 <div class="content">
-<img src="./images/Database%20Down.png" alt="Database Down" width="664" height="415">
+<img src="./images/Database%20Down.png" alt="Database Down" width="711" height="415">
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_scenario_4_4_invalid_or_expired_jwt_token">6.4.4. Scenario 4.4: Invalid or Expired JWT Token</h4>
+<div class="imageblock">
+<div class="content">
+<img src="./images/Invalid%20Token.png" alt="Invalid Token" width="879" height="537">
 </div>
 </div>
 </div>
@@ -2589,27 +2606,27 @@ at the moment the user only needs username to register but the verifications wor
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>User Registration</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Stateless auth, data persistence</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Webapp, Gateway, Users, MongoDB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Usability, Reliability</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Auth separation, stateless JWT, data persistence</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Webapp, Gateway, Auth, Users, MongoDB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usability, Security, Reliability</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Player 1 vs Player 2</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Core game loop between two real users</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core game loop between two real users (planned)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Webapp, Gateway, Gamey, Users, MongoDB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Functionality, Performance</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Game vs Bot</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Core game loop, AI strategies</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Core game loop, AI strategies, result persistence</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Webapp, Gateway, Gamey, Users, MongoDB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Functionality, Performance</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Error Handling</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Resilience, fault tolerance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Resilience, fault tolerance, auth expiry</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">All services</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reliability, Availability</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reliability, Availability, Security</p></td>
 </tr>
 </tbody>
 </table>
@@ -3082,13 +3099,10 @@ the containers with the security and isolation features of the VM.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-json" data-lang="json">{
-  "size": 11,
-  "turn": "R",
-  "board": {
-    "cells": [
-      ["R", "B", "R", "B"]
-    ]
-  }
+  "size": 5,
+  "turn": 0,
+  "players": ["B", "R"],
+  "layout": "B/BR/.R./..../....."
 }</code></pre>
 </div>
 </div>
@@ -3099,13 +3113,16 @@ the containers with the security and isolation features of the VM.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>gamey/</code> service: Parses and validates YEN, returns moves in YEN</p>
+<p><code>gamey/</code> service: Parses and validates YEN via <code>GameY::try_from(yen)</code>, returns moves in YEN</p>
 </li>
 <li>
-<p><code>webapp/</code>: Converts UI interactions to YEN for API calls</p>
+<p><code>webapp/</code>: Sends and receives YEN in all game API calls</p>
 </li>
 <li>
 <p>Public API: Accepts and returns YEN exclusively</p>
+</li>
+<li>
+<p>Gateway: Passes YEN through transparently — no parsing</p>
 </li>
 </ul>
 </div>
@@ -3119,8 +3136,8 @@ the containers with the security and isolation features of the VM.</p>
 <div class="sect2">
 <h3 id="_internationalization">8.2. Internationalization</h3>
 <div class="paragraph">
-<p>For the application to be more accessible to a wider range of users, internationalization was implemented for the
-languages of english and spanish, with architecture designed for easy addition of new languages.</p>
+<p>For the application to be more accessible to a wider range of users, internationalization has been implemented for
+English and Spanish, with architecture designed for easy addition of new languages.</p>
 </div>
 <div class="ulist">
 <ul>
@@ -3129,13 +3146,19 @@ languages of english and spanish, with architecture designed for easy addition o
 <div class="ulist">
 <ul>
 <li>
-<p>All UI strings externalized to JSON files</p>
+<p>All UI strings externalized to a <code>translations.ts</code> dictionary (no external library)</p>
 </li>
 <li>
-<p>Language selection in user preferences</p>
+<p>Language selection persisted in <code>localStorage</code></p>
 </li>
 <li>
-<p>URL-based language (optional): <code>/en/play</code>, <code>/es/play</code></p>
+<p>Custom <code>I18nProvider</code> React context with <code>useI18n()</code> hook</p>
+</li>
+<li>
+<p>Template variable interpolation: <code>t("home.welcome", { username })</code> → <code>"Hello Ana"</code></p>
+</li>
+<li>
+<p>Fallback to Spanish if a key is missing in the selected language</p>
 </li>
 </ul>
 </div>
@@ -3144,22 +3167,15 @@ languages of english and spanish, with architecture designed for easy addition o
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-javascript" data-lang="javascript">// i18n file structure
-/locales/
-  en/
-    common.json
-    game.json
-    user.json
-  es/
-    common.json
-    game.json
-    user.json</code></pre>
+<pre class="highlight"><code class="language-typescript" data-lang="typescript">// i18n structure in webapp/src/i18n/
+translations.ts       // EN + ES dictionaries
+I18nProvider.tsx      // React Context provider + useI18n hook</code></pre>
 </div>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Fallback</strong>: English as default if translation missing</p>
+<p><strong>Fallback</strong>: Spanish as default if no language saved; English fallback if key missing in selected language</p>
 </li>
 </ul>
 </div>
@@ -3197,6 +3213,11 @@ languages of english and spanish, with architecture designed for easy addition o
 <td class="tableblock halign-left valign-top"><p class="tableblock">Single entry point</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Hide internal service topology</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>JWT Authentication</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stateless tokens with expiry</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Protect user-specific endpoints</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -3221,13 +3242,16 @@ languages of english and spanish, with architecture designed for easy addition o
 <div class="ulist">
 <ul>
 <li>
-<p>JWT_SECRET</p>
+<p><code>JWT_SECRET</code> — used by the authentication service to sign and verify JWT tokens</p>
 </li>
 <li>
-<p>MONGODB_URI</p>
+<p><code>JWT_EXPIRES</code> — token expiration (e.g., <code>24h</code>)</p>
 </li>
 <li>
-<p>GITHUB_TOKEN</p>
+<p><code>MONGODB_URI</code> — MongoDB connection string used by the users service</p>
+</li>
+<li>
+<p><code>GITHUB_TOKEN</code> — used by CI/CD pipeline</p>
 </li>
 </ul>
 </div>
@@ -3252,23 +3276,33 @@ languages of english and spanish, with architecture designed for easy addition o
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Strategy Pattern</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bot AI strategies</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Extensibility (new strategies = new classes)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bot AI strategies in <code>gamey/src/bot/</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extensibility (new strategies = new <code>YBot</code> impl)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Repository Pattern</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data access in <code>users</code> service</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data access in <code>users</code> service via Mongoose models</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Testability (mock repositories)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Gateway/Router</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">API Gateway</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Security, routing, monitoring</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">API Gateway — single entry point</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Security, routing, centralized CORS</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Observer/Reactive</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UI updates via React state</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UI updates via React state and hooks</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Consistent UI across state changes</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Middleware Pattern</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>authenticateToken</code> in auth service</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JWT verification before protected routes</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Context Pattern</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>I18nProvider</code> in webapp</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Global i18n state without prop drilling</p></td>
 </tr>
 </tbody>
 </table>
@@ -3294,13 +3328,13 @@ languages of english and spanish, with architecture designed for easy addition o
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">400 Bad Request</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Invalid input format</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Malformed YEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Invalid input format or validation error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Passwords do not match, malformed YEN</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">401 Unauthorized</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Missing/invalid token</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No JWT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Missing or invalid JWT token</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No Authorization header, expired token</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">403 Forbidden</p></td>
@@ -3310,7 +3344,7 @@ languages of english and spanish, with architecture designed for easy addition o
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">404 Not Found</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Resource doesn&#8217;t exist</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Invalid game ID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Username not found</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">409 Conflict</p></td>
@@ -3323,12 +3357,20 @@ languages of english and spanish, with architecture designed for easy addition o
 <td class="tableblock halign-left valign-top"><p class="tableblock">Database connection lost</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">502 Bad Gateway</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Internal service unreachable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Game engine or auth service down</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">503 Unavailable</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Service temporarily down</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Game engine unreachable</p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>The gateway uses a centralized <code>forwardAxiosError</code> function that propagates the status and error message from internal services to the client, or returns 502 if the service is completely unreachable.</p>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_code_organization">8.3.2. Code Organization</h4>
@@ -3338,12 +3380,11 @@ languages of english and spanish, with architecture designed for easy addition o
 <div class="listingblock">
 <div class="content">
 <pre>/service-name/
-    src/            # Production code
+    src/            # Production code (Rust services)
     test/           # Unit tests
-    integration/    # Integration tests
-package.json/Cargo.toml
-Dockerfile
-README.md</pre>
+    __tests__/      # Unit tests (Node.js services)
+package.json / Cargo.toml
+Dockerfile</pre>
 </div>
 </div>
 </div>
@@ -3365,27 +3406,27 @@ README.md</pre>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Unit tests</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Jest (Node), cargo test (Rust)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">*/.test.ts, *_test.rs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Vitest (gateway), Jest (users/auth), cargo test (Rust)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><em>tests</em>/</code>, <code>*.test.ts</code>, <code>*_test.rs</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">80%+</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Integration tests</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Supertest (Node), custom (Rust)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">/test/integration/</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Supertest (Node), <code>tower::ServiceExt::oneshot</code> (Rust)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><em>tests</em>/</code>, <code>gamey/src/game_server/</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key paths</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">End-to-end tests</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Playwright</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">webapp/e2e/</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>webapp/e2e/</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Critical user journeys</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">API tests</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Postman/Newman</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">/api-tests/</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">All endpoints</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Property-based tests</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">proptest (Rust)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gamey/src/core/coord.rs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Coordinate invariants</p></td>
 </tr>
 </tbody>
 </table>
@@ -3434,6 +3475,19 @@ README.md</pre>
 </li>
 </ul>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+SonarQube may flag translation keys containing words like "password" as potential credential leaks.
+These are annotated with <code>// NOSONAR</code> comments in <code>translations.ts</code> to suppress false positives.
+</td>
+</tr>
+</table>
+</div>
 <div style="page-break-after: always;"></div>
 </div>
 </div>
@@ -3454,7 +3508,7 @@ These decisions complement the solution strategy outlined in Section 4, providin
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Status</strong>: Implemented</p>
+<p><strong>Status</strong>: Implemented ✅</p>
 </li>
 <li>
 <p><strong>Date</strong>: 2026-01-15</p>
@@ -3533,7 +3587,7 @@ We will design the game mode system with <strong>extensibility as a core princip
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Status</strong>: Implemented</p>
+<p><strong>Status</strong>: Implemented ✅</p>
 </li>
 <li>
 <p><strong>Date</strong>: 2026-01-20</p>
@@ -3549,18 +3603,15 @@ The users service needs to persist user profiles, authentication data, and match
 </div>
 <div class="paragraph">
 <p><strong>Decision</strong>:
-We will use <strong>MongoDB</strong> for user data persistence. The schema will be designed to accommodate:</p>
+We will use <strong>MongoDB</strong> for user data persistence, managed via <strong>Mongoose ODM</strong>. The schema will be designed to accommodate:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>User profiles (username, password hash, email)</p>
+<p>User profiles (username, email, password)</p>
 </li>
 <li>
-<p>Authentication data (tokens, sessions)</p>
-</li>
-<li>
-<p>Match history (games played, results, moves)</p>
+<p>Game results (username, opponent, result, score, date)</p>
 </li>
 </ul>
 </div>
@@ -3598,6 +3649,9 @@ We will use <strong>MongoDB</strong> for user data persistence. The schema will 
 <p>Positive: Fast prototyping and iteration on data models</p>
 </li>
 <li>
+<p>Positive: Aggregation pipelines support ranking and statistics queries</p>
+</li>
+<li>
 <p>Negative: No built-in relations (handled in application code)</p>
 </li>
 <li>
@@ -3611,45 +3665,92 @@ We will use <strong>MongoDB</strong> for user data persistence. The schema will 
 <hr>
 </div>
 <div class="sect2">
-<h3 id="_adr_003_three_service_microservices_architecture">9.3. ADR-003: Three-Service Microservices Architecture</h3>
+<h3 id="_adr_003_five_service_microservices_architecture">9.3. ADR-003: Five-Service Microservices Architecture</h3>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Status</strong>: Implemented</p>
+<p><strong>Status</strong>: Implemented ✅ — <strong>Updated 2026-02-24</strong> (previously "Three-Service Architecture")</p>
 </li>
 <li>
 <p><strong>Date</strong>: 2026-01-15</p>
+</li>
+<li>
+<p><strong>Last Update</strong>: 2026-02-24</p>
 </li>
 <li>
 <p><strong>Deciders</strong>: Development Team</p>
 </li>
 </ul>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+This ADR supersedes the original decision of a three-service architecture (<code>webapp</code>, <code>users</code>, <code>gamey</code>).
+As the project evolved, authentication and gateway responsibilities were extracted into dedicated services.
+The original decision and its rationale are preserved below for traceability.
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
 <p><strong>Context</strong>:
-The lab assignment requires a web application in TypeScript and a game engine in Rust. These technologies cannot run in the same process. Additionally, user management (registration, history) is a distinct responsibility that could be separated.</p>
+The lab assignment requires a web application in TypeScript and a game engine in Rust. These technologies cannot run in the same process. Additionally, user management (registration, history) is a distinct responsibility that could be separated. As the project scaled, authentication logic and API routing were identified as further responsibilities that benefit from their own dedicated services.</p>
 </div>
 <div class="paragraph">
 <p><strong>Decision</strong>:</p>
 </div>
 <div class="paragraph">
-<p>We will implement a <strong>microservices architecture</strong> with three independent services:</p>
+<p>We implement a <strong>microservices architecture</strong> with five independent services:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>webapp/</code> - TypeScript/React frontend</p>
+<p><code>webapp/</code> - TypeScript/React frontend (port 80)</p>
 </li>
 <li>
-<p><code>users/</code> - Node.js/Express user management service</p>
+<p><code>users/</code> - Node.js/Express user management and data persistence (port 3000)</p>
 </li>
 <li>
-<p><code>gamey/</code> - Rust game engine service</p>
+<p><code>authentication/</code> - Node.js/Express JWT authentication service (port 5000)</p>
+</li>
+<li>
+<p><code>gateway/</code> - Node.js/Express API gateway — single external entry point (port 8080)</p>
+</li>
+<li>
+<p><code>gamey/</code> - Rust game engine and bot service (port 4000)</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>All services will communicate via REST APIs and be orchestrated with an API gateway.</p>
+<p>All services communicate via REST APIs and are orchestrated with Docker Compose. Prometheus (port 9090) and Grafana (port 9091) provide monitoring.</p>
+</div>
+<div class="paragraph">
+<p><strong>Original decision (2026-01-15)</strong>:
+Three services were originally planned: <code>webapp</code>, <code>users</code>, and <code>gamey</code>. The gateway was considered part of the infrastructure rather than a standalone service, and authentication was to be handled inside the users service.</p>
+</div>
+<div class="paragraph">
+<p><strong>Reason for update</strong>:
+Mixing authentication logic into the users service violated the single responsibility principle and reduced testability. Extracting both authentication and the gateway into dedicated services improved separation of concerns and aligned with ADR-006.</p>
+</div>
+<div class="paragraph">
+<p><strong>Alternatives Considered</strong>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Three-service architecture (original)</strong>: Superseded - authentication and gateway extracted for better separation of concerns</p>
+</li>
+<li>
+<p><strong>Authentication inside users service</strong>: Rejected - coupling user data management with token generation reduces testability</p>
+</li>
+<li>
+<p><strong>Single monolith</strong>: Rejected - technology constraints (TypeScript + Rust) make this impossible</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
 <p><strong>Consequences</strong>:</p>
@@ -3657,22 +3758,28 @@ The lab assignment requires a web application in TypeScript and a game engine in
 <div class="ulist">
 <ul>
 <li>
-<p>Positive: Clear separation of concerns</p>
+<p>Positive: Clear separation of concerns — each service has a single responsibility</p>
 </li>
 <li>
 <p>Positive: Each service can be developed and tested independently</p>
 </li>
 <li>
-<p>Positive: Technology-specific optimizations possible</p>
+<p>Positive: Technology-specific optimizations possible (Rust for performance, Node.js for productivity)</p>
 </li>
 <li>
-<p>Negative: Increased operational complexity (multiple services to deploy)</p>
+<p>Positive: Authentication logic is independently testable and replaceable</p>
+</li>
+<li>
+<p>Negative: Increased operational complexity (five services to deploy and monitor)</p>
+</li>
+<li>
+<p>Negative: More inter-service HTTP calls add latency (e.g., auth → users on login)</p>
 </li>
 <li>
 <p>Negative: Network latency between services</p>
 </li>
 <li>
-<p>Mitigation: docker-compose simplifies local development and deployment</p>
+<p>Mitigation: Docker Compose simplifies local development; Prometheus + Grafana provide visibility into inter-service performance</p>
 </li>
 </ul>
 </div>
@@ -3683,10 +3790,13 @@ The lab assignment requires a web application in TypeScript and a game engine in
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Status</strong>: Implemented</p>
+<p><strong>Status</strong>: Implemented ✅ — <strong>Updated 2026-02-24</strong> (routing rules revised)</p>
 </li>
 <li>
 <p><strong>Date</strong>: 2026-01-20</p>
+</li>
+<li>
+<p><strong>Last Update</strong>: 2026-02-24</p>
 </li>
 <li>
 <p><strong>Deciders</strong>: Development Team</p>
@@ -3695,32 +3805,39 @@ The lab assignment requires a web application in TypeScript and a game engine in
 </div>
 <div class="paragraph">
 <p><strong>Context</strong>:
-With three independent services, external clients (human users and bots) would need to know multiple endpoints. This increases complexity and exposes internal service topology.</p>
+With five independent services, external clients (human users and bots) would need to know multiple endpoints. This increases complexity and exposes internal service topology.</p>
 </div>
 <div class="paragraph">
 <p><strong>Decision</strong>:</p>
 </div>
 <div class="paragraph">
-<p>We will implement an <strong>API Gateway</strong> (<code>gateway/</code>) as the single entry point for all external requests. The gateway will:</p>
+<p>We implement an <strong>API Gateway</strong> (<code>gateway/</code>) as the single entry point for all external requests. The gateway:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Route <code>/</code> → webapp service (static files)</p>
+<p>Routes <code>/game/*</code> → gamey service (port 4000)</p>
 </li>
 <li>
-<p>Route <code>/users/*</code> → users service</p>
+<p>Routes <code>/register</code>, <code>/login</code>, <code>/verify</code> → authentication service (port 5000)</p>
 </li>
 <li>
-<p>Route <code>/game/*</code> → gamey service</p>
+<p>Handles CORS centrally for all services</p>
 </li>
 <li>
-<p>Handle SSL termination</p>
+<p>Propagates errors from internal services to clients</p>
 </li>
 <li>
-<p>Provide a security layer</p>
+<p>Hides the internal service topology from external clients</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>Nginx acts as a reverse proxy in front of the gateway, handling SSL termination and routing web traffic to the webapp.</p>
+</div>
+<div class="paragraph">
+<p><strong>Original decision (2026-01-20)</strong>:
+The gateway was originally planned to route <code>/users/<strong></code> to the users service and <code>/game/</strong></code> to the gamey service. With the extraction of the authentication service (ADR-006), auth-related routes (<code>/register</code>, <code>/login</code>, <code>/verify</code>) now forward to the authentication service instead. The users service is no longer directly reachable from external clients.</p>
 </div>
 <div class="paragraph">
 <p><strong>Alternatives Considered</strong>:</p>
@@ -3750,13 +3867,13 @@ With three independent services, external clients (human users and bots) would n
 <p>Positive: Internal services remain hidden from external clients</p>
 </li>
 <li>
-<p>Positive: Centralized SSL and security policies</p>
+<p>Positive: Centralized CORS and error handling policies</p>
 </li>
 <li>
 <p>Negative: Additional component to deploy and maintain</p>
 </li>
 <li>
-<p>Negative: Potential performance bottleneck</p>
+<p>Negative: Potential single point of failure (mitigated by Docker restart policies)</p>
 </li>
 <li>
 <p>Mitigation: Gateway is stateless and can be scaled horizontally</p>
@@ -3770,10 +3887,13 @@ With three independent services, external clients (human users and bots) would n
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Status</strong>: In Progress</p>
+<p><strong>Status</strong>: Implemented ✅ — <strong>Updated 2026-03-15</strong> (previously "In Progress")</p>
 </li>
 <li>
 <p><strong>Date</strong>: 2026-01-25</p>
+</li>
+<li>
+<p><strong>Last Update</strong>: 2026-03-15</p>
 </li>
 <li>
 <p><strong>Deciders</strong>: Development Team</p>
@@ -3786,21 +3906,73 @@ The system must support multiple AI strategies and difficulty levels. New strate
 </div>
 <div class="paragraph">
 <p><strong>Decision</strong>:
-We will implement the <strong>Strategy Pattern</strong> in the <code>gamey</code> service. Each AI strategy will be a separate module implementing a common trait (<code>BotStrategy</code>). The game engine will select the appropriate strategy based on user input. Initial strategies will include:</p>
+We implement the <strong>Strategy Pattern</strong> in the <code>gamey</code> service using Rust traits. Each AI strategy is a separate module implementing the <code>YBot</code> trait:</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>Random move (implemented)</p>
-</li>
-<li>
-<p>Heuristic-based (in discussion)</p>
-</li>
-<li>
-<p>Minimax (in discussion)</p>
-</li>
-</ul>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-rust" data-lang="rust">pub trait YBot: Send + Sync {
+    fn name(&amp;self) -&gt; &amp;str;
+    fn choose_move(&amp;self, board: &amp;GameY) -&gt; Option&lt;Coordinates&gt;;
+}</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>The <code>YBotRegistry</code> manages all registered bots and allows dynamic selection by name at runtime.</p>
+</div>
+<div class="paragraph">
+<p><strong>Original decision (2026-01-25)</strong>:
+Only three strategies were initially planned: random move (implemented), heuristic-based (in discussion), and minimax (in discussion).</p>
+</div>
+<div class="paragraph">
+<p><strong>Current implementation (2026-03-15)</strong>:
+All six strategies are now fully implemented:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Bot ID</th>
+<th class="tableblock halign-left valign-top">Algorithm</th>
+<th class="tableblock halign-left valign-top">Difficulty</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>random_bot</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Random valid move</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>heuristic_bot</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Side connection heuristic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Easy</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>minimax_bot</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Minimax (depth 3)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Medium</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>alfa_beta_bot</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Minimax with alpha-beta pruning</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hard</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>monte_carlo_hard</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Monte Carlo Tree Search</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Expert</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>monte_carlo_extreme</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Monte Carlo Tree Search (more iterations)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extreme</p></td>
+</tr>
+</tbody>
+</table>
 <div class="paragraph">
 <p><strong>Alternatives Considered</strong>:</p>
 </div>
@@ -3823,7 +3995,7 @@ We will implement the <strong>Strategy Pattern</strong> in the <code>gamey</code
 <div class="ulist">
 <ul>
 <li>
-<p>Positive: New strategies can be added without modifying core game logic</p>
+<p>Positive: New strategies can be added without modifying core game logic — just implement <code>YBot</code> and register in <code>YBotRegistry</code></p>
 </li>
 <li>
 <p>Positive: Each strategy can be tested independently</p>
@@ -3832,20 +4004,274 @@ We will implement the <strong>Strategy Pattern</strong> in the <code>gamey</code
 <p>Positive: Clear separation of concerns</p>
 </li>
 <li>
-<p>Negative: Slight indirection overhead (negligible)</p>
+<p>Positive: <code>Send + Sync</code> bounds allow safe concurrent use across async Axum handlers</p>
 </li>
 <li>
-<p>Negative: Requires understanding of trait/interface design</p>
+<p>Negative: Slight indirection overhead (negligible in practice)</p>
 </li>
 <li>
-<p>Mitigation: Well-documented strategy trait and example implementations</p>
+<p>Negative: More complex bots (minimax, Monte Carlo) can be slow on large boards</p>
+</li>
+<li>
+<p>Mitigation: Performance budget of &lt; 2 seconds per move; depth is configurable per bot</p>
 </li>
 </ul>
 </div>
 <hr>
 </div>
 <div class="sect2">
-<h3 id="_summary_of_architectural_decisions">9.6. Summary of Architectural Decisions</h3>
+<h3 id="_adr_006_dedicated_authentication_microservice">9.6. ADR-006: Dedicated Authentication Microservice</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Status</strong>: Implemented ✅</p>
+</li>
+<li>
+<p><strong>Date</strong>: 2026-02-24</p>
+</li>
+<li>
+<p><strong>Deciders</strong>: Development Team</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Context</strong>:
+Initially, authentication responsibilities (JWT generation, credential validation) were planned as part of the users service. As the project grew it became clear that mixing user data persistence with authentication logic violated the single responsibility principle and reduced testability. A dedicated authentication service allows each to evolve independently.</p>
+</div>
+<div class="paragraph">
+<p><strong>Decision</strong>:
+We extract authentication into a <strong>separate <code>authentication/</code> microservice</strong> responsible exclusively for:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Validating registration payloads and delegating user creation to the users service via HTTP</p>
+</li>
+<li>
+<p>Authenticating users by querying the users service and verifying credentials</p>
+</li>
+<li>
+<p>Generating and validating <strong>JWT tokens</strong> (via <code>jsonwebtoken</code>)</p>
+</li>
+<li>
+<p>Exposing <code>/register</code>, <code>/login</code>, and <code>/verify</code> endpoints</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The users service remains a pure data store with no knowledge of JWTs. The authentication service calls the users service internally via HTTP on the Docker internal network.</p>
+</div>
+<div class="paragraph">
+<p><strong>Alternatives Considered</strong>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Auth logic inside users service</strong>: Rejected - violates single responsibility, harder to test JWT logic in isolation</p>
+</li>
+<li>
+<p><strong>Auth logic inside gateway</strong>: Rejected - gateway should only route, not implement business logic</p>
+</li>
+<li>
+<p><strong>Third-party auth provider (Auth0, Firebase)</strong>: Rejected - external dependency, overkill for project scope</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Consequences</strong>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Positive: Clean separation — users service handles data, auth service handles identity</p>
+</li>
+<li>
+<p>Positive: JWT logic is independently testable</p>
+</li>
+<li>
+<p>Positive: Future auth strategies (OAuth, refresh tokens) can be added without touching the users service</p>
+</li>
+<li>
+<p>Negative: Login requires two HTTP calls: auth service → users service (adds minimal latency on Docker internal network)</p>
+</li>
+<li>
+<p>Negative: One more service to deploy and maintain</p>
+</li>
+<li>
+<p>Negative: Passwords are currently compared in plain text — bcrypt hashing is tracked as pending technical debt</p>
+</li>
+<li>
+<p>Mitigation: Inter-service calls are on Docker&#8217;s internal network (sub-millisecond latency). Bcrypt is planned for a future sprint.</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_adr_007_axum_as_http_framework_for_the_rust_game_engine">9.7. ADR-007: Axum as HTTP Framework for the Rust Game Engine</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Status</strong>: Implemented ✅</p>
+</li>
+<li>
+<p><strong>Date</strong>: 2026-02-01</p>
+</li>
+<li>
+<p><strong>Deciders</strong>: Development Team</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Context</strong>:
+The <code>gamey</code> Rust service needs to expose a REST API. Rust has several HTTP framework options. The choice affects ergonomics, async support, compile times, and ecosystem maturity.</p>
+</div>
+<div class="paragraph">
+<p><strong>Decision</strong>:
+We use <strong>Axum</strong> as the HTTP framework for the game engine, with <strong>Tokio</strong> as the async runtime. The server exposes versioned REST endpoints (<code>/v1/&#8230;&#8203;</code>) and uses Axum&#8217;s extractor pattern for request parsing and shared state (<code>AppState</code> wrapping <code>Arc&lt;YBotRegistry&gt;</code>).</p>
+</div>
+<div class="paragraph">
+<p><strong>Alternatives Considered</strong>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Actix-web</strong>: Rejected - more complex, historically used unsafe code, steeper learning curve</p>
+</li>
+<li>
+<p><strong>Warp</strong>: Rejected - less ergonomic API, less active community</p>
+</li>
+<li>
+<p><strong>Rocket</strong>: Rejected - async support was immature at time of decision</p>
+</li>
+<li>
+<p><strong>Raw hyper</strong>: Rejected - too low-level, excessive boilerplate</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Consequences</strong>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Positive: Ergonomic extractor-based API that integrates naturally with Tokio</p>
+</li>
+<li>
+<p>Positive: Excellent performance for concurrent game move calculations</p>
+</li>
+<li>
+<p>Positive: Type-safe shared state via <code>State&lt;AppState&gt;</code> across all handlers</p>
+</li>
+<li>
+<p>Positive: <code>Send + Sync</code> requirements on <code>YBot</code> trait align naturally with Axum&#8217;s threading model</p>
+</li>
+<li>
+<p>Positive: Integration tests use <code>tower::ServiceExt::oneshot</code> without binding to a network port</p>
+</li>
+<li>
+<p>Negative: Rust async adds compile-time complexity</p>
+</li>
+<li>
+<p>Negative: Team needed time to learn Axum&#8217;s extractor pattern</p>
+</li>
+<li>
+<p>Mitigation: Axum&#8217;s documentation and examples are thorough; the extractor pattern becomes intuitive quickly</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_adr_008_custom_i18n_implementation_in_the_frontend">9.8. ADR-008: Custom i18n Implementation in the Frontend</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Status</strong>: Implemented ✅</p>
+</li>
+<li>
+<p><strong>Date</strong>: 2026-03-01</p>
+</li>
+<li>
+<p><strong>Deciders</strong>: Development Team</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Context</strong>:
+The webapp needs to support English and Spanish as stated in quality requirement QS-07. We need to decide between a third-party i18n library and a lightweight custom implementation, considering the project scope and the number of strings involved (&lt; 100 keys).</p>
+</div>
+<div class="paragraph">
+<p><strong>Decision</strong>:
+We implement a <strong>custom i18n solution</strong> using React Context API (<code>I18nProvider</code>) with a static <code>translations.ts</code> dictionary. Features:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Language preference persisted in <code>localStorage</code></p>
+</li>
+<li>
+<p>Template variable interpolation via <code>{variableName}</code> syntax (e.g., <code>"home.welcome": "Hello {username}"</code>)</p>
+</li>
+<li>
+<p>Fallback to Spanish if a key is missing in the selected language</p>
+</li>
+<li>
+<p><code>LanguageToggle</code> component available on all pages (Login, Register, Navbar)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Alternatives Considered</strong>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>react-i18next</strong>: Rejected - adds dependency and configuration overhead disproportionate to the number of strings</p>
+</li>
+<li>
+<p><strong>FormatJS / react-intl</strong>: Rejected - same concern; better suited for large-scale applications</p>
+</li>
+<li>
+<p><strong>No i18n</strong>: Rejected - internationalization is a stated quality requirement (QS-07)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Consequences</strong>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Positive: Zero additional dependencies</p>
+</li>
+<li>
+<p>Positive: Full control over the implementation</p>
+</li>
+<li>
+<p>Positive: Simple to add new languages — just add a new entry in <code>translations.ts</code></p>
+</li>
+<li>
+<p>Positive: SonarQube false positives on password-related keys managed with <code>// NOSONAR</code> comments</p>
+</li>
+<li>
+<p>Negative: No pluralization support (not currently needed)</p>
+</li>
+<li>
+<p>Negative: No lazy loading of translation files (acceptable given the small dictionary size)</p>
+</li>
+<li>
+<p>Negative: Manual maintenance of translation keys across both languages</p>
+</li>
+<li>
+<p>Mitigation: TypeScript typing on the <code>Dict</code> type helps catch missing or inconsistent keys</p>
+</li>
+</ul>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_summary_of_architectural_decisions">9.9. Summary of Architectural Decisions</h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -3853,42 +4279,62 @@ We will implement the <strong>Strategy Pattern</strong> in the <code>gamey</code
 <col style="width: 25%;">
 <col style="width: 25%;">
 </colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">ID</th>
+<th class="tableblock halign-left valign-top">Decision</th>
+<th class="tableblock halign-left valign-top">Key Rationale</th>
+<th class="tableblock halign-left valign-top">Status</th>
+</tr>
+</thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ID</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Decision</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Key Rationale</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Status</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>ADR-001</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Game Modes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Game Modes (PvM first, extensible)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extensibility for future modes</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>ADR-002</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">MongoDB for User Data</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Schema flexibility, Node.js integration</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Schema flexibility, Node.js + Mongoose integration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>ADR-003</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Three-Service Architecture</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Technology constraints (TypeScript + Rust)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Five-Service Architecture</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Technology constraints + separation of concerns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅ (updated)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>ADR-004</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">API Gateway</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Security, single entry point</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅ (updated)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>ADR-005</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Strategy Pattern for AI</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Extensibility for multiple strategies</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">In Progress</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Strategy Pattern for AI (6 strategies)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extensibility, multiple difficulties</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅ (updated)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>ADR-006</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Dedicated Authentication Microservice</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Single responsibility, testability</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>ADR-007</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Axum as HTTP Framework for Rust</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ergonomics, async, performance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>ADR-008</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Custom i18n in Frontend</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lightweight, zero dependencies</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented ✅</p></td>
 </tr>
 </tbody>
 </table>
@@ -4784,6 +5230,12 @@ leaf linked to a measurable scenario.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Incomplete Test Coverage</strong> – Some modules have &lt; 70% test coverage</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Medium – Higher risk of undetected bugs</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Increase coverage to 80% (per QS-10)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>TD5</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Plain Text Password Comparison</strong> – The authentication service compares passwords in plain text (<code>user.password !== password</code>) instead of using bcrypt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">High – Critical security vulnerability; passwords stored unhashed are exposed if the database is compromised</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implement bcrypt hashing on user creation (<code>/createuser</code>) and bcrypt comparison on login (<code>/login</code>)</p></td>
 </tr>
 </tbody>
 </table>
