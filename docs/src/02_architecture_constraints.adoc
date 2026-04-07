@@ -15,10 +15,11 @@ These constraints are imposed by the  client (Micrati). They dictate the technol
 | **Frontend Technology** | The web application MUST be implemented in **TypeScript**. React is the chosen framework but not strictly mandatory. | The client requires TypeScript for type safety and maintainability. |  No (TypeScript is mandatory)
 | **Game Engine Language** | The game logic module MUST be implemented in **Rust**. | Performance and safety requirements for game state validation and AI strategies. |  No
 | **Communication Protocol** | All communication between the webapp and game engine MUST use **JSON messages** following **YEN notation** for game states. | Standardized format specified by the client for interoperability. |  No
-| **Public API** | The system MUST expose a documented public API that allows external bots to interact. | Core requirement from Micrati for third-party integration. |  No
+| **Public Interoperability API** | The system MUST expose a documented public interoperability API (botapi) that allows external bots to interact. | Core requirement from Micrati for third-party integration. |  No
 | **Deployment** | The complete system MUST be publicly accessible via the Web. | The client needs to demonstrate the working product. |  No
 | **Containerization** | All services MUST be containerized using **Docker** with a root-level `docker-compose.yml`. | Ensures consistent deployment across environments. |  Partial (format flexible)
 | **Database** | User data MUST be persisted. **MongoDB** is the current implementation, but alternatives are possible. | Data persistence is mandatory; the specific database technology is negotiable. | Yes (technology choice)
+| **Authentication** | User operations MUST be secured using **JWT-based authentication**. | Ensures secure access to user-specific data and actions. | No
 |===
 
 === Domain Constraints
@@ -56,8 +57,8 @@ These constraints come from external stakeholders and the operating environment.
 
 |===
 | Constraint | Explanation | Rationale | Negotiable?
-| **Bot Integration** | External bots can ONLY interact through the public API; no direct access to internal services. | Security and encapsulation requirement. |  No
-| **API Documentation** | The public API MUST be documented for third-party developers. | Enables external developers to build compatible bots. |  Partial (documentation format negotiable)
+| **Bot Integration** |  External bots can ONLY interact through the public interoperability API (botapi); no direct access to internal services. | Security and encapsulation requirement. |  No
+| **API Documentation** | The public interoperability API (botapi) MUST be documented for third-party developers. | Enables external developers to build compatible bots. |  Partial (documentation format negotiable)
 | **YEN Notation Compliance** | Any system claiming to support Game Y MUST use YEN notation for game state representation. | Industry standard for this game family. |  No
 | **Public Accessibility** | The deployed system MUST be accessible without special network configuration. | End users and evaluators need to access the platform easily. |  No
 |===
@@ -78,7 +79,7 @@ These constraints define the minimum acceptable quality levels the architecture 
 These constraints collectively shape our architecture in specific ways:
 
 * **Three-service structure**: The technology constraints (TypeScript + Rust) force a separation between frontend (`webapp`) and game engine (`gamey`). The user management requirement adds a third service (`users`).
-* **API Gateway necessity**: Multiple services with public API exposure require a gateway for request routing and security.
+* **Reverse proxy and routing**: Public access is centralized through an Nginx reverse proxy, which handles HTTPS termination and routes requests to the appropriate internal services (webapp, gateway, botapi).
 * **Docker standardization**: The containerization constraint ensures consistent development and deployment environments.
 * **Documentation overhead**: Arc42 and ADR requirements mean we must invest time in documentation alongside development.
 * **Testing necessity**: The testing requirements force us to design for testability from the start.
