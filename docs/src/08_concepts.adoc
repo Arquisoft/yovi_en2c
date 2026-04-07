@@ -20,22 +20,21 @@ All game state across the system is represented using **YEN notation**, as manda
 }
 ----
 
-* **Usage**:
-** `gamey/` service: Parses and validates YEN, returns moves in YEN
-** `webapp/`: Converts UI interactions to YEN for API calls
-** Public API: Accepts and returns YEN exclusively
+**Usage:**
+- `gamey/` service: Parses and validates YEN, returns moves in YEN
+- `webapp/`: Converts UI interactions to YEN for API calls
+- Public API: Accepts and returns YEN exclusively
 
-* **Rationale**: Standardization ensures interoperability with external bots and consistency across services.
+**Rationale:** Standardization ensures interoperability with external bots and consistency across services.
 
 === Internationalization
 
-For the application to be more accessible to a wider range of users, internationalization was implemented for the
-languages of English and Spanish, with architecture designed for easy addition of new languages.
+For accessibility, the application supports English and Spanish, with a design that allows easy addition of new languages.
 
-* **Implementation**:
-** All UI strings externalized to JSON files
-** Language selection in user preferences
-** URL-based language (optional): `/en/play`, `/es/play`
+**Implementation:**
+- All UI strings externalized to JSON files
+- Language selection in user preferences
+- Optional URL-based language: `/en/play`, `/es/play`
 
 [source,javascript]
 ----
@@ -50,19 +49,17 @@ languages of English and Spanish, with architecture designed for easy addition o
     game.json
     user.json
 ----
-* **Fallback**: English as default if translation missing
+**Fallback:** English as default if translation is missing
 
-==== Network Security
+=== Network Flow (Proxy → Gateway → Services)
 
-|=== 
-| Layer | Measure | Purpose
-| **Transport** | HTTPS with TLS 1.3 | Encrypt all external traffic
-| **Network isolation** | Docker networks (frontend/backend) | Prevent direct backend access
-| **Firewall** | Only ports 22(SSH) and 443(HTTPS) exposed | Minimize attack surface
-| **API Gateway** | Single entry point | Hide internal service topology
-|===
+The external client requests flow through the reverse proxy and API gateway to reach internal services:
 
-**Network Flow (Proxy → Gateway → Services):**
+- External Clients → Reverse Proxy → API Gateway
+- API Gateway forwards requests to Webapp and Users
+- Webapp communicates with the Game Engine
+
+The flow diagrammatically is:
 
 [source,ascii]
 ----
@@ -86,50 +83,44 @@ languages of English and Spanish, with architecture designed for easy addition o
       v
   Game Engine
 ----
-==== Secrets Management
 
-* **Development**: `.env` files (gitignored)
-* **CI/CD**: GitHub Secrets for all credentials
-* **Production**: Environment variables in docker-compose (never committed)
+=== Secrets Management
 
-Example secrets:
+Secrets are handled differently depending on environment:
 
-* JWT_SECRET
-* MONGODB_URI
-* GITHUB_TOKEN
+- **Development:** `.env` files (gitignored)
+- **CI/CD:** GitHub Secrets for all credentials
+- **Production:** Environment variables in docker-compose (never committed)
+
+**Example secrets:**
+- JWT_SECRET
+- MONGODB_URI
+- GITHUB_TOKEN
 
 === Architecture and Design Patterns
 
-Already documented in Section 4, but summarized here for cross-cutting relevance:
+Key design patterns applied across services:
 
-|=== 
-| Pattern | Application | Cross-cutting Concern
-| **Strategy Pattern** | Bot AI strategies | Extensibility (new strategies = new classes)
-| **Repository Pattern** | Data access in `users` service | Testability (mock repositories)
-| **Gateway/Router** | API Gateway | Security, routing, monitoring (internal traffic behind proxy)
-| **Observer/Reactive** | UI updates via React state | Consistent UI across state changes
-|===
+- **Strategy Pattern:** Used in Bot AI strategies; allows extensibility (adding new strategies = new classes).
+- **Repository Pattern:** Applied in `users` service for data access; improves testability (mock repositories).
+- **Gateway/Router:** API Gateway implementation; ensures security, routing, and monitoring (internal traffic behind proxy).
+- **Observer/Reactive:** UI updates via React state; ensures consistent UI across state changes.
 
-==== Error Handling Strategy
+=== Error Handling Strategy
 
-Consistent error handling across all services, now accounting for requests coming via the reverse proxy:
+All services implement consistent error handling, including requests coming via the reverse proxy:
 
-API errors always return appropriate HTTP status codes, propagated through the proxy:
+- 400 Bad Request: Invalid input format, e.g., malformed YEN
+- 401 Unauthorized: Missing or invalid token (no JWT)
+- 403 Forbidden: Valid token but insufficient permissions
+- 404 Not Found: Resource does not exist (invalid game ID)
+- 409 Conflict: Business rule violation, e.g., username already exists
+- 500 Internal Error: Unexpected server error, e.g., database connection lost
+- 503 Unavailable: Service temporarily down, e.g., game engine unreachable (proxied)
 
-|=== 
-| Status Code | When | Example
-| 400 Bad Request | Invalid input format | Malformed YEN
-| 401 Unauthorized | Missing/invalid token | No JWT
-| 403 Forbidden | Valid token but insufficient permissions | User accessing another's data
-| 404 Not Found | Resource doesn't exist | Invalid game ID
-| 409 Conflict | Business rule violation | Username already exists
-| 500 Internal Error | Unexpected server error | Database connection lost
-| 503 Unavailable | Service temporarily down | Game engine unreachable (proxied)
-|===
+=== Code Organization
 
-==== Code Organization
-
-All services follow consistent structure:
+All services follow a consistent structure:
 
 ----
 /service-name/
@@ -141,14 +132,11 @@ Dockerfile
 README.md
 ----
 
-==== Testing Strategy
+=== Testing Strategy
 
-|=== 
-| Test Type | Tool | Location | Coverage Target | Note
-| Unit tests | Jest (Node), cargo test (Rust) | */.test.ts, *_test.rs | 80%+ | Same as before
-| Integration tests | Supertest (Node), custom (Rust) | /test/integration/ | Key paths | Include proxy routing
-| End-to-end tests | Playwright | webapp/e2e/ | Critical user journeys | Test via Proxy → Gateway → Services
-| API tests | Postman/Newman | /api-tests/ | All endpoints | Requests pass through proxy to catch misrouting/TLS issues
-|===
+All services include automated tests, run on every PR via GitHub Actions.
 
-CI Integration: All tests run on every PR via GitHub Actions
+- **Unit tests:** Jest (Node) or cargo test (Rust), located in `*.test.ts` or `*_test.rs`; target 80%+ coverage.
+- **Integration tests:** Supertest (Node) or custom (Rust), located in `/test/integration/`; cover key paths and include proxy routing.
+- **End-to-end tests:** Playwright for critical user journeys; test flows via Proxy → Gateway → Services.
+- **API tests:** Postman/Newman in `/api-tests/`; ensure requests pass through proxy and TLS is handled correctly.

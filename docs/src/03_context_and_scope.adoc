@@ -1,27 +1,33 @@
-= YOVI System Architecture Documentation
+ifndef::imagesdir[:imagesdir: ../images]
+
+== YOVI System Architecture Documentation – Context and Scope
 :toc:
 :sectnums:
-:imagesdir: ../images
-:plantuml-server-url: https://www.plantuml.com/plantuml
+:plantumljar: C:/Users/lunan/PlantUML/plantuml.jar
 
+[[section-context-and-scope]]
 == Context and Scope
 
-This section delimits the YOVI system from its environment. Following Arc42 guidelines, we separate business context (what the system does) from technical context (how it communicates).
+This section delimits the YOVI system from its environment. Following Arc42 guidelines, we separate **business context**
+(what the system does) from **technical context** (how it communicates).
 
 === Business Context
 
-The YOVI system is a web-based gaming platform for Game Y. From a business perspective, it provides two distinct value propositions:
+The YOVI system is a web-based gaming platform for Game Y. From a business perspective, it provides two distinct value
+propositions:
 
-* **Human players:** An intuitive web interface to play Game Y against AI opponents, register, and track performance.
-* **Bot developers:** A public API that allows automated bots to interact with the game engine, request moves, and play matches.
+* **For human players**: An intuitive web interface to play Game Y against AI opponents, register, and track performance.
+* **For bot developers**: A public API that allows automated bots to interact with the game engine, request moves, and play matches.
 
 The system is self-contained; all game logic, user management, and AI strategies are implemented within YOVI boundaries.
 
-=== Business Context Diagram
+==== Business Context Diagram
 
-[plantuml]
+[plantuml,"Business Context Diagram - YOVI System",png]
 ----
 @startuml
+!define RECTANGLE class
+
 left to right direction
 
 actor "Human Player" as Human
@@ -35,11 +41,11 @@ rectangle "YOVI System (Business Scope)" {
   usecase "API: Get Game State" as UC_API_State
 }
 
-Human --> UC_Play : uses web interface
+Human --> UC_Play : "uses web interface"
 Human --> UC_Register
 Human --> UC_Stats
 
-Bot --> UC_API_Move : calls API
+Bot --> UC_API_Move : "calls API"
 Bot --> UC_API_State
 
 note right of UC_API_Move
@@ -49,69 +55,48 @@ end note
 @enduml
 ----
 
-=== Business Interfaces
+==== Business Interfaces
 
 |===
 | Interface | Description | Input | Output | Communication Partner
 
-| Game Play Interface
-| Web UI for human players to interact with the game
-| Mouse clicks, keyboard
-| Visual board, game state
-| Human Player
-
-| User Management
-| Registration and login interface
-| Username, password
-| Session token, user profile
-| Human Player
-
-| Statistics Interface
-| Access to match history and metrics
-| User ID
-| Win/loss records, game history
-| Human Player
-
-| Bot API - Move Request
-| Programmatic interface for bots to get next move
-| Board state (YEN), strategy
-| Move (YEN)
-| Bot
-
-| Bot API - Game State
-| Programmatic interface to query game status
-| Game ID
-| Current board, turn, winner
-| Bot
+| **Game Play Interface** | Web UI for human players to interact with the game | Mouse clicks, keyboard | Visual board, game state | Human Player
+| **User Management** | Registration and login interface | Username, password | Session token, user profile | Human Player
+| **Statistics Interface** | Access to match history and metrics | User ID | Win/loss records, game history | Human Player
+| **Bot API - Move Request** | Programmatic interface for bots to get next move | Board state (YEN), strategy | Move (YEN) | Bot
+| **Bot API - Game State** | Programmatic interface to query game status | Game ID | Current board, turn, winner | Bot
 |===
 
 === Technical Context
 
-YOVI is implemented as three independent services communicating via HTTP/REST, plus an **API gateway and reverse proxy**.
+From a technical perspective, the YOVI system is implemented as five independent services communicating via HTTP/REST,
+plus an **API gateway** that routes external requests.
 
-[plantuml]
+==== Technical Context Diagram
+
+[plantuml,"Technical Context Diagram - YOVI System",png]
 ----
 @startuml
+!define RECTANGLE node
+
 actor "Human Player" as Human
 actor "Bot" as Bot
 
 node "Internet" {
-  component "Web Browser" as Browser
-  component "Bot Client" as BotClient
+  frame "Client Side" {
+    component "Web Browser" as Browser
+    component "Bot Client" as BotClient
+  }
 }
 
 node "YOVI Deployment" {
-
-  frame "Edge / Reverse Proxy" {
-    component "Nginx Reverse Proxy" as Proxy
-  }
-
-  frame "Gateway Layer" {
+  frame "DMZ / Gateway" {
     component "API Gateway" as Gateway
   }
 
   frame "Internal Network" {
     component "Web Frontend Service" as Webapp
+    component "Authentication Service" as Auth
     component "User Service" as Users
     component "Game Engine Service" as Gamey
     database "MongoDB" as DB
@@ -119,122 +104,41 @@ node "YOVI Deployment" {
 }
 
 Human --> Browser : HTTPS
-Browser --> Proxy : HTTPS (443)
+Browser --> Gateway : HTTPS (port 443)
 
 Bot --> BotClient
-BotClient --> Proxy : HTTPS (443)
+BotClient --> Gateway : HTTPS (port 443)
 
-Proxy --> Gateway : HTTP
+Gateway --> Webapp : HTTP (internal)
+Gateway --> Auth : HTTP /register, /login, /verify
+Gateway --> Gamey : HTTP /game/*
 
-Gateway --> Webapp : HTTP
-Gateway --> Users : HTTP
-Gateway --> Gamey : HTTP
-
-Webapp --> Gateway : HTTP
-Users --> DB : MongoDB
-Gamey --> Gamey : internal
-
-note right of Proxy
-  HTTPS termination
-  HTTP redirect (80 → 443)
-end note
+Webapp --> Gateway : HTTP (internal)
+Auth --> Users : HTTP (internal, user lookup)
+Users --> DB : MongoDB Wire Protocol
+Gamey --> Gamey : self-contained
 
 note right of Gateway
-  / → webapp
-  /api/users → users
-  /api/game → gamey
+  Routes:
+  / → webapp:80
+  /register, /login, /verify → auth:5000
+  /game/* → gamey:4000
 end note
 @enduml
 ----
 
-=== Technical Interfaces and Channels
+==== Technical Interfaces and Channels
 
 |===
 | Business Interface | Technical Channel | Protocol | Data Format
 
-| Game Play UI
-| Browser ↔ Gateway
-| HTTPS
-| HTML/CSS/JS + JSON
-
-| User Management
-| Gateway ↔ Users Service
-| HTTP (internal)
-| JSON
-
-| User Registration
-| Browser ↔ Gateway ↔ Users
-| HTTPS → HTTP
-| JSON
-
-| User Login
-| Browser ↔ Gateway ↔ Users
-| HTTPS → HTTP
-| JSON
-
-| Statistics Retrieval
-| Browser ↔ Gateway ↔ Users
-| HTTPS → HTTP
-| JSON
-
-| Bot API - Move Request
-| Bot ↔ Gateway ↔ Gamey
-| HTTPS → HTTP
-| JSON (YEN)
-
-| Bot API - Game State
-| Bot ↔ Gateway ↔ Gamey
-| HTTPS → HTTP
-| JSON (YEN)
-
-| Game Logic Execution
-| Gateway ↔ Gamey Service
-| HTTP (internal)
-| JSON (YEN)
-
-| Database Access
-| Users Service ↔ MongoDB
-| MongoDB Wire Protocol
-| BSON
-|===
-
-=== Technology Stack per Component
-
-|===
-| Component | Technology | Justification
-
-| Web Frontend | React + TypeScript | Client requirement, component reusability
-| User Service | Node.js + Express | Lightweight, quick development
-| Game Engine | Rust | Performance, memory safety
-| API Gateway | Nginx / Express Gateway | Reverse proxy, routing, HTTPS termination
-| Database | MongoDB | Flexible schema, easy integration
-| Containerization | Docker + docker-compose | Consistent deployment
-| CI/CD | GitHub Actions | Automated testing & deployment
-|===
-=== Scope
-
-
-==== In Scope (Core Requirements)
-* Classic Game Y implementation with correct rules
-* Player-versus-machine game mode with variable board size
-* Multiple AI strategies (difficulties), user-selectable
-* User registration and authentication via dedicated JWT-based auth service
-* Match history and basic statistics (games played, wins/losses)
-* Public REST API for bots with YEN notation
-* Docker containerization and docker-compose deployment
-* CI/CD pipeline with automated testing
-* Public web deployment
-* Internationalization (i18n) — English and Spanish supported
-
-==== Out of Scope (Optional / Future)
-* Game variants (Poly-Y, Hex, etc.) - optional features if time permits
-* User ranking/leaderboard system - optional
-* Mobile applications
-* Multiplayer (human vs. human)
-* Advanced analytics or machine learning
-
-==== In Scope but Implemented Simply
-* **Bot strategies**: Six strategies implemented (random, heuristic, minimax, alfa-beta, monte carlo hard/extreme)
-* **Statistics**: Basic counters only, not yet visible to the user in the UI
-* **Authentication**: Simple JWT-based, no OAuth/social login, bcrypt hashing pending
+| **Game Play UI** | Browser ↔ Gateway | HTTPS | HTML/CSS/JS + JSON
+| **User Registration** | Browser ↔ Gateway ↔ Auth ↔ Users | HTTPS → HTTP → HTTP | JSON
+| **User Login** | Browser ↔ Gateway ↔ Auth ↔ Users | HTTPS → HTTP → HTTP | JSON
+| **Token Verification** | Browser ↔ Gateway ↔ Auth | HTTPS → HTTP | JSON (JWT)
+| **Statistics Retrieval** | Browser ↔ Gateway ↔ Users | HTTPS → HTTP | JSON
+| **Bot API - Move Request** | Bot ↔ Gateway ↔ Gamey | HTTPS → HTTP → JSON | JSON (YEN)
+| **Bot API - Game State** | Bot ↔ Gateway ↔ Gamey | HTTPS → HTTP → JSON | JSON (YEN)
+| **Game Logic Execution** | Gateway ↔ Gamey Service | HTTP (internal) | JSON (YEN)
+| **Database Access** | Users Service ↔ MongoDB | MongoDB Wire Protocol | BSON
 |===
