@@ -3,14 +3,14 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-introduction-and-goals]]
 == Introduction and Goals
 
-We are a team of four Software Engineering students from the University of Oviedo developing YOVI, a web-based gaming
+We are a team of two Software Engineering students from the University of Oviedo developing YOVI, a web-based gaming
 platform for the company Micrati
-as part of our Architecture of Software Systems (ASR) course project.
+as part of our Architecture of Software Systems (ASW) course project.
 
-The platform will allow users to play Game Y against AI opponents with strategies and track
-their games via their own account. Our solution is built with a service-oriented
-architecture comprising three main components: a React frontend (webapp/), a Node.js user service (users/), and a Rust
-game engine (gamey/), all orchestrated via an API gateway. This architecture ensures clarity, maintainability, and
+The platform will allow users to play Game Y against AI opponents, interact with external bots, and track their games via their own account. Our solution follows a service-oriented
+architecture composed of a React frontend (webapp/), a Node.js user service (users/), a Rust
+game engine (gamey/), and a dedicated interoperability API for bots (botapi/). Public access is handled through an Nginx reverse proxy, which provides HTTPS termination and routes requests to the appropriate internal services.
+This architecture ensures clarity, maintainability, and
 scalability while fulfilling both academic requirements and player expectations.
 
 This document outlines the architectural vision for YOVI, balancing functionality with clarity and maintainability to
@@ -27,8 +27,9 @@ Key functional requirements include:
 * Public deployment and web accessibility.
 * Development of a web application in React that allows playing at least the classic version of Game Y.
 * Implementation of a Rust module to verify the game state and suggest moves to the bot.
-* User registration and access to match history.
+* User registration, JWT-based authentication, and access to match history.
 * Support for multiple strategies and difficulty levels in the vs. machine mode.
+* Exposure of a public interoperability API for external bots.
 
 
 
@@ -39,14 +40,11 @@ Key functional requirements include:
 The main quality attributes for the system architecture are:
 
 - **Functionality**: The system must correctly implement Game Y rules and provide at least one working AI strategies.
-- **Usability**: The React-based interface must be intuitive for players. The component-based architecture of the webapp
-supports future internationalization (i18n)
-- **Modularity & Maintainability**: The clear separation into services ensures that components can be developed, tested,
-and extended independently.
-- **Deployability & Availability**: Using Docker and Docker Compose ensures that the multi-service application can be
-consistently deployed in any environment. The gateway provides a single entry point, simplifying deployment
-- **Testability**: The separation of concerns allows for comprehensive testing at multiple levels: unit tests in Rust
-and Node.js, integration tests between services, and end-to-end tests for the webapp
+- **Usability**: The React-based interface must be intuitive for players. The component-based architecture of the webapp supports internationalization (i18n)
+- **Modularity & Maintainability**: The clear separation into services ensures that components can be developed, tested, and extended independently.
+- **Deployability & Availability**: Using Docker and Docker Compose ensures that the multi-service application can be consistently deployed in any environment. The gateway provides a single entry point, simplifying deployment. Nginx centralizes public access, HTTPS termination, and request routing.
+- **Security**: JWT-based authentication protects user-specific operations, while the reverse proxy limits direct exposure of internal services.
+- **Testability**: The separation of concerns allows for comprehensive testing at multiple levels: unit tests in Rust and Node.js, integration tests between services, and end-to-end tests for the webapp.
 
 === Stakeholders
 

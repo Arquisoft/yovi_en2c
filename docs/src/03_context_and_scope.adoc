@@ -14,7 +14,7 @@ propositions:
 
 * **For human players**: An intuitive web interface to play Game Y against AI opponents, register, and track their
 performance.
-* **For bot developers**: A public API that allows automated bots to interact with the game engine, request moves, and
+* **For bot developers**: A public interoperability API (botapi) that allows automated bots to interact with the game engine, request moves, and
 play matches.
 
 The system depends on no external business systems - it is self-contained in terms of domain functionality. All game
@@ -67,8 +67,7 @@ end note
 
 === Technical Context
 
-From a technical perspective, the YOVI system is implemented as **five independent services** communicating via
-HTTP/REST, plus an **API gateway** that routes external requests. This section describes the technical channels and
+From a technical perspective, the YOVI system is implemented as multiple independent services communicating via HTTP/REST. Public access is handled through an **Nginx reverse proxy**, which routes external requests to the appropriate services (webapp, gateway, botapi). This section describes the technical channels and
 protocols that enable the business interfaces defined above.
 
 ==== Technical Context Diagram
@@ -90,7 +89,9 @@ node "Internet" {
 
 node "YOVI Deployment" {
   frame "DMZ / Gateway" {
-    component "API Gateway" as Gateway
+    component "Nginx Reverse Proxy" as Nginx
+    component "API Gateway (Web Backend)" as Gateway
+    component "Bot API Service" as BotAPI
   }
 
   frame "Internal Network" {
@@ -103,14 +104,20 @@ node "YOVI Deployment" {
 }
 
 Human --> Browser : HTTPS
-Browser --> Gateway : HTTPS (port 443)
+Browser --> Nginx : HTTPS (port 443)
 
 Bot --> BotClient
-BotClient --> Gateway : HTTPS (port 443)
+BotClient --> Nginx : HTTPS (port 443)
+
+Nginx --> Webapp : HTTP (internal)
+Nginx --> Gateway : HTTP /api/*
+Nginx --> BotAPI : HTTP /interop/*
 
 Gateway --> Webapp : HTTP (internal)
 Gateway --> Auth : HTTP /register, /login, /verify
 Gateway --> Gamey : HTTP /game/*
+
+BotAPI --> Gamey : HTTP (internal)
 
 Webapp --> Gateway : HTTP (internal, for API calls)
 Auth --> Users : HTTP (internal, user lookup/creation)
@@ -119,9 +126,9 @@ Gamey --> Gamey : (self-contained, no external DB)
 
 note right of Gateway
   Routes:
-  / → webapp:80
-  /register, /login, /verify → auth:5000
-  /game/* → gamey:4000
+  / → webapp
+  /api/* → gateway
+  /interop/* → botapi
 end note
 @enduml
 ----
@@ -132,13 +139,13 @@ This table maps the **business interfaces** (what) to the **technical channels**
 
 |===
 | Business Interface | Technical Channel | Protocol | Data Format
-| **Game Play UI** | Browser ↔ Gateway | HTTPS | HTML/CSS/JS + JSON
+| **Game Play UI** | Browser ↔ Nginx ↔ Webapp | HTTPS | HTML/CSS/JS + JSON
 | **User Registration** | Browser ↔ Gateway ↔ Auth ↔ Users | HTTPS → HTTP → HTTP | JSON
 | **User Login** | Browser ↔ Gateway ↔ Auth ↔ Users | HTTPS → HTTP → HTTP | JSON
 | **Token Verification** | Browser ↔ Gateway ↔ Auth | HTTPS → HTTP | JSON (JWT)
 | **Statistics Retrieval** | Browser ↔ Gateway ↔ Users | HTTPS → HTTP | JSON
-| **Bot API - Move Request** | Bot ↔ Gateway ↔ Gamey | HTTPS → HTTP → JSON | JSON (YEN)
-| **Bot API - Game State** | Bot ↔ Gateway ↔ Gamey | HTTPS → HTTP → JSON | JSON (YEN)
+| **Bot API - Move Request** | Bot ↔ Nginx ↔ BotAPI ↔ Gamey | HTTPS → HTTP → JSON | JSON (YEN)
+| **Bot API - Game State** | Bot ↔ Nginx ↔ BotAPI ↔ Gamey | HTTPS → HTTP → JSON | JSON (YEN)
 | **Game Logic Execution** | Gateway ↔ Gamey Service | HTTP (internal) | JSON (YEN)
 | **Database Access** | Users Service ↔ MongoDB | MongoDB Wire Protocol | BSON
 |===
@@ -151,7 +158,9 @@ This table maps the **business interfaces** (what) to the **technical channels**
 | **Authentication Service** | Node.js + Express + jsonwebtoken | Lightweight, JWT generation and validation isolated from user data
 | **User Service** | Node.js + Express + Mongoose  | Lightweight, npm ecosystem, quick development
 | **Game Engine** | Rust + Axum  | Performance, memory safety, required by client
-| **API Gateway** | Node.js + Express  | Simple reverse proxy, request routing, centralized CORS
+| **Reverse Proxy** | Nginx | HTTPS termination and request routing
+| **API Gateway** | Node.js + Express | Backend entry point for webapp
+| **Bot API Service** | Node.js + Express | Public interoperability API for bots
 | **Database** | MongoDB | Flexible schema for user data, easy integration
 | **Containerization** | Docker + docker-compose | Consistent environments, easy deployment
 | **CI/CD** | GitHub Actions  | Integrated with repository, automated testing
@@ -166,7 +175,7 @@ This table maps the **business interfaces** (what) to the **technical channels**
 * Multiple AI strategies (difficulties), user-selectable
 * User registration and authentication via dedicated JWT-based auth service
 * Match history and basic statistics (games played, wins/losses)
-* Public REST API for bots with YEN notation
+* Public interoperability API (botapi) for bots with YEN notation
 * Docker containerization and docker-compose deployment
 * CI/CD pipeline with automated testing
 * Public web deployment
