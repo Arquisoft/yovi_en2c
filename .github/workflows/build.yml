@@ -45,4 +45,9 @@ jobs:
         run: |
           sed -i "s|SF:${GITHUB_WORKSPACE}/|SF:|g" gamey/lcov.info
           grep '^SF:' gamey/lcov.info | head
+      
+      - name: Analyze with SonarQube
+        uses: SonarSource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
