@@ -8,8 +8,8 @@ export const translations: Record<Lang, Dict> = {
   es: {
     // Common
     "app.brand": "GameY",
-    "common.home": "Home",
-    "common.game": "Juego",
+    "common.home": "Inicio",
+    "common.game": "Nuevo Juego",
     "common.logout": "Salir",
     "common.language": "Idioma",
     "common.user": "Usuario",
@@ -77,13 +77,13 @@ export const translations: Record<Lang, Dict> = {
     "game.check": "Comprobar conexión GameY",
     "game.ok": "Conectado correctamente → {msg}",
     "game.fail": "Error de conexión → {msg}",
-    "game.back": "Volver a Home",
+    "game.back": "Volver al Inicio",
 
     // Game Ends
     "game.finished.win": "Partida terminada: Has ganado",
     "game.finished.lost": "Partida terminada: Has perdido",
     "game.finished.draw": "Partida terminada: Empate",
-    "game.finished.back": "Volver al juego",
+    "game.finished.back": "Volver al Inicio",
 
     // Dificultades
     "difficulty.title": "Selecciona la dificultad",
@@ -108,7 +108,7 @@ export const translations: Record<Lang, Dict> = {
     // Common
     "app.brand": "GameY",
     "common.home": "Home",
-    "common.game": "Game",
+    "common.game": "New Game",
     "common.logout": "Logout",
     "common.language": "Language",
     "common.user": "User",
@@ -180,7 +180,7 @@ export const translations: Record<Lang, Dict> = {
     "game.finished.win": "Game Finished: You win",
     "game.finished.lost": "Game Finished: You lost",
     "game.finished.draw": "Game Finished: Draw",
-    "game.finished.back": "Back to game",
+    "game.finished.back": "Back to Home",
 
     // Difficulties
     "difficulty.title": "Select Difficulty",
