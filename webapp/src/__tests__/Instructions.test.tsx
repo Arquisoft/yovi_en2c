@@ -68,15 +68,15 @@ describe("Instructions", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(/Cómo se juega|How to play/i)
+      screen.getByRole("heading", { name: /Cómo se juega|How to play/i })
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(/Dificultades|Difficulties/i)
+      screen.getByRole("heading", { name: /^Dificultades$|^Difficulties$/i })
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(/Tamaño del tablero|Board size/i)
+      screen.getByRole("heading", { name: /Tamaño del tablero|Board size/i })
     ).toBeInTheDocument();
 
     expect(screen.getByTestId("navbar")).toHaveTextContent("Pablo");

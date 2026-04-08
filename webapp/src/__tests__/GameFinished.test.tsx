@@ -25,7 +25,14 @@ function renderGameFinished(
 
   return render(
     <I18nProvider>
-      <MemoryRouter initialEntries={[{ pathname: "/game/finished", state: result ? { result } : undefined }]}>
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: "/game/finished",
+            state: result ? { result } : undefined,
+          } as any,
+        ]}
+      >
         <GameFinished />
       </MemoryRouter>
     </I18nProvider>
@@ -87,7 +94,7 @@ describe("GameFinished", () => {
     });
   });
 
-  test("navigates back to home when back button is clicked", async () => {
+  test("navigates back to game when back button is clicked", async () => {
     const user = userEvent.setup();
     renderGameFinished("win", "Pablo");
 
@@ -95,9 +102,7 @@ describe("GameFinished", () => {
       screen.getByRole("button", { name: /Volver al inicio|Back to home/i })
     );
 
-    expect(mockNavigate).toHaveBeenCalledWith("/home", {
-      state: { username: "Pablo" },
-    });
+    expect(mockNavigate).toHaveBeenCalledWith("/game", { replace: true });
   });
 
   test("logs out from navbar and navigates to root", async () => {
