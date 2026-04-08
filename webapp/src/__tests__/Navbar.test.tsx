@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, test, expect, vi, beforeEach, afterEach, it } from "vitest";
 import "@testing-library/jest-dom";
 import Navbar from "../Navbar";
 import { I18nProvider } from "../i18n/I18nProvider";
@@ -42,16 +42,16 @@ describe("Navbar", () => {
     vi.clearAllMocks();
   });
 
-  test("renders logo, username and navigation buttons", () => {
+  it("renders logo, username and navigation buttons", () => {
     renderNavbar("/home", "Pablo");
 
     expect(screen.getByRole("img", { name: /GameY/i })).toBeInTheDocument();
     expect(screen.getByText(/Pablo/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Home$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Juego|Game/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^(Inicio|Home)$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^(Nuevo Juego|New Game)$/i })
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Salir|Logout/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^ES$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^EN$/i })).toBeInTheDocument();
   });
 
   test("shows dash when username is missing", () => {
@@ -60,18 +60,28 @@ describe("Navbar", () => {
     expect(screen.getByText(/—/i)).toBeInTheDocument();
   });
 
-  test("marks Home as current page when pathname is /home", () => {
+  it("marks Home as current page when pathname is /home", () => {
     renderNavbar("/home", "Pablo");
 
-    expect(screen.getByRole("button", { name: /^Home$/i })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("button", { name: /Juego|Game/i })).not.toHaveAttribute("aria-current");
+    expect(
+      screen.getByRole("button", { name: /^(Inicio|Home)$/i })
+    ).toHaveAttribute("aria-current", "page");
+
+    expect(
+      screen.getByRole("button", { name: /^(Nuevo Juego|New Game)$/i })
+    ).not.toHaveAttribute("aria-current");
   });
 
   test("marks Game as current page when pathname is /game", () => {
     renderNavbar("/game", "Pablo");
 
-    expect(screen.getByRole("button", { name: /Juego|Game/i })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("button", { name: /^Home$/i })).not.toHaveAttribute("aria-current");
+    expect(
+      screen.getByRole("button", { name: /^(Nuevo Juego|New Game)$/i })
+    ).toHaveAttribute("aria-current", "page");
+
+    expect(
+      screen.getByRole("button", { name: /^(Inicio|Home)$/i })
+    ).not.toHaveAttribute("aria-current");
   });
 
   test("navigates to home when logo is clicked", async () => {
@@ -83,23 +93,25 @@ describe("Navbar", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/home");
   });
 
-  test("navigates to home when Home button is clicked", async () => {
+  it("navigates to home when Home button is clicked", async () => {
     const user = userEvent.setup();
     renderNavbar("/game", "Pablo");
 
-    await user.click(screen.getByRole("button", { name: /^Home$/i }));
+    await user.click(screen.getByRole("button", { name: /^(Inicio|Home)$/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith("/home");
   });
 
-  test("navigates to game when Game button is clicked", async () => {
+  it("navigates to select difficulty when New Game button is clicked", async () => {
     const user = userEvent.setup();
     renderNavbar("/home", "Pablo");
 
-    await user.click(screen.getByRole("button", { name: /Juego|Game/i }));
+    await user.click(
+      screen.getByRole("button", { name: /^(Nuevo Juego|New Game)$/i })
+    );
 
-    expect(mockNavigate).toHaveBeenCalledWith("/game", {
-      state: { username: "Pablo" }
+    expect(mockNavigate).toHaveBeenCalledWith("/select-difficulty", {
+      state: { username: "Pablo" },
     });
   });
 
@@ -123,7 +135,7 @@ describe("Navbar", () => {
 
     expect(screen.getByRole("button", { name: /^EN$/i })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: /^ES$/i })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: /^Game$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^New Game$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Logout$/i })).toBeInTheDocument();
     expect(screen.getByText(/User/i)).toBeInTheDocument();
   });
@@ -137,7 +149,7 @@ describe("Navbar", () => {
 
     expect(screen.getByRole("button", { name: /^ES$/i })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: /^EN$/i })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: /Juego/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Nuevo Juego/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Salir/i })).toBeInTheDocument();
     expect(screen.getByText(/Usuario/i)).toBeInTheDocument();
   });

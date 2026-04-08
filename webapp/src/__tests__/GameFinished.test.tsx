@@ -51,7 +51,7 @@ describe("GameFinished", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByRole("button", { name: /Volver al juego|Back to game/i })
+      screen.getByRole("button", { name: /Volver al inicio|Back to home/i })
     ).toBeInTheDocument();
   });
 
@@ -87,15 +87,17 @@ describe("GameFinished", () => {
     });
   });
 
-  test("navigates back to game when back button is clicked", async () => {
+  test("navigates back to home when back button is clicked", async () => {
     const user = userEvent.setup();
     renderGameFinished("win", "Pablo");
 
     await user.click(
-      screen.getByRole("button", { name: /Volver al juego|Back to game/i })
+      screen.getByRole("button", { name: /Volver al inicio|Back to home/i })
     );
 
-    expect(mockNavigate).toHaveBeenCalledWith("/game", { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith("/home", {
+      state: { username: "Pablo" },
+    });
   });
 
   test("logs out from navbar and navigates to root", async () => {

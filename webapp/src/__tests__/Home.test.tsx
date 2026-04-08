@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, afterEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, test, vi, it } from "vitest";
 import "@testing-library/jest-dom";
 import Home from "../Home";
 import { I18nProvider } from "../i18n/I18nProvider";
@@ -159,11 +159,34 @@ describe("Home", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
   });
 
-  test("renders all information cards", async () => {
+  it("renders the three home cards", async () => {
     renderHome("Pablo");
 
-    expect(await screen.findByText(/Modo rápido|Quick mode/i)).toBeInTheDocument();
-    expect(screen.getByText(/Futuro|Future/i)).toBeInTheDocument();
-    expect(screen.getByText(/Distintos bots|Different bots/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /Instrucciones|Instructions/i })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("heading", { name: /Futuro|Future/i })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("heading", { name: /Distintos bots|Different bots/i })
+    ).toBeInTheDocument();
+  });
+
+  it("navigates to instructions from the first card", async () => {
+    const user = userEvent.setup();
+    renderHome("Pablo");
+
+    const instructionsButton = await screen.findByRole("button", {
+      name: /Instrucciones|Instructions/i,
+    });
+
+    await user.click(instructionsButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/instructions", {
+      state: { username: "Pablo" },
+    });
   });
 });
