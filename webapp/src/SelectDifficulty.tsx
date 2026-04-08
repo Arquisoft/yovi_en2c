@@ -162,6 +162,16 @@ const SelectDifficulty: React.FC = () => {
                         {t("difficulty.start")}
                     </button>
 
+                    {/* Botón de instrucciones */}
+                    <button
+                        type="button"
+                        className="btn"
+                        style={{ width: "100%" }}
+                        onClick={() => navigate("/instructions", { state: { username } })}
+                    >
+                        {t("instructions.title")}
+                    </button>
+
                 </div>
             </main>
         </div>

@@ -33,8 +33,8 @@ const Home: React.FC = () => {
         const res = await fetch(`${API_URL}/verify`, {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         if (!res.ok) {
@@ -100,7 +100,15 @@ const Home: React.FC = () => {
           <article className="card">
             <h2 className="card__title">{t("home.card1.title")}</h2>
             <p className="card__text">{t("home.card1.text")}</p>
-            <span className="pill">{t("home.card1.pill")}</span>
+            <div style={{ marginTop: 16 }}>
+              <button
+                className="btn btn--primary"
+                onClick={() => navigate("/instructions", { state: { username } })}
+                type="button"
+              >
+                {t("home.instructions")}
+              </button>
+            </div>
           </article>
 
           <article className="card">
@@ -114,8 +122,9 @@ const Home: React.FC = () => {
             <p className="card__text">{t("home.card3.text")}</p>
             <div style={{ marginTop: 16 }}>
               <button
-                  className="btn btn--primary"
-                  onClick={() => navigate("/select-difficulty")}
+                className="btn btn--primary"
+                onClick={() => navigate("/select-difficulty")}
+                type="button"
               >
                 {t("home.selectDifficulty")}
               </button>

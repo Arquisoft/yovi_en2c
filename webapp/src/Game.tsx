@@ -119,6 +119,8 @@ const Game: React.FC = () => {
     return "heuristic_bot";
   }, [location.state]);
 
+  const [showInstructions, setShowInstructions] = useState(false);
+
   const boardSizeFromState = useMemo(() => {
     const st = (location.state as { boardSize?: number } | null) ?? null;
     return st?.boardSize ?? 7;
@@ -182,6 +184,7 @@ const Game: React.FC = () => {
     setGameOver(null);
     setError(null);
     setMoveCount(0);
+    setShowInstructions(false);
   }, [botId, boardSizeFromState]);
 
   const extractPlayers = (nextYen: any): [string, string] => {
@@ -191,27 +194,27 @@ const Game: React.FC = () => {
     }
     return ["B", "R"];
   };
-  
+
   const applyLocalHumanMove = (
     currentYen: any,
     row: number,
     col: number,
     token: string
-    ) => {
+  ) => {
     if (!currentYen?.layout) return currentYen;
 
     const rows = currentYen.layout.split("/").map((r: string) => r.split(""));
 
     if (!rows[row] || rows[row][col] !== ".") {
-        return currentYen;
+      return currentYen;
     }
 
     rows[row][col] = token;
 
     return {
-        ...currentYen,
-        layout: rows.map((r: string[]) => r.join("")).join("/"),
-        turn:
+      ...currentYen,
+      layout: rows.map((r: string[]) => r.join("")).join("/"),
+      turn:
         typeof currentYen.turn === "number" ? currentYen.turn + 1 : currentYen.turn,
     };
   };
@@ -401,40 +404,40 @@ const Game: React.FC = () => {
     setYen(optimisticYen);
 
     try {
-        const res = await fetch(`${API_URL}/game/pvb/move`, {
+      const res = await fetch(`${API_URL}/game/pvb/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            yen: previousYen,
-            bot: botId,
-            row: target.row,
-            col: target.col,
+          yen: previousYen,
+          bot: botId,
+          row: target.row,
+          col: target.col,
         }),
-        });
+      });
 
-        const data = await readGatewayResponse(res);
-        if (!res.ok || !data.ok) {
+      const data = await readGatewayResponse(res);
+      if (!res.ok || !data.ok) {
         throw new Error(!data.ok ? data.error : "Backend error");
-        }
+      }
 
-        const nextYen = (data as any).yen;
+      const nextYen = (data as any).yen;
 
-        const players: [string, string] =
+      const players: [string, string] =
         fixedPlayersRef.current ?? extractPlayers(nextYen);
 
-        if (!fixedPlayersRef.current) {
+      if (!fixedPlayersRef.current) {
         setFixedPlayers(players);
-        }
+      }
 
-        setYen(nextYen);
+      setYen(nextYen);
 
-        applyFinishFromGateway(data, players, newMoveCount, boardSizeFromState);
+      applyFinishFromGateway(data, players, newMoveCount, boardSizeFromState);
     } catch (e: any) {
-        setYen(previousYen);
-        setMoveCount((current) => Math.max(0, current - 1));
-        setError(e?.message ?? "Backend error");
+      setYen(previousYen);
+      setMoveCount((current) => Math.max(0, current - 1));
+      setError(e?.message ?? "Backend error");
     } finally {
-        setBusy(false);
+      setBusy(false);
     }
   };
 
@@ -550,6 +553,21 @@ const Game: React.FC = () => {
             >
               {t("game.new")}
             </button>
+
+            <button
+              onClick={() => setShowInstructions((current) => !current)}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 12,
+                background: "rgba(255,255,255,.08)",
+                color: "white",
+                border: "1px solid rgba(255,255,255,.18)",
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              {t("instructions.title")}
+            </button>
           </div>
 
           {error && (
@@ -565,6 +583,37 @@ const Game: React.FC = () => {
             </div>
           )}
         </div>
+
+        {showInstructions && (
+          <div
+            className="card"
+            style={{
+              width: "100%",
+              maxWidth: 980,
+              textAlign: "left",
+              lineHeight: 1.6,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            <h2 className="card__title" style={{ marginBottom: 4 }}>
+              {t("instructions.title")}
+            </h2>
+
+            <p>{t("instructions.howToPlay.p1")}</p>
+            <p>{t("instructions.howToPlay.p2")}</p>
+            <p>{t("instructions.howToPlay.p3")}</p>
+
+            <h3 style={{ marginTop: 8 }}>{t("instructions.difficulty.title")}</h3>
+            <p>{t("instructions.difficulty.p1")}</p>
+            <p>{t("instructions.difficulty.p2")}</p>
+
+            <h3 style={{ marginTop: 8 }}>{t("instructions.board.title")}</h3>
+            <p>{t("instructions.board.p1")}</p>
+            <p>{t("instructions.board.p2")}</p>
+          </div>
+        )}
 
         <div
           style={{

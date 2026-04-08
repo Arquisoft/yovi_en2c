@@ -49,7 +49,10 @@ body{
 }
 
 /* Containers */
-.page{ min-height:100vh; }
+.page {
+  min-height: 100dvh;
+  background: linear-gradient(135deg, #05293a 0%, #031f2c 45%, #081b4d 100%);
+}
 
 .container{
   width: min(1100px, calc(100% - 32px));
