@@ -164,7 +164,15 @@ describe("Game component", () => {
     await user.click(button);
 
     expect(
-      screen.getByRole("heading", { name: /Instrucciones|Instructions/i })
+      screen.getByRole("heading", { name: /Cómo se juega|How to play/i })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("heading", { name: /^Dificultades$|^Difficulties$/i })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("heading", { name: /Tamaño del tablero|Board size/i })
     ).toBeInTheDocument();
 
     expect(
