@@ -579,6 +579,14 @@ describe("RegistrationForm", () => {
     await user.click(submitButton);
 
     await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/already in the data base/i)).not.toBeInTheDocument();
+    });
+
+    await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
     });
   });

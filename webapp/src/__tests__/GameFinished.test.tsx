@@ -25,7 +25,14 @@ function renderGameFinished(
 
   return render(
     <I18nProvider>
-      <MemoryRouter initialEntries={[{ pathname: "/game/finished", state: result ? { result } : undefined }]}>
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: "/game/finished",
+            state: result ? { result } : undefined,
+          } as any,
+        ]}
+      >
         <GameFinished />
       </MemoryRouter>
     </I18nProvider>
@@ -51,7 +58,7 @@ describe("GameFinished", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByRole("button", { name: /Volver al juego|Back to game/i })
+      screen.getByRole("button", { name: /Volver al inicio|Back to home/i })
     ).toBeInTheDocument();
   });
 
@@ -92,7 +99,7 @@ describe("GameFinished", () => {
     renderGameFinished("win", "Pablo");
 
     await user.click(
-      screen.getByRole("button", { name: /Volver al juego|Back to game/i })
+      screen.getByRole("button", { name: /Volver al inicio|Back to home/i })
     );
 
     expect(mockNavigate).toHaveBeenCalledWith("/game", { replace: true });

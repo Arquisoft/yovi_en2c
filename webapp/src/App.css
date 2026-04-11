@@ -30,15 +30,13 @@
 
 *{ box-sizing:border-box; }
 
-html, body { height: 100%; }
+html, body {
+  min-height: 100%;
+}
 
-body{
-  margin:0;
-  background:
-    radial-gradient(900px 500px at 20% 10%, rgba(67,195,221,.18), transparent 60%),
-    radial-gradient(900px 500px at 85% 15%, rgba(92,3,140,.16), transparent 60%),
-    radial-gradient(800px 450px at 50% 95%, rgba(254,235,160,.10), transparent 60%),
-    var(--bg);
+body {
+  margin: 0;
+  background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
 }
@@ -49,7 +47,10 @@ body{
 }
 
 /* Containers */
-.page{ min-height:100vh; }
+.page {
+  min-height: 100dvh;
+  background: linear-gradient(135deg, #05293a 0%, #031f2c 45%, #081b4d 100%);
+}
 
 .container{
   width: min(1100px, calc(100% - 32px));
@@ -435,3 +436,24 @@ body{
   outline-offset: -3px;
 }
 
+.instructions-page {
+  max-width: 850px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.instructions-header {
+  text-align: center;
+}
+
+.instructions-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.instructions-block {
+  width: 100%;
+  max-width: 980px;
+}

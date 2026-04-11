@@ -15,7 +15,7 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
   const { t } = useI18n();
 
   const goHome = () => navigate("/home");
-  const goGame = () => navigate("/game", { state: { username } });
+  const goGameSelect = () => navigate("/select-difficulty", { state: { username } });
 
   return (
     <header className="navbar">
@@ -50,7 +50,7 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
               type="button"
               className="navbtn"
               aria-current={location.pathname === "/game" ? "page" : undefined}
-              onClick={goGame}
+              onClick={goGameSelect}
             >
               {t("common.game")}
             </button>

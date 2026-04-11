@@ -6,6 +6,7 @@ import Home from './Home';
 import GameFinished from "./GameFinished";
 import RegistrationForm from './RegistrationForm';
 import SelectDifficulty from './SelectDifficulty';
+import Instructions from './Instructions';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/game" element={<Game />} />
         <Route path="/game/finished" element={<GameFinished />} />
         <Route path="/select-difficulty" element={<SelectDifficulty />} />
+        <Route path="/instructions" element={<Instructions />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
