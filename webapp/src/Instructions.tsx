@@ -31,23 +31,15 @@ const Instructions: React.FC = () => {
       <Navbar username={username} onLogout={logout} />
 
       <main className="container" style={{ paddingTop: 40 }}>
-        <div
-          style={{
-            maxWidth: 850,
-            margin: "0 auto",
-            display: "flex",
-            flexDirection: "column",
-            gap: 20,
-          }}
-        >
-          <div className="hero" style={{ textAlign: "center" }}>
+        <div className="instructions-page">
+          <div className="hero instructions-header">
             <h1 className="hero__title">{t("instructions.title")}</h1>
             <p className="hero__subtitle">{t("instructions.subtitle")}</p>
           </div>
 
           <InstructionsContent />
 
-          <div style={{ display: "flex", justifyContent: "center" }}>
+          <div className="instructions-actions">
             <button
               className="btn btn--primary"
               type="button"

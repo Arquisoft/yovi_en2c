@@ -436,3 +436,24 @@ body {
   outline-offset: -3px;
 }
 
+.instructions-page {
+  max-width: 850px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.instructions-header {
+  text-align: center;
+}
+
+.instructions-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.instructions-block {
+  width: 100%;
+  max-width: 980px;
+}
