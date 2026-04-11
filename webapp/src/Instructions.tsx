@@ -27,34 +27,38 @@ const Instructions: React.FC = () => {
   if (!username) return null;
 
   return (
-    <main className="container" style={{ paddingTop: 40 }}>
-      <div
-        style={{
-          maxWidth: 850,
-          margin: "0 auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: 20,
-        }}
-      >
-        <div className="hero" style={{ textAlign: "center" }}>
-          <h1 className="hero__title">{t("instructions.title")}</h1>
-          <p className="hero__subtitle">{t("instructions.subtitle")}</p>
-        </div>
+    <div className="page">
+      <Navbar username={username} onLogout={logout} />
 
-        <InstructionsContent />
+      <main className="container" style={{ paddingTop: 40 }}>
+        <div
+          style={{
+            maxWidth: 850,
+            margin: "0 auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: 20,
+          }}
+        >
+          <div className="hero" style={{ textAlign: "center" }}>
+            <h1 className="hero__title">{t("instructions.title")}</h1>
+            <p className="hero__subtitle">{t("instructions.subtitle")}</p>
+          </div>
 
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <button
-            className="btn btn--primary"
-            type="button"
-            onClick={() => navigate("/home", { state: { username } })}
-          >
-            {t("instructions.back")}
-          </button>
+          <InstructionsContent />
+
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <button
+              className="btn btn--primary"
+              type="button"
+              onClick={() => navigate("/home", { state: { username } })}
+            >
+              {t("instructions.back")}
+            </button>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 };
 
