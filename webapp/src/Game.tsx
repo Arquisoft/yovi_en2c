@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
+import InstructionsContent from "./InstructionsContent";
 import { useI18n } from "./i18n/I18nProvider";
 
 type WinningEdge = [[number, number], [number, number]];
@@ -585,33 +586,8 @@ const Game: React.FC = () => {
         </div>
 
         {showInstructions && (
-          <div
-            className="card"
-            style={{
-              width: "100%",
-              maxWidth: 980,
-              textAlign: "left",
-              lineHeight: 1.6,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-            }}
-          >
-            <h2 className="card__title" style={{ marginBottom: 4 }}>
-              {t("instructions.title")}
-            </h2>
-
-            <p>{t("instructions.howToPlay.p1")}</p>
-            <p>{t("instructions.howToPlay.p2")}</p>
-            <p>{t("instructions.howToPlay.p3")}</p>
-
-            <h3 style={{ marginTop: 8 }}>{t("instructions.difficulty.title")}</h3>
-            <p>{t("instructions.difficulty.p1")}</p>
-            <p>{t("instructions.difficulty.p2")}</p>
-
-            <h3 style={{ marginTop: 8 }}>{t("instructions.board.title")}</h3>
-            <p>{t("instructions.board.p1")}</p>
-            <p>{t("instructions.board.p2")}</p>
+          <div style={{ width: "100%", maxWidth: 980 }}>
+            <InstructionsContent compact />
           </div>
         )}
 
