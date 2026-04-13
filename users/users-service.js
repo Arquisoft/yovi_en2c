@@ -264,6 +264,61 @@ app.get('/ranking', async (req, res) => {
 });
 
 /**
+ * GET /stats/:username
+ * Returns aggregated statistics for a given user.
+ * Computes metrics from the GameResult collection.
+ */
+app.get('/stats/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+
+        const userExists = await User.findOne({ username: username.toString() });
+        if (!userExists) {
+            return res.status(404).json({
+                success: false,
+                error: `User ${username} not found`
+            });
+        }
+
+        const games = await GameResult.find({ username: username.toString() }).sort({ date: -1 });
+
+        const totalGames = games.length;
+        const wins = games.filter(g => g.result === 'win').length;
+        const losses = games.filter(g => g.result === 'loss').length;
+        const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+
+        const pvbGames = games.filter(g => g.gameMode === 'pvb');
+        const pvpGames = games.filter(g => g.gameMode === 'pvp');
+
+        const lastFive = games.slice(0, 5).map(g => ({
+            opponent: g.opponent,
+            result: g.result,
+            boardSize: g.boardSize,
+            gameMode: g.gameMode,
+            date: g.date,
+        }));
+
+        res.json({
+            success: true,
+            username,
+            stats: {
+                totalGames,
+                wins,
+                losses,
+                winRate,
+                pvbGames: pvbGames.length,
+                pvpGames: pvpGames.length,
+                lastFive,
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in GET /stats/:username:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+/**
  * GET /health
  * Endpoint to check if all is okay
  */
