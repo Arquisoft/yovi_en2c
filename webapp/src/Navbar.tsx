@@ -34,6 +34,15 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
             👤 {t("common.user")}: {username || "—"}
           </div>
 
+          <button
+              type="button"
+              className="navbtn"
+              aria-current={location.pathname === "/statistics" ? "page" : undefined}
+              onClick={() => navigate("/statistics")}
+          >
+            {t("common.stats")}
+          </button>
+
           <LanguageToggle />
 
           <nav className="navbar__actions" aria-label="Navegación principal">
