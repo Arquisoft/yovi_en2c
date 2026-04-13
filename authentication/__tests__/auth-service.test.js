@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import request from "supertest";
 import jwt from "jsonwebtoken";
 import axios from "axios";
+import bcrypt from "bcryptjs";
 
 vi.mock("axios");
 
@@ -242,6 +243,8 @@ describe("Auth Service", () => {
     });
 
     it("POST /login returns 401 if credentials are invalid", async () => {
+      const hashedPassword = await bcrypt.hash("correct_password", 10);
+
       axios.get.mockResolvedValueOnce({
         status: 200,
         data: {
@@ -250,7 +253,7 @@ describe("Auth Service", () => {
             id: "507f1f77bcf86cd799439011",
             username: "Ana",
             email: "ana@uniovi.es",
-            password: "real_password",
+            password: hashedPassword,
             createdAt: "2026-03-17T10:00:00.000Z"
           }
         }
@@ -269,6 +272,8 @@ describe("Auth Service", () => {
     });
 
     it("POST /login returns token when credentials are valid", async () => {
+      const hashedPassword = await bcrypt.hash("1234", 10);
+
       axios.get.mockResolvedValueOnce({
         status: 200,
         data: {
@@ -277,7 +282,7 @@ describe("Auth Service", () => {
             id: "507f1f77bcf86cd799439011",
             username: "Ana",
             email: "ana@uniovi.es",
-            password: "1234",
+            password: hashedPassword,
             createdAt: "2026-03-17T10:00:00.000Z"
           }
         }
