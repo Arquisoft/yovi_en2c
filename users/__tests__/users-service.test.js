@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } 
 import request from 'supertest'
 import app from '../users-service.js'
 import mongoose from 'mongoose'
+import bcrypt from 'bcryptjs'
 
 let isConnected = false;
 
@@ -425,6 +426,8 @@ describe('GET /users/:username', () => {
     })
 
     it('should return one user by username', async () => {
+        const plainPassword = '123456';
+
         const res = await request(app)
             .get('/users/usuario_get_one')
             .expect(200)
@@ -432,7 +435,15 @@ describe('GET /users/:username', () => {
         expect(res.body.success).toBe(true)
         expect(res.body.user).toHaveProperty('username', 'usuario_get_one')
         expect(res.body.user).toHaveProperty('email', 'getone@uniovi.es')
-        expect(res.body.user).toHaveProperty('password', '123456')
+        expect(res.body.user).toHaveProperty('password')
+
+        const passwordMatches = await bcrypt.compare(
+            plainPassword,
+            res.body.user.password
+        )
+
+        expect(passwordMatches).toBe(true)
+        expect(res.body.user.password).not.toBe(plainPassword)
     })
 
     it('should return 404 when user does not exist', async () => {
