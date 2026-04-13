@@ -1,5 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 require('dotenv').config();
 require('./db');
 
@@ -12,7 +13,7 @@ const app = express();
 app.use(express.json()); // set up with json
 
 const PORT = process.env.PORT || 3000; // use port from env or 3000 by default
-
+const SALT_ROUNDS = 10;
 
 // =============================   USERS ENDPOINTS    ============================================
 
@@ -21,6 +22,7 @@ const PORT = process.env.PORT || 3000; // use port from env or 3000 by default
  * Saves NEW USER in the db
  * This endpoint only creates the user.
  * Password business validation belongs to auth-service.
+ * It hashes the password before saving it in the db, so the password is never stored in clear text.
  */
 app.post('/createuser', async (req, res) => {
     try {
@@ -45,10 +47,12 @@ app.post('/createuser', async (req, res) => {
             processedEmail = email.trim();
         }
 
+        const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
         const userData = {
             username: username.toString().trim(),
             email: processedEmail,
-            password
+            password: hashedPassword
         };
 
         const newUser = new User(userData);
