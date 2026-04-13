@@ -3,6 +3,7 @@ import cors from "cors";
 import axios from "axios";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import bcrypt from "bcryptjs";
 
 dotenv.config();
 
@@ -216,7 +217,9 @@ app.post("/login", async (req, res) => {
       });
     }
 
-    if (user.password !== password) {
+    const passwordMatches = await bcrypt.compare(password, user.password);
+
+    if (!passwordMatches) {
       return res.status(401).json({
         success: false,
         error: "Invalid credentials"
