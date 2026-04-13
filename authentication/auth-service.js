@@ -73,6 +73,7 @@ function authenticateToken(req, res, next) {
     req.user = decoded;
     next();
   } catch (error) {
+    console.error("JWT verification failed:", error);
     return res.status(401).json({
       success: false,
       error: "Invalid or expired token"
@@ -273,7 +274,7 @@ export default app;
 /**
  * Start server only if this file is executed directly
  */
-if (process.argv[1] && process.argv[1].includes("auth-service.js")) {
+if (process.argv[1]?.includes("auth-service.js")) {
   app.listen(PORT, () => {
     console.log(`🚀 Auth service running on http://localhost:${PORT}`);
     console.log("📡 Endpoints available:");
