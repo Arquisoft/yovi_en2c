@@ -72,30 +72,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/GameState"
 
-    /play:
-      get:
-        summary: Competition play endpoint
-        description: Receives a YEN position through the position query parameter and returns the bot move.
-        parameters:
-          - in: query
-            name: position
-            required: true
-            description: JSON-encoded YEN position
-            schema:
-              type: string
-          - in: query
-            name: bot_id
-            required: false
-            description: Optional bot identifier
-            schema:
-              type: string
-        responses:
-          "200":
-            description: Bot move
-            content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/PlayOnceResponse"
+  /play:
+    get:
+      summary: Competition play endpoint
+      description: Receives a YEN position through the position query parameter and returns the bot move.
+      parameters:
+        - in: query
+          name: position
+          required: true
+          description: JSON-encoded YEN position
+          schema:
+            type: string
+        - in: query
+          name: bot_id
+          required: false
+          description: Optional bot identifier
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Bot move
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayOnceResponse"
 
   /remote-games/connect:
     post:
@@ -254,15 +254,15 @@ components:
             - OPPONENT_WON
             - DRAW
 
-      PlayOnceResponse:
-        type: object
-        required:
-          - coords
-        properties:
-          bot_id:
-            type: string
-          coords:
-            $ref: "#/components/schemas/Coordinates"
+    PlayOnceResponse:
+      type: object
+      required:
+        - coords
+      properties:
+        bot_id:
+          type: string
+        coords:
+          $ref: "#/components/schemas/Coordinates"
 
     RemoteConnectRequest:
       type: object
