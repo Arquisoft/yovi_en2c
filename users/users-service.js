@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const promBundle = require('express-prom-bundle');
 require('dotenv').config();
 require('./db');
 
@@ -11,6 +12,25 @@ const GameResult = require('./models/GameResult');
 // CONFIGURATION
 const app = express();
 app.use(express.json()); // set up with json
+
+// PROMETHEUS METRICS MIDDLEWARE
+// express-prom-bundle automatically exposes a /metrics endpoint
+// and instruments all requests with: http_request_duration_seconds (histogram),
+// http_requests_total (counter), and http_request_size_bytes / http_response_size_bytes.
+// includeMethod: adds HTTP method label (GET, POST...)
+// includePath: adds path label (/users, /gameresult...)
+// includeStatusCode: adds HTTP status code label (200, 404, 500...)
+const metricsMiddleware = promBundle({
+    includeMethod: true,
+    includePath: true,
+    includeStatusCode: true,
+    normalizePath: [
+        ['^/users/.*', '/users/:username'],
+        ['^/history/.*', '/history/:username'],
+        ['^/stats/.*', '/stats/:username'],
+    ],
+});
+app.use(metricsMiddleware);
 
 const PORT = process.env.PORT || 3000; // use port from env or 3000 by default
 const SALT_ROUNDS = 10;
@@ -355,6 +375,7 @@ if (require.main == module) {
         console.log(`   GET    /ranking`);
         console.log(`   GET    /health`);
         console.log(`   GET    /users/:username`);
+        console.log(`   GET    /metrics`);
     });
 }
 
