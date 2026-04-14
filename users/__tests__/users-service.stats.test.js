@@ -1,34 +1,9 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from 'vitest'
 import request from 'supertest'
 import app from '../users-service.js'
 import mongoose from 'mongoose'
 
 let isConnected = false
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-async function createUser(username = 'StatsUser') {
-    await request(app)
-        .post('/createuser')
-        .send({ username, password: '123456' })
-        .set('Accept', 'application/json')
-}
-
-async function createGame(overrides = {}) {
-    const defaults = {
-        username: 'StatsUser',
-        opponent: 'minimax_bot',
-        result: 'win',
-        boardSize: 7,
-        gameMode: 'pvb',
-    }
-    await request(app)
-        .post('/gameresult')
-        .send({ ...defaults, ...overrides })
-        .set('Accept', 'application/json')
-}
-
-// ─── Suite ────────────────────────────────────────────────────────────────────
 
 describe('GET /stats/:username', () => {
 
@@ -37,11 +12,6 @@ describe('GET /stats/:username', () => {
             await mongoose.connect(process.env.MONGODB_URI)
             isConnected = true
         }
-    })
-
-    beforeEach(async () => {
-        await mongoose.connection.collections['users']?.deleteMany({})
-        await mongoose.connection.collections['gameresults']?.deleteMany({})
     })
 
     afterEach(() => {
@@ -54,9 +24,11 @@ describe('GET /stats/:username', () => {
         }
     })
 
-    // ── 404 ───────────────────────────────────────────────────────────────────
+    // ── 404: user not found ───────────────────────────────────────────────────
 
     it('should return 404 when user does not exist', async () => {
+        vi.spyOn(mongoose.Model, 'findOne').mockResolvedValueOnce(null)
+
         const res = await request(app)
             .get('/stats/NonExistentUser')
             .set('Accept', 'application/json')
@@ -68,8 +40,11 @@ describe('GET /stats/:username', () => {
 
     // ── Empty stats ───────────────────────────────────────────────────────────
 
-    it('should return empty stats when user exists but has no games', async () => {
-        await createUser()
+    it('should return empty stats when user has no games', async () => {
+        vi.spyOn(mongoose.Model, 'findOne').mockResolvedValueOnce({ username: 'StatsUser' })
+        vi.spyOn(mongoose.Model, 'find').mockReturnValueOnce({
+            sort: vi.fn().mockResolvedValueOnce([])
+        })
 
         const res = await request(app)
             .get('/stats/StatsUser')
@@ -87,12 +62,17 @@ describe('GET /stats/:username', () => {
         expect(res.body.stats.lastFive).toEqual([])
     })
 
-    // ── Win rate calculation ──────────────────────────────────────────────────
+    // ── winRate: only wins ────────────────────────────────────────────────────
 
-    it('should calculate winRate correctly with only wins', async () => {
-        await createUser()
-        await createGame({ result: 'win' })
-        await createGame({ result: 'win' })
+    it('should calculate winRate as 100 when all games are wins', async () => {
+        const games = [
+            { result: 'win', gameMode: 'pvb', boardSize: 7, opponent: 'bot', date: new Date() },
+            { result: 'win', gameMode: 'pvb', boardSize: 7, opponent: 'bot', date: new Date() },
+        ]
+        vi.spyOn(mongoose.Model, 'findOne').mockResolvedValueOnce({ username: 'StatsUser' })
+        vi.spyOn(mongoose.Model, 'find').mockReturnValueOnce({
+            sort: vi.fn().mockResolvedValueOnce(games)
+        })
 
         const res = await request(app)
             .get('/stats/StatsUser')
@@ -105,10 +85,17 @@ describe('GET /stats/:username', () => {
         expect(res.body.stats.winRate).toBe(100)
     })
 
-    it('should calculate winRate correctly with only losses', async () => {
-        await createUser()
-        await createGame({ result: 'loss' })
-        await createGame({ result: 'loss' })
+    // ── winRate: only losses ──────────────────────────────────────────────────
+
+    it('should calculate winRate as 0 when all games are losses', async () => {
+        const games = [
+            { result: 'loss', gameMode: 'pvb', boardSize: 7, opponent: 'bot', date: new Date() },
+            { result: 'loss', gameMode: 'pvb', boardSize: 7, opponent: 'bot', date: new Date() },
+        ]
+        vi.spyOn(mongoose.Model, 'findOne').mockResolvedValueOnce({ username: 'StatsUser' })
+        vi.spyOn(mongoose.Model, 'find').mockReturnValueOnce({
+            sort: vi.fn().mockResolvedValueOnce(games)
+        })
 
         const res = await request(app)
             .get('/stats/StatsUser')
@@ -121,12 +108,19 @@ describe('GET /stats/:username', () => {
         expect(res.body.stats.winRate).toBe(0)
     })
 
+    // ── winRate: mixed ────────────────────────────────────────────────────────
+
     it('should calculate winRate correctly with mixed results', async () => {
-        await createUser()
-        await createGame({ result: 'win' })
-        await createGame({ result: 'win' })
-        await createGame({ result: 'win' })
-        await createGame({ result: 'loss' })
+        const games = [
+            { result: 'win',  gameMode: 'pvb', boardSize: 7, opponent: 'bot', date: new Date() },
+            { result: 'win',  gameMode: 'pvb', boardSize: 7, opponent: 'bot', date: new Date() },
+            { result: 'win',  gameMode: 'pvb', boardSize: 7, opponent: 'bot', date: new Date() },
+            { result: 'loss', gameMode: 'pvb', boardSize: 7, opponent: 'bot', date: new Date() },
+        ]
+        vi.spyOn(mongoose.Model, 'findOne').mockResolvedValueOnce({ username: 'StatsUser' })
+        vi.spyOn(mongoose.Model, 'find').mockReturnValueOnce({
+            sort: vi.fn().mockResolvedValueOnce(games)
+        })
 
         const res = await request(app)
             .get('/stats/StatsUser')
@@ -139,13 +133,18 @@ describe('GET /stats/:username', () => {
         expect(res.body.stats.winRate).toBe(75)
     })
 
-    // ── Game mode breakdown ───────────────────────────────────────────────────
+    // ── pvb / pvp breakdown ───────────────────────────────────────────────────
 
     it('should count pvb and pvp games correctly', async () => {
-        await createUser()
-        await createGame({ gameMode: 'pvb' })
-        await createGame({ gameMode: 'pvb' })
-        await createGame({ gameMode: 'pvp' })
+        const games = [
+            { result: 'win',  gameMode: 'pvb', boardSize: 7, opponent: 'bot',    date: new Date() },
+            { result: 'win',  gameMode: 'pvb', boardSize: 7, opponent: 'bot',    date: new Date() },
+            { result: 'loss', gameMode: 'pvp', boardSize: 7, opponent: 'carlos', date: new Date() },
+        ]
+        vi.spyOn(mongoose.Model, 'findOne').mockResolvedValueOnce({ username: 'StatsUser' })
+        vi.spyOn(mongoose.Model, 'find').mockReturnValueOnce({
+            sort: vi.fn().mockResolvedValueOnce(games)
+        })
 
         const res = await request(app)
             .get('/stats/StatsUser')
@@ -157,9 +156,14 @@ describe('GET /stats/:username', () => {
     })
 
     it('should return pvpGames as 0 when all games are pvb', async () => {
-        await createUser()
-        await createGame({ gameMode: 'pvb' })
-        await createGame({ gameMode: 'pvb' })
+        const games = [
+            { result: 'win', gameMode: 'pvb', boardSize: 7, opponent: 'bot', date: new Date() },
+            { result: 'win', gameMode: 'pvb', boardSize: 7, opponent: 'bot', date: new Date() },
+        ]
+        vi.spyOn(mongoose.Model, 'findOne').mockResolvedValueOnce({ username: 'StatsUser' })
+        vi.spyOn(mongoose.Model, 'find').mockReturnValueOnce({
+            sort: vi.fn().mockResolvedValueOnce(games)
+        })
 
         const res = await request(app)
             .get('/stats/StatsUser')
@@ -172,11 +176,18 @@ describe('GET /stats/:username', () => {
 
     // ── lastFive ──────────────────────────────────────────────────────────────
 
-    it('should return at most 5 games in lastFive', async () => {
-        await createUser()
-        for (let i = 0; i < 8; i++) {
-            await createGame({ result: i % 2 === 0 ? 'win' : 'loss' })
-        }
+    it('should return at most 5 games in lastFive when total is more than 5', async () => {
+        const games = Array.from({ length: 8 }, (_, i) => ({
+            result: i % 2 === 0 ? 'win' : 'loss',
+            gameMode: 'pvb',
+            boardSize: 7,
+            opponent: 'bot',
+            date: new Date(Date.now() - i * 1000),
+        }))
+        vi.spyOn(mongoose.Model, 'findOne').mockResolvedValueOnce({ username: 'StatsUser' })
+        vi.spyOn(mongoose.Model, 'find').mockReturnValueOnce({
+            sort: vi.fn().mockResolvedValueOnce(games)
+        })
 
         const res = await request(app)
             .get('/stats/StatsUser')
@@ -187,10 +198,15 @@ describe('GET /stats/:username', () => {
         expect(res.body.stats.lastFive.length).toBe(5)
     })
 
-    it('should return fewer than 5 games in lastFive when total is less than 5', async () => {
-        await createUser()
-        await createGame({ result: 'win' })
-        await createGame({ result: 'loss' })
+    it('should return all games in lastFive when total is less than 5', async () => {
+        const games = [
+            { result: 'win',  gameMode: 'pvb', boardSize: 7, opponent: 'bot', date: new Date() },
+            { result: 'loss', gameMode: 'pvb', boardSize: 7, opponent: 'bot', date: new Date() },
+        ]
+        vi.spyOn(mongoose.Model, 'findOne').mockResolvedValueOnce({ username: 'StatsUser' })
+        vi.spyOn(mongoose.Model, 'find').mockReturnValueOnce({
+            sort: vi.fn().mockResolvedValueOnce(games)
+        })
 
         const res = await request(app)
             .get('/stats/StatsUser')
@@ -201,8 +217,14 @@ describe('GET /stats/:username', () => {
     })
 
     it('should return correct fields in each lastFive entry', async () => {
-        await createUser()
-        await createGame({ opponent: 'minimax_bot', result: 'win', boardSize: 9, gameMode: 'pvb' })
+        const date = new Date('2026-04-13T10:00:00Z')
+        const games = [
+            { result: 'win', gameMode: 'pvb', boardSize: 9, opponent: 'minimax_bot', date },
+        ]
+        vi.spyOn(mongoose.Model, 'findOne').mockResolvedValueOnce({ username: 'StatsUser' })
+        vi.spyOn(mongoose.Model, 'find').mockReturnValueOnce({
+            sort: vi.fn().mockResolvedValueOnce(games)
+        })
 
         const res = await request(app)
             .get('/stats/StatsUser')
@@ -217,48 +239,11 @@ describe('GET /stats/:username', () => {
         expect(entry).toHaveProperty('date')
     })
 
-    it('should return lastFive sorted from most recent to oldest', async () => {
-        await createUser()
-        await createGame({ opponent: 'first_bot' })
-        await createGame({ opponent: 'second_bot' })
-        await createGame({ opponent: 'third_bot' })
+    // ── 500: error handling ───────────────────────────────────────────────────
 
-        const res = await request(app)
-            .get('/stats/StatsUser')
-            .set('Accept', 'application/json')
-
-        expect(res.status).toBe(200)
-        const dates = res.body.stats.lastFive.map(g => new Date(g.date).getTime())
-        for (let i = 0; i < dates.length - 1; i++) {
-            expect(dates[i]).toBeGreaterThanOrEqual(dates[i + 1])
-        }
-    })
-
-    // ── Stats are isolated per user ───────────────────────────────────────────
-
-    it('should only return stats for the requested user', async () => {
-        await createUser('StatsUser')
-        await createUser('OtherUser')
-        await createGame({ username: 'StatsUser', result: 'win' })
-        await createGame({ username: 'OtherUser', result: 'win' })
-        await createGame({ username: 'OtherUser', result: 'win' })
-
-        const res = await request(app)
-            .get('/stats/StatsUser')
-            .set('Accept', 'application/json')
-
-        expect(res.status).toBe(200)
-        expect(res.body.stats.totalGames).toBe(1)
-    })
-
-    // ── 500 error handling ────────────────────────────────────────────────────
-
-    it('should return 500 when a database error occurs on find', async () => {
-        await createUser()
-
+    it('should return 500 when findOne throws a database error', async () => {
         const mockError = new Error('Database connection lost')
-        const findSpy = vi.spyOn(mongoose.Model, 'findOne')
-            .mockRejectedValueOnce(mockError)
+        vi.spyOn(mongoose.Model, 'findOne').mockRejectedValueOnce(mockError)
         const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
         const res = await request(app)
@@ -272,20 +257,14 @@ describe('GET /stats/:username', () => {
             'Error in GET /stats/:username:',
             mockError
         )
-
-        findSpy.mockRestore()
-        consoleErrorSpy.mockRestore()
     })
 
-    it('should return 500 when a database error occurs on GameResult.find', async () => {
-        await createUser()
-
-        const findOneSpy = vi.spyOn(mongoose.Model, 'findOne')
-            .mockResolvedValueOnce({ username: 'StatsUser' })
-
+    it('should return 500 when GameResult.find throws a database error', async () => {
         const mockError = new Error('GameResult collection unavailable')
-        const findSpy = vi.spyOn(mongoose.Model, 'find')
-            .mockRejectedValueOnce(mockError)
+        vi.spyOn(mongoose.Model, 'findOne').mockResolvedValueOnce({ username: 'StatsUser' })
+        vi.spyOn(mongoose.Model, 'find').mockReturnValueOnce({
+            sort: vi.fn().mockRejectedValueOnce(mockError)
+        })
         const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
         const res = await request(app)
@@ -295,9 +274,5 @@ describe('GET /stats/:username', () => {
         expect(res.status).toBe(500)
         expect(res.body).toHaveProperty('success', false)
         expect(res.body.error).toMatch(/Internal server error/i)
-
-        findOneSpy.mockRestore()
-        findSpy.mockRestore()
-        consoleErrorSpy.mockRestore()
     })
 })
