@@ -23,6 +23,7 @@ const AUTH_REGISTER_URL = `${AUTH_BASE_URL}/register`;
 const AUTH_LOGIN_URL = `${AUTH_BASE_URL}/login`;
 const AUTH_VERIFY_URL = `${AUTH_BASE_URL}/verify`;
 const GAME_RESULT_URL = `${USERS_BASE_URL}/gameresult`;
+const USERS_STATS_URL = `${USERS_BASE_URL}/stats`;
 
 const PVB_MOVE_ROUTES = {
   random_bot: `${GAMEY_BASE_URL}/v1/game/pvb/random_bot`,
@@ -130,6 +131,18 @@ app.get("/game/status", async (req, res) => {
 app.post("/gameresult", async (req, res) => {
   try {
     const response = await axios.post(GAME_RESULT_URL, req.body); // NOSONAR
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
+});
+
+app.get("/stats/:username", async (req, res) => {
+  try {
+    const { username } = req.params;
+    const response = await axios.get(`${USERS_BASE_URL}/stats/${username}`, {
+      headers: { Authorization: req.headers.authorization },
+    });
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Users service unavailable");
