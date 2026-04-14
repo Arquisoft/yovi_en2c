@@ -266,12 +266,20 @@ describe("Statistics", () => {
 
   test("refresh button triggers a new fetch", async () => {
     const user = userEvent.setup();
-    mockFetchStats();
+
+    const statsPayload = {
+      success: true,
+      username: "Pablo",
+      stats: { totalGames: 10, wins: 7, losses: 3, winRate: 70, pvbGames: 8, pvpGames: 2, lastFive: [] },
+    };
+
+    global.fetch = vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => statsPayload } as Response)
+        .mockResolvedValueOnce({ ok: true, json: async () => statsPayload } as Response);
 
     renderStatistics();
     await screen.findByText(/Partidas jugadas|Games played/i);
 
-    mockFetchStats();
     await user.click(screen.getByRole("button", { name: /Actualizar|Refresh/i }));
 
     await waitFor(() => {
@@ -315,7 +323,7 @@ describe("Statistics", () => {
 
     await screen.findByText(/Partidas jugadas|Games played/i);
 
-    expect(screen.getByText(/Pablo/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Usuario actual/i)).toHaveTextContent("Pablo");
   });
 
   test("renders page title", async () => {
