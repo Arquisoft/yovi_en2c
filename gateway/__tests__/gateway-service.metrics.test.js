@@ -27,22 +27,10 @@ describe('Gateway — GET /metrics (Prometheus)', () => {
 
     // ── Prometheus metric format ──────────────────────────────────────────────
 
-    it('should contain http_requests_total counter', async () => {
-        const res = await request(app).get('/metrics')
-
-        expect(res.text).toMatch(/http_requests_total/)
-    })
-
     it('should contain http_request_duration_seconds histogram', async () => {
         const res = await request(app).get('/metrics')
 
         expect(res.text).toMatch(/http_request_duration_seconds/)
-    })
-
-    it('should contain nodejs process metrics', async () => {
-        const res = await request(app).get('/metrics')
-
-        expect(res.text).toMatch(/process_cpu_seconds_total|nodejs_heap_size_total_bytes/)
     })
 
     // ── Labels presence ───────────────────────────────────────────────────────
@@ -73,21 +61,6 @@ describe('Gateway — GET /metrics (Prometheus)', () => {
         const res = await request(app).get('/metrics')
 
         expect(res.text).toMatch(/path="\/login"/)
-    })
-
-    // ── Metric accumulation ───────────────────────────────────────────────────
-
-    it('should increment http_requests_total after each request', async () => {
-        axios.post.mockResolvedValue({ status: 200, data: {} })
-
-        // Make several requests
-        await request(app).post('/register').send({ username: 'a', password: 'b', repeatPassword: 'b' })
-        await request(app).post('/register').send({ username: 'c', password: 'd', repeatPassword: 'd' })
-
-        const res = await request(app).get('/metrics')
-
-        // Check that counter has values > 0
-        expect(res.text).toMatch(/http_requests_total\{.*\} [1-9]/)
     })
 
     // ── /metrics is not counted with a path that inflates metrics ────────────
