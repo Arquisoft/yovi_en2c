@@ -1,7 +1,7 @@
 {
   "name": "auth-service",
   "version": "1.0.0",
-  "description":"Authentication service for the application",
+  "description": "Authentication service for the application",
   "type": "module",
   "main": "auth-service.js",
   "scripts": {
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "axios": "^1.7.9",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^16.4.7",
     "express": "^5.0.0",
