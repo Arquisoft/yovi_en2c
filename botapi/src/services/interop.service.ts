@@ -96,27 +96,25 @@ class InteropService {
 
   async playOnce(input: PlayOnceRequestDto): Promise<PlayOnceResponseDto> {
     if (!input) {
-      throw new Error("request body is required");
+      throw new Error("request is required");
     }
 
     if (!input.position) {
       throw new Error("position is required");
     }
 
-    if (!input.bot_id || input.bot_id.trim() === "") {
-      throw new Error("bot_id is required");
-    }
-
     assertValidYen(input.position);
 
-    const moveResponse = await gameyClient.chooseBotMove(input.bot_id, input.position);
-    const newPosition: YenDto = applyMoveToYen(input.position, moveResponse.coords);
+    const selectedBotId = input.bot_id?.trim() || "random_bot";
+
+    const moveResponse = await gameyClient.chooseBotMove(
+      selectedBotId,
+      input.position
+    );
 
     return {
-      bot_id: input.bot_id,
-      move: moveResponse.coords,
-      position: newPosition,
-      status: normalizeStatus("ONGOING")
+      bot_id: selectedBotId,
+      coords: moveResponse.coords
     };
   }
 

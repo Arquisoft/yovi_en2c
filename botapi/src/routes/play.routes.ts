@@ -3,4 +3,4 @@ import { playController } from "../controllers/play.controller";
 
 export const playRoutes = Router();
 
-playRoutes.post("/", playController.playOnce);
+playRoutes.get("/", playController.playOnce);

@@ -28,6 +28,6 @@ describe("openapi.yaml", () => {
     const doc = YAML.parse(raw);
 
     expect(doc.paths["/play"]).toBeDefined();
-    expect(doc.paths["/play"].post).toBeDefined();
+    expect(doc.paths["/play"].get).toBeDefined();
   });
 });

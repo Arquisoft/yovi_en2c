@@ -134,33 +134,37 @@ describe("App", () => {
     expect(interopService.playGame).toHaveBeenCalledWith("g123", payload);
   });
 
-  it("POST /play returns 200", async () => {
+  it("GET /play returns 200", async () => {
     interopService.playOnce.mockResolvedValueOnce({
       bot_id: "random_bot",
-      move: { x: 0, y: 0, z: 2 },
-      position: {
-        size: 3,
-        turn: 1,
-        players: ["B", "R"],
-        layout: "B/../..."
-      },
-      status: "ONGOING"
+      coords: { x: 0, y: 0, z: 2 }
+    });
+
+    const position = JSON.stringify({
+      size: 3,
+      turn: 0,
+      players: ["B", "R"],
+      layout: "./../..."
     });
 
     const res = await request(app)
-      .post("/play")
-      .send({
-        position: {
-          size: 3,
-          turn: 0,
-          players: ["B", "R"],
-          layout: "./../..."
-        },
+      .get("/play")
+      .query({
+        position,
         bot_id: "random_bot"
       });
 
     expect(res.status).toBe(200);
-    expect(res.body.move).toEqual({ x: 0, y: 0, z: 2 });
+    expect(res.body.coords).toEqual({ x: 0, y: 0, z: 2 });
+    expect(interopService.playOnce).toHaveBeenCalledWith({
+      position: {
+        size: 3,
+        turn: 0,
+        players: ["B", "R"],
+        layout: "./../..."
+      },
+      bot_id: "random_bot"
+    });
   });
 
   it("POST /remote-games/connect returns 201", async () => {

@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.remoteGamesRoutes = void 0;
+const express_1 = require("express");
+const remote_games_controller_1 = require("../controllers/remote-games.controller");
+exports.remoteGamesRoutes = (0, express_1.Router)();
+exports.remoteGamesRoutes.post("/connect", remote_games_controller_1.remoteGamesController.connectToRemoteGame);
+exports.remoteGamesRoutes.post("/create", remote_games_controller_1.remoteGamesController.createRemoteGame);
+exports.remoteGamesRoutes.get("/:sessionId", remote_games_controller_1.remoteGamesController.getRemoteGameSession);
+exports.remoteGamesRoutes.post("/:sessionId/play-turn", remote_games_controller_1.remoteGamesController.playRemoteTurn);
