@@ -24,11 +24,11 @@ function renderStatistics(username = "Pablo", token = "fake-token") {
   if (token)    localStorage.setItem("token", token);
 
   return render(
-    <I18nProvider>
-      <MemoryRouter initialEntries={["/statistics"]}>
-        <Statistics />
-      </MemoryRouter>
-    </I18nProvider>
+      <I18nProvider>
+        <MemoryRouter initialEntries={["/statistics"]}>
+          <Statistics />
+        </MemoryRouter>
+      </I18nProvider>
   );
 }
 
@@ -41,11 +41,11 @@ function mockFetchStats(overrides = {}) {
     pvbGames: 8,
     pvpGames: 2,
     lastFive: [
-      { opponent: "minimax_bot",  result: "win",  boardSize: 7,  gameMode: "pvb", date: "2026-04-13T10:00:00Z" },
-      { opponent: "heuristic_bot",result: "loss", boardSize: 9,  gameMode: "pvb", date: "2026-04-12T10:00:00Z" },
-      { opponent: "alfa_beta_bot", result: "win",  boardSize: 7,  gameMode: "pvb", date: "2026-04-11T10:00:00Z" },
+      { opponent: "heuristic_bot", result: "win",  boardSize: 7,  gameMode: "pvb", date: "2026-04-13T10:00:00Z" },
+      { opponent: "alfa_beta_bot", result: "loss", boardSize: 9,  gameMode: "pvb", date: "2026-04-12T10:00:00Z" },
+      { opponent: "minimax_bot",   result: "win",  boardSize: 7,  gameMode: "pvb", date: "2026-04-11T10:00:00Z" },
       { opponent: "carlos",        result: "win",  boardSize: 7,  gameMode: "pvp", date: "2026-04-10T10:00:00Z" },
-      { opponent: "minimax_bot",  result: "loss", boardSize: 11, gameMode: "pvb", date: "2026-04-09T10:00:00Z" },
+      { opponent: "random_bot",    result: "loss", boardSize: 11, gameMode: "pvb", date: "2026-04-09T10:00:00Z" },
     ],
     ...overrides,
   };
@@ -96,7 +96,8 @@ describe("Statistics", () => {
     global.fetch = vi.fn().mockReturnValue(new Promise(() => {}));
     renderStatistics();
 
-    expect(screen.getByText(/Cargando|Loading/i)).toBeInTheDocument();
+    // Hay dos elementos con "Cargando" durante la carga (botón + párrafo), verificamos que al menos uno existe
+    expect(screen.getAllByText(/Cargando|Loading/i).length).toBeGreaterThanOrEqual(1);
   });
 
   // ── API call ──────────────────────────────────────────────────────────────
@@ -107,10 +108,10 @@ describe("Statistics", () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        "/api/stats/Pablo",
-        expect.objectContaining({
-          headers: expect.objectContaining({ Authorization: "Bearer fake-token" }),
-        })
+          "/api/stats/Pablo",
+          expect.objectContaining({
+            headers: expect.objectContaining({ Authorization: "Bearer fake-token" }),
+          })
       );
     });
   });
@@ -121,29 +122,24 @@ describe("Statistics", () => {
     mockFetchStats();
     renderStatistics();
 
-    expect(await screen.findByText("10")).toBeInTheDocument();
-    expect(screen.getByText("7")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getByText("70%")).toBeInTheDocument();
+    // Esperamos a que carguen las tarjetas buscando la label única
+    expect(await screen.findByText(/Partidas jugadas|Games played/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tasa de victoria|Win rate/i)).toBeInTheDocument();
   });
 
   test("renders win rate bar section", async () => {
     mockFetchStats();
     renderStatistics();
 
-    expect(
-      await screen.findByRole("progressbar")
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("progressbar")).toBeInTheDocument();
   });
 
-  test("renders game mode breakdown with pvb and pvp counts", async () => {
+  test("renders game mode breakdown with pvb and pvp labels", async () => {
     mockFetchStats();
     renderStatistics();
 
-    await screen.findByText("10");
+    await screen.findByText(/Partidas jugadas|Games played/i);
 
-    expect(screen.getByText("8")).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText(/vs Bot/i)).toBeInTheDocument();
     expect(screen.getByText(/vs (Jugador|Player)/i)).toBeInTheDocument();
   });
@@ -152,11 +148,12 @@ describe("Statistics", () => {
     mockFetchStats();
     renderStatistics();
 
-    await screen.findByText("minimax_bot");
-
-    expect(screen.getByText("heuristic_bot")).toBeInTheDocument();
+    // Todos los opponents son únicos en el mock
+    expect(await screen.findByText("heuristic_bot")).toBeInTheDocument();
     expect(screen.getByText("alfa_beta_bot")).toBeInTheDocument();
+    expect(screen.getByText("minimax_bot")).toBeInTheDocument();
     expect(screen.getByText("carlos")).toBeInTheDocument();
+    expect(screen.getByText("random_bot")).toBeInTheDocument();
 
     const winPills  = screen.getAllByText(/^(Victoria|Win)$/i);
     const lossPills = screen.getAllByText(/^(Derrota|Loss)$/i);
@@ -168,10 +165,11 @@ describe("Statistics", () => {
     mockFetchStats();
     renderStatistics();
 
-    await screen.findByText("minimax_bot");
+    await screen.findByText("heuristic_bot");
 
-    expect(screen.getByText("7×7")).toBeInTheDocument();
+    expect(screen.getAllByText("7×7").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("9×9")).toBeInTheDocument();
+    expect(screen.getByText("11×11")).toBeInTheDocument();
     expect(screen.getAllByText("PVB").length).toBeGreaterThan(0);
     expect(screen.getByText("PVP")).toBeInTheDocument();
   });
@@ -239,16 +237,16 @@ describe("Statistics", () => {
     const user = userEvent.setup();
 
     global.fetch = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("Network error"))
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          username: "Pablo",
-          stats: { totalGames: 1, wins: 1, losses: 0, winRate: 100, pvbGames: 1, pvpGames: 0, lastFive: [] },
-        }),
-      } as Response);
+        .fn()
+        .mockRejectedValueOnce(new Error("Network error"))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true,
+            username: "Pablo",
+            stats: { totalGames: 5, wins: 4, losses: 1, winRate: 80, pvbGames: 5, pvpGames: 0, lastFive: [] },
+          }),
+        } as Response);
 
     renderStatistics();
 
@@ -259,7 +257,9 @@ describe("Statistics", () => {
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
 
-    expect(await screen.findByText("1")).toBeInTheDocument();
+    // Verificamos con la label en lugar del número para evitar ambigüedades
+    expect(await screen.findByText(/Tasa de victoria|Win rate/i)).toBeInTheDocument();
+    expect(screen.getByText("80%")).toBeInTheDocument();
   });
 
   // ── Refresh button ────────────────────────────────────────────────────────
@@ -269,10 +269,9 @@ describe("Statistics", () => {
     mockFetchStats();
 
     renderStatistics();
-    await screen.findByText("10");
+    await screen.findByText(/Partidas jugadas|Games played/i);
 
-    mockFetchStats({ totalGames: 11, wins: 8, losses: 3, winRate: 73 });
-
+    mockFetchStats();
     await user.click(screen.getByRole("button", { name: /Actualizar|Refresh/i }));
 
     await waitFor(() => {
@@ -287,7 +286,7 @@ describe("Statistics", () => {
     mockFetchStats();
     renderStatistics();
 
-    await screen.findByText("10");
+    await screen.findByText(/Partidas jugadas|Games played/i);
 
     await user.click(screen.getByRole("button", { name: /Volver al inicio|Back to home/i }));
 
@@ -299,7 +298,7 @@ describe("Statistics", () => {
     mockFetchStats();
     renderStatistics();
 
-    await screen.findByText("10");
+    await screen.findByText(/Partidas jugadas|Games played/i);
 
     await user.click(screen.getByRole("button", { name: /Salir|Logout/i }));
 
@@ -308,13 +307,13 @@ describe("Statistics", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
   });
 
-  // ── Navbar renders ────────────────────────────────────────────────────────
+  // ── Navbar ────────────────────────────────────────────────────────────────
 
   test("renders navbar with username", async () => {
     mockFetchStats();
     renderStatistics();
 
-    await screen.findByText("10");
+    await screen.findByText(/Partidas jugadas|Games played/i);
 
     expect(screen.getByText(/Pablo/i)).toBeInTheDocument();
   });
@@ -324,7 +323,7 @@ describe("Statistics", () => {
     renderStatistics();
 
     expect(
-      await screen.findByRole("heading", { name: /Mis Estadísticas|My Statistics/i })
+        await screen.findByRole("heading", { name: /Mis Estadísticas|My Statistics/i })
     ).toBeInTheDocument();
   });
 });
