@@ -1,6 +1,7 @@
 import express from "express";
 import axios from "axios";
 import cors from "cors";
+import promBundle from "express-prom-bundle";
 
 const app = express();
 app.disable("x-powered-by");
@@ -13,6 +14,22 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
+// PROMETHEUS METRICS MIDDLEWARE
+// express-prom-bundle automatically exposes a /metrics endpoint
+// and instruments all requests with: http_request_duration_seconds (histogram),
+// http_requests_total (counter), and http_request_size_bytes / http_response_size_bytes.
+// includeMethod: adds HTTP method label (GET, POST...)
+// includePath: adds path label (/login, /game/new...)
+// includeStatusCode: adds HTTP status code label (200, 404, 500...)
+const metricsMiddleware = promBundle({
+  includeMethod: true,
+  includePath: true,
+  includeStatusCode: true,
+  normalizePath: [
+    ['^/stats/.*', '/stats/:username'],
+  ],
+});
+app.use(metricsMiddleware);
 
 // Internal network communication -> no need for https
 const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://gamey:4000" || "http://localhost:4000"; //NOSONAR
@@ -184,6 +201,7 @@ app.get("/verify", async (req, res) => {
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
     console.log(`Gateway listening on http://localhost:${PORT}`);
+    console.log(`Metrics available at http://localhost:${PORT}/metrics`);
   });
 }
 
