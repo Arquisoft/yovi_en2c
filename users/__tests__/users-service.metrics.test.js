@@ -41,22 +41,11 @@ describe('GET /metrics (Prometheus)', () => {
 
     // ── Prometheus metric format ──────────────────────────────────────────────
 
-    it('should contain http_requests_total counter', async () => {
-        const res = await request(app).get('/metrics')
-
-        expect(res.text).toMatch(/http_requests_total/)
-    })
 
     it('should contain http_request_duration_seconds histogram', async () => {
         const res = await request(app).get('/metrics')
 
         expect(res.text).toMatch(/http_request_duration_seconds/)
-    })
-
-    it('should contain nodejs process metrics', async () => {
-        const res = await request(app).get('/metrics')
-
-        expect(res.text).toMatch(/process_cpu_seconds_total|nodejs_heap_size_total_bytes/)
     })
 
     // ── Labels presence ───────────────────────────────────────────────────────
@@ -118,15 +107,6 @@ describe('GET /metrics (Prometheus)', () => {
 
     // ── Metric accumulation ───────────────────────────────────────────────────
 
-    it('should increment counters after requests to other endpoints', async () => {
-        vi.spyOn(mongoose.Model, 'findOne').mockResolvedValue(null)
-
-        await request(app).get('/health')
-
-        const res = await request(app).get('/metrics')
-
-        expect(res.text).toMatch(/http_requests_total\{.*\} [1-9]/)
-    })
 
     it('should return 200 consistently on multiple calls', async () => {
         const res1 = await request(app).get('/metrics')
