@@ -58,8 +58,15 @@ fn prometheus_handle() -> &'static PrometheusHandle {
 ///
 /// This is useful for testing the API without binding to a network port.
 pub fn create_router(state: AppState) -> axum::Router {
-    let _ = prometheus_handle();
-    let (prometheus_layer, _) = PrometheusMetricLayer::pair();
+    // Ensure the global recorder is installed exactly once.
+    // After the first call, get_or_init is a no-op and pair() is never called again.
+    let handle = prometheus_handle();
+
+    // Build a new layer that attaches to the already-installed global recorder.
+    // We use with_default_metrics() so it does NOT try to install a new recorder.
+    let prometheus_layer = axum_prometheus::PrometheusMetricLayerBuilder::new()
+        .with_default_metrics()
+        .build();
 
     axum::Router::new()
         .route("/status", axum::routing::get(status))
