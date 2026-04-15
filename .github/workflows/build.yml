@@ -29,6 +29,11 @@ jobs:
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
+      - name: Run authentication tests
+        run: npm --prefix authentication run test:coverage
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
       - name: Run webapp tests
         run: npm --prefix webapp run test:coverage
       
