@@ -36,7 +36,6 @@ pub mod game {
 }
 
 use axum::response::IntoResponse;
-use axum_prometheus::PrometheusMetricLayer;
 use axum_prometheus::metrics_exporter_prometheus::PrometheusHandle;
 use std::sync::{Arc, OnceLock};
 pub use bot::choose::MoveResponse;
@@ -49,7 +48,7 @@ static PROMETHEUS_HANDLE: OnceLock<PrometheusHandle> = OnceLock::new();
 
 fn prometheus_handle() -> &'static PrometheusHandle {
     PROMETHEUS_HANDLE.get_or_init(|| {
-        let (_, handle) = PrometheusMetricLayer::pair();
+        let (_, handle) = axum_prometheus::PrometheusMetricLayer::pair();
         handle
     })
 }
@@ -59,14 +58,14 @@ fn prometheus_handle() -> &'static PrometheusHandle {
 /// This is useful for testing the API without binding to a network port.
 pub fn create_router(state: AppState) -> axum::Router {
     // Ensure the global recorder is installed exactly once.
-    // After the first call, get_or_init is a no-op and pair() is never called again.
-    let handle = prometheus_handle();
+    let _ = prometheus_handle();
 
-    // Build a new layer that attaches to the already-installed global recorder.
-    // We use with_default_metrics() so it does NOT try to install a new recorder.
-    let prometheus_layer = axum_prometheus::PrometheusMetricLayerBuilder::new()
+    // build_pair() is called again for the layer, but the second recorder
+    // registration is ignored because the global is already set.
+    // We discard the second handle and use only the one stored in PROMETHEUS_HANDLE.
+    let (prometheus_layer, _) = axum_prometheus::PrometheusMetricLayerBuilder::new()
         .with_default_metrics()
-        .build();
+        .build_pair();
 
     axum::Router::new()
         .route("/status", axum::routing::get(status))
