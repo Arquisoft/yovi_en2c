@@ -54,6 +54,7 @@ services:
     depends_on:
       - users
       - gamey
+      - authentication
     networks:
       - monitor-net
 
