@@ -69,9 +69,14 @@ services:
   authentication:
     build: ./authentication
     container_name: authentication
+    image: ghcr.io/arquisoft/yovi_en2c-authentication:latest
     ports:
       - "5000:5000"
-
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES=24h
+    networks:
+      - monitor-net
 
   prometheus:
     image: prom/prometheus
