@@ -11,6 +11,8 @@ permissions:
 env:
   IMAGE_TAG: ${{ github.event.release.tag_name }}
   MONGODB_URI: ${{ secrets.MONGODB_URI }}
+  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+  JWT_EXPIRES: ${{ secrets.JWT_EXPIRES }}
 
 jobs:
   test-node:
@@ -18,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [webapp, users, gateway]
+        service: [webapp, users, gateway, authentication]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -114,6 +116,23 @@ jobs:
           workdir: users
           buildargs: | 
             MONGODB_URI=${{ secrets.MONGODB_URI }}
+
+  docker-push-authentication:
+    name: Publish authentication image
+    runs-on: ubuntu-latest
+    needs: e2e
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish authentication
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-authentication
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: authentication
   
   docker-push-gateway:
     name: Publish gateway image
@@ -190,5 +209,6 @@ jobs:
           command: |
             wget https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/master/docker-compose.yml -O docker-compose.yml
             echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
             docker-compose down
             docker-compose up -d --pull always
