@@ -37,30 +37,34 @@ pub mod game {
 
 use axum::response::IntoResponse;
 use axum_prometheus::PrometheusMetricLayer;
-use std::sync::Arc;
+use axum_prometheus::metrics_exporter_prometheus::PrometheusHandle;
+use std::sync::{Arc, OnceLock};
 pub use bot::choose::MoveResponse;
 pub use error::ErrorResponse;
 pub use version::*;
 
 use crate::{GameYError, HeuristicBot, YBotRegistry, game_server::state::AppState};
 
+static PROMETHEUS_HANDLE: OnceLock<PrometheusHandle> = OnceLock::new();
+
+fn prometheus_handle() -> &'static PrometheusHandle {
+    PROMETHEUS_HANDLE.get_or_init(|| {
+        let (_, handle) = PrometheusMetricLayer::pair();
+        handle
+    })
+}
+
 /// Creates the Axum router with the given state.
-///
-/// Includes a Prometheus metrics layer that automatically instruments all routes
-/// with: `axum_http_requests_total` (counter), `axum_http_requests_duration_seconds`
-/// (histogram), and `axum_http_requests_pending` (gauge).
-/// The `/metrics` endpoint is added for Prometheus to scrape.
 ///
 /// This is useful for testing the API without binding to a network port.
 pub fn create_router(state: AppState) -> axum::Router {
-    // PrometheusMetricLayer uses the Tower middleware pattern — it wraps every
-    // route in the router automatically, so no per-route changes are needed.
-    let (prometheus_layer, metrics_handle) = PrometheusMetricLayer::pair();
+    let _ = prometheus_handle();
+    let (prometheus_layer, _) = PrometheusMetricLayer::pair();
 
     axum::Router::new()
         .route("/status", axum::routing::get(status))
-        .route("/metrics", axum::routing::get(move || async move {
-            metrics_handle.render()
+        .route("/metrics", axum::routing::get(|| async {
+            prometheus_handle().render()
         }))
         .route(
             "/{api_version}/ybot/choose/{bot_id}",
