@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '24h';
-const USERS_SERVICE_URL = process.env.USERS_SERVICE_URL;
+const USERS_SERVICE_URL = "http://users:3000";
 
 // Helper: call users-service with native fetch (Node >= 18)
 async function callUsersService(path, body) {

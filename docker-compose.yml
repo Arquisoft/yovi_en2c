@@ -66,6 +66,13 @@ services:
     networks:
       - monitor-net
 
+  authentication:
+    build: ./authentication
+    container_name: authentication
+    ports:
+      - "5000:5000"
+
+
   prometheus:
     image: prom/prometheus
     container_name: prometheus
