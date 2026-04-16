@@ -457,3 +457,122 @@ body {
   width: 100%;
   max-width: 980px;
 }
+
+
+/* ── TURN TIMER ─────────────────────────────────────────────────────────────── */
+
+/* Pulse animation for the low-time warning */
+@keyframes timer-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.75; transform: scale(1.06); }
+}
+
+/* Spin animation for the bot thinking arc */
+@keyframes bot-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Wrapper that places the board and timer side by side */
+.game-board-area {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 980px;
+  flex: 0 0 auto;
+}
+
+/* The board keeps its square shape */
+.game-board-wrapper {
+  border-radius: 18px;
+  background: linear-gradient(135deg, #FCF5E3, #F5F5F5);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+/* Timer panel sits to the right of the board.
+   Fixed dimensions so swapping between player/bot timer never shifts the layout. */
+.game-timer-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 80px;
+  height: 100px;
+  flex-shrink: 0;
+}
+
+/* Fixed-size container so the layout never shifts on tick */
+.game-timer-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.game-timer-container svg {
+  display: block;
+  transform: rotate(-90deg);
+}
+
+/* Number overlaid in the center of the SVG ring */
+.game-timer-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 900;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Pulse applied to the whole container when < 25% time left */
+.game-timer-container--pulse {
+  animation: timer-pulse 0.8s ease-in-out infinite;
+}
+
+.game-timer-text {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  width: 80px;
+  min-height: 2.4em;
+  line-height: 1.2;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.game-timer-thinking {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Spinning arc for the bot thinking indicator */
+.game-bot-timer-arc {
+  transform-origin: center;
+  animation: bot-spin 1s linear infinite;
+}
+
+/* On small screens stack the timer below the board */
+@media (max-width: 560px) {
+  .game-board-area {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .game-timer-panel {
+    flex-direction: row;
+    gap: 12px;
+    min-width: unset;
+  }
+}
