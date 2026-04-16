@@ -1,7 +1,20 @@
 global:
-  scrape_interval: 5s
+  # How often Prometheus scrapes metrics from each service.
+  # 15s is the standard recommended value for production.
+  scrape_interval: 15s
 
 scrape_configs:
+  # Users service — Node.js/Express (CommonJS), port 3000
   - job_name: 'users-service'
     static_configs:
       - targets: ['users:3000']
+
+  # Gateway service — Node.js/Express (ESM), port 8080
+  - job_name: 'gateway-service'
+    static_configs:
+      - targets: ['gateway:8080']
+
+  # Gamey service — Rust/Axum, port 4000
+  - job_name: 'gamey-service'
+    static_configs:
+      - targets: [ 'gamey:4000' ]

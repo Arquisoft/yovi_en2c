@@ -4,8 +4,11 @@
 //! The server exposes endpoints for checking bot status and requesting moves.
 //!
 //! # Endpoints
-//! - `GET /status` - Health check endpoint
+//! - `GET /status`                              - Health check endpoint
+//! - `GET /metrics`                             - Prometheus metrics endpoint
 //! - `POST /{api_version}/ybot/choose/{bot_id}` - Request a move from a bot
+//! - `POST /{api_version}/game/pvb/{bot_id}`    - Player vs bot move
+//! - `POST /game/new`                           - Start a new game
 //!
 //! # Example
 //! ```no_run
@@ -29,23 +32,41 @@ pub mod bot {
 
 pub mod game {
     pub mod pvb;
-    pub mod new; // starts game
+    pub mod new;
 }
 
 use axum::response::IntoResponse;
-use std::sync::Arc;
+use axum_prometheus::metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
+use std::sync::{Arc, OnceLock};
 pub use bot::choose::MoveResponse;
 pub use error::ErrorResponse;
 pub use version::*;
 
 use crate::{GameYError, HeuristicBot, YBotRegistry, game_server::state::AppState};
 
+static PROMETHEUS_HANDLE: OnceLock<PrometheusHandle> = OnceLock::new();
+
+fn prometheus_handle() -> &'static PrometheusHandle {
+    PROMETHEUS_HANDLE.get_or_init(|| {
+        PrometheusBuilder::new()
+            .install_recorder()
+            .expect("Failed to install Prometheus recorder")
+    })
+}
+
 /// Creates the Axum router with the given state.
 ///
 /// This is useful for testing the API without binding to a network port.
 pub fn create_router(state: AppState) -> axum::Router {
+    let _ = prometheus_handle();
+
+    let prometheus_layer = axum_prometheus::PrometheusMetricLayer::new();
+
     axum::Router::new()
         .route("/status", axum::routing::get(status))
+        .route("/metrics", axum::routing::get(|| async {
+            prometheus_handle().render()
+        }))
         .route(
             "/{api_version}/ybot/choose/{bot_id}",
             axum::routing::post(bot::choose::choose),
@@ -58,12 +79,11 @@ pub fn create_router(state: AppState) -> axum::Router {
             "/game/new",
             axum::routing::post(game::new::new_game),
         )
+        .layer(prometheus_layer)
         .with_state(state)
 }
 
 /// Creates the default application state with the standard bot registry.
-///
-/// The default state includes the `HeuristicBot` which selects moves randomly.
 pub fn create_default_state() -> AppState {
     let bots = YBotRegistry::new().with_bot(Arc::new(HeuristicBot));
     AppState::new(bots)
@@ -71,15 +91,9 @@ pub fn create_default_state() -> AppState {
 
 /// Starts the game server on the specified port.
 ///
-/// This function blocks until the server is shut down.
-///
-/// # Arguments
-/// * `port` - The TCP port to listen on
-///
 /// # Errors
-/// Returns `GameYError::ServerError` if:
-/// - The TCP port cannot be bound (e.g., port already in use, permission denied)
-/// - The server encounters an error while running
+/// Returns `GameYError::ServerError` if the TCP port cannot be bound or
+/// the server encounters a runtime error.
 pub async fn run_bot_server(port: u16) -> Result<(), GameYError> {
     let state = create_default_state();
     let app = create_router(state);
@@ -92,6 +106,7 @@ pub async fn run_bot_server(port: u16) -> Result<(), GameYError> {
         })?;
 
     println!("Server mode: Listening on http://{}", addr);
+    println!("Metrics available at http://{}/metrics", addr);
     axum::serve(listener, app)
         .await
         .map_err(|e| GameYError::ServerError {
@@ -122,9 +137,7 @@ mod router_tests {
         let state = crate::game_server::state::AppState::new(
             YBotRegistry::default()
         );
-
         let app = create_router(state);
-
         let response = app
             .oneshot(
                 Request::get("/unknown")
@@ -133,7 +146,23 @@ mod router_tests {
             )
             .await
             .unwrap();
-
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_metrics_endpoint_returns_200() {
+        let state = crate::game_server::state::AppState::new(
+            YBotRegistry::default()
+        );
+        let app = create_router(state);
+        let response = app
+            .oneshot(
+                Request::get("/metrics")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
     }
 }
