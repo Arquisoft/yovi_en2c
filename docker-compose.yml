@@ -54,6 +54,7 @@ services:
     depends_on:
       - users
       - gamey
+      - authentication
     networks:
       - monitor-net
 
@@ -63,6 +64,18 @@ services:
     image: ghcr.io/arquisoft/yovi_en2c-gamey:latest
     expose:
       - "4000"
+    networks:
+      - monitor-net
+
+  authentication:
+    build: ./authentication
+    container_name: authentication
+    image: ghcr.io/arquisoft/yovi_en2c-authentication:latest
+    ports:
+      - "5000:5000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES=24h
     networks:
       - monitor-net
 

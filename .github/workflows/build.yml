@@ -23,11 +23,17 @@ jobs:
       - run: npm --prefix users ci
       - run: npm --prefix webapp ci
       - run: npm --prefix gateway ci
+      - run: npm --prefix authentication ci
 
       - name: Run users tests with MongoDB
         run: npm --prefix users run test:coverage
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+
+      - name: Run authentication tests
+        run: npm --prefix authentication run test:coverage
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
       - name: Run webapp tests
         run: npm --prefix webapp run test:coverage

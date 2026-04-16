@@ -22,6 +22,7 @@ app.use(cors({
 
 const USERS_BASE_URL = process.env.USERS_BASE_URL || "http://users:3000";
 const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://gamey:4000";
+const AUTH_BASE_URL = process.env.AUTH_BASE_URL || "http://authentication:5000";
 const LOGIN_USER_URL = `${USERS_BASE_URL}/login`;
 
 const CREATE_USER_URL = `${USERS_BASE_URL}/createuser`;
@@ -169,11 +170,32 @@ app.post("/createuser", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   try {
-    const response = await axios.post(LOGIN_USER_URL, req.body); // NOSONAR
+    const response = await axios.post(`${AUTH_BASE_URL}/login`, req.body); // NOSONAR
     return res.status(response.status).json(response.data);
   } catch (error) {
     if (error.response) return res.status(error.response.status).json(error.response.data);
     return res.status(500).json({ error: "User service unavailable" });
+  }
+});
+
+app.get("/verify", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ success: false, error: "Missing token" });
+    }
+
+    const response = await axios.get(`${AUTH_BASE_URL}/verify`, {
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+
+    return res.status(200).json(response.data);
+  } catch (error) {
+    if (error.response) return res.status(error.response.status).json(error.response.data);
+    return res.status(500).json({ success: false, error: "Auth service unavailable" });
   }
 });
 
