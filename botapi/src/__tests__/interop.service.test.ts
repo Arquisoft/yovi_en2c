@@ -202,9 +202,9 @@ describe("interopService", () => {
     expect(result.status).toBe("ONGOING");
   });
 
-  it("playOnce throws when request body is missing", async () => {
+  it("playOnce throws when request is missing", async () => {
     await expect(interopService.playOnce(undefined as any)).rejects.toThrow(
-      "request body is required"
+      "request is required"
     );
   });
 
@@ -216,21 +216,36 @@ describe("interopService", () => {
     ).rejects.toThrow("position is required");
   });
 
-  it("playOnce throws when bot_id is missing", async () => {
-    await expect(
-      interopService.playOnce({
-        position: {
-          size: 3,
-          turn: 0,
-          players: ["B", "R"],
-          layout: "./../..."
-        },
-        bot_id: ""
-      })
-    ).rejects.toThrow("bot_id is required");
+  it("playOnce uses default bot when bot_id is missing", async () => {
+    mockedClient.chooseBotMove.mockResolvedValueOnce({
+      api_version: "v1",
+      bot_id: "random_bot",
+      coords: { x: 2, y: 0, z: 0 }
+    });
+
+    const result = await interopService.playOnce({
+      position: {
+        size: 3,
+        turn: 0,
+        players: ["B", "R"],
+        layout: "./../..."
+      },
+      bot_id: ""
+    });
+
+    expect(mockedClient.chooseBotMove).toHaveBeenCalledWith("random_bot", {
+      size: 3,
+      turn: 0,
+      players: ["B", "R"],
+      layout: "./../..."
+    });
+    expect(result).toEqual({
+      bot_id: "random_bot",
+      coords: { x: 2, y: 0, z: 0 }
+    });
   });
 
-  it("playOnce returns updated position", async () => {
+  it("playOnce returns bot coords", async () => {
     mockedClient.chooseBotMove.mockResolvedValueOnce({
       api_version: "v1",
       bot_id: "random_bot",
@@ -247,8 +262,9 @@ describe("interopService", () => {
       bot_id: "random_bot"
     });
 
-    expect(result.move).toEqual({ x: 2, y: 0, z: 0 });
-    expect(result.position.layout).toBe("B/../...");
-    expect(result.status).toBe("ONGOING");
+    expect(result).toEqual({
+      bot_id: "random_bot",
+      coords: { x: 2, y: 0, z: 0 }
+    });
   });
 });
