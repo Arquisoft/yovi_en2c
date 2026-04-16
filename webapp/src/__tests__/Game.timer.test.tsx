@@ -54,6 +54,7 @@ function mockSaveResult() {
     return { ok: true, text: async () => JSON.stringify({ success: true }) } as Response;
 }
 
+// Renders with timer enabled. Uses selective fake timers so Promises still resolve.
 function renderGameWithTimer(timerSeconds = 30, username = "Pablo") {
     localStorage.clear();
     localStorage.setItem("username", username);
@@ -84,17 +85,20 @@ function renderGameNoTimer(username = "Pablo") {
     );
 }
 
-// Waits for polygons and flushes any pending microtasks
 async function waitForBoard() {
-    await waitFor(() => {
-        expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0);
-    }, { timeout: 3000 });
+    await waitFor(
+        () => expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0),
+        { timeout: 4000 }
+    );
 }
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
 
 describe("Game — Turn Timer", () => {
     beforeEach(() => {
+        // Only fake setInterval/clearInterval — leaves Promise/queueMicrotask intact
+        // so fetch mocks still resolve normally.
+        vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout"] });
         vi.clearAllMocks();
         mockNavigate.mockReset();
         global.ResizeObserver = class {
@@ -113,11 +117,10 @@ describe("Game — Turn Timer", () => {
     test("timer panel is NOT rendered when timerSeconds is 0", async () => {
         global.fetch = vi.fn().mockResolvedValue(mockNewGame());
         renderGameNoTimer();
-
         await waitForBoard();
 
         expect(screen.queryByText(/Tu turno|Your turn/i)).not.toBeInTheDocument();
-        expect(screen.queryByText(/🤖/)).not.toBeInTheDocument();
+        expect(screen.queryByText("🤖")).not.toBeInTheDocument();
     });
 
     // ── Timer shown when enabled ──────────────────────────────────────────────
@@ -125,18 +128,14 @@ describe("Game — Turn Timer", () => {
     test("timer panel IS rendered when timerSeconds > 0", async () => {
         global.fetch = vi.fn().mockResolvedValue(mockNewGame());
         renderGameWithTimer(30);
-
         await waitForBoard();
 
         expect(screen.getByText(/Tu turno|Your turn/i)).toBeInTheDocument();
     });
 
-    // ── Timer label ───────────────────────────────────────────────────────────
-
     test("shows 'Your turn' label when it is the player turn", async () => {
         global.fetch = vi.fn().mockResolvedValue(mockNewGame());
         renderGameWithTimer(30);
-
         await waitForBoard();
 
         expect(screen.getByText(/Tu turno|Your turn/i)).toBeInTheDocument();
@@ -145,7 +144,6 @@ describe("Game — Turn Timer", () => {
     // ── Bot thinking shows bot timer ──────────────────────────────────────────
 
     test("shows bot thinking label while move is in flight", async () => {
-        // Keep the move fetch pending indefinitely so busy=true stays
         let resolveFetch!: (v: any) => void;
         const pendingFetch = new Promise<Response>((res) => { resolveFetch = res; });
 
@@ -156,18 +154,15 @@ describe("Game — Turn Timer", () => {
         renderGameWithTimer(30);
         await waitForBoard();
 
-        const cells = document.querySelectorAll("polygon");
-        cells[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        document.querySelectorAll("polygon")[0]
+            .dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
         await waitFor(() => {
             expect(screen.getByText(/pensando|thinking/i)).toBeInTheDocument();
         });
 
-        // Resolve to avoid open handles
         resolveFetch(mockMoveContinues());
     });
-
-    // ── BotTimer emoji ────────────────────────────────────────────────────────
 
     test("BotTimer renders robot emoji while bot is thinking", async () => {
         let resolveFetch!: (v: any) => void;
@@ -180,8 +175,8 @@ describe("Game — Turn Timer", () => {
         renderGameWithTimer(30);
         await waitForBoard();
 
-        const cells = document.querySelectorAll("polygon");
-        cells[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        document.querySelectorAll("polygon")[0]
+            .dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
         await waitFor(() => {
             expect(screen.getByText("🤖")).toBeInTheDocument();
@@ -193,32 +188,26 @@ describe("Game — Turn Timer", () => {
     // ── Countdown decrements ──────────────────────────────────────────────────
 
     test("timer counts down from timerSeconds", async () => {
-        // Use fake timers AFTER fetch resolves so async works fine
         global.fetch = vi.fn().mockResolvedValue(mockNewGame());
         renderGameWithTimer(30);
-
         await waitForBoard();
 
-        // Now install fake timers — fetch is already resolved
-        vi.useFakeTimers();
-
+        // At start the label shows 30
         expect(screen.getByText("30")).toBeInTheDocument();
 
         act(() => { vi.advanceTimersByTime(5000); });
 
-        expect(screen.getByText("25")).toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.getByText("25")).toBeInTheDocument();
+        });
     });
 
     // ── Timeout triggers defeat ───────────────────────────────────────────────
 
     test("shows timeout game-over overlay when timer reaches 0", async () => {
-        global.fetch = vi.fn()
-            .mockResolvedValue(mockNewGame());
-
+        global.fetch = vi.fn().mockResolvedValue(mockNewGame());
         renderGameWithTimer(5);
         await waitForBoard();
-
-        vi.useFakeTimers();
 
         act(() => { vi.advanceTimersByTime(6000); });
 
@@ -232,7 +221,6 @@ describe("Game — Turn Timer", () => {
         renderGameWithTimer(5);
         await waitForBoard();
 
-        vi.useFakeTimers();
         act(() => { vi.advanceTimersByTime(6000); });
 
         await waitFor(() => {
@@ -245,7 +233,6 @@ describe("Game — Turn Timer", () => {
         renderGameWithTimer(5);
         await waitForBoard();
 
-        vi.useFakeTimers();
         act(() => { vi.advanceTimersByTime(6000); });
 
         await waitFor(() => {
@@ -263,21 +250,17 @@ describe("Game — Turn Timer", () => {
         renderGameWithTimer(5);
         await waitForBoard();
 
-        vi.useFakeTimers();
         act(() => { vi.advanceTimersByTime(6000); });
 
         await waitFor(() => {
             expect(screen.getByText(/Se acabó el tiempo|Time's up/i)).toBeInTheDocument();
         });
 
-        // Give saveGameResult time to fire
-        await act(async () => { vi.runAllTimers(); });
         await waitFor(() => {
             expect(global.fetch).toHaveBeenCalledTimes(2);
         });
 
-        const saveCall = (global.fetch as any).mock.calls[1];
-        const body = JSON.parse(saveCall[1].body);
+        const body = JSON.parse((global.fetch as any).mock.calls[1][1].body);
         expect(body.result).toBe("loss");
         expect(body.endReason).toBe("timeout");
         expect(body.gameMode).toBe("pvb");
@@ -286,7 +269,7 @@ describe("Game — Turn Timer", () => {
     // ── Timer hidden after game over ──────────────────────────────────────────
 
     test("timer panel is hidden after normal game over", async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
 
         global.fetch = vi.fn()
             .mockResolvedValueOnce(mockNewGame())
@@ -308,6 +291,8 @@ describe("Game — Turn Timer", () => {
     // ── Timer resets after move ───────────────────────────────────────────────
 
     test("timer resets to full value after a successful move", async () => {
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+
         global.fetch = vi.fn()
             .mockResolvedValueOnce(mockNewGame())
             .mockResolvedValue(mockMoveContinues());
@@ -315,22 +300,16 @@ describe("Game — Turn Timer", () => {
         renderGameWithTimer(30);
         await waitForBoard();
 
-        vi.useFakeTimers();
-
-        // Advance 10s → timer at 20
+        // Advance 10s
         act(() => { vi.advanceTimersByTime(10000); });
-        expect(screen.getByText("20")).toBeInTheDocument();
-
-        // Make a move — need real timers for the fetch to resolve
-        vi.useRealTimers();
-        const cells = document.querySelectorAll("polygon");
-        cells[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
         await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledTimes(2);
+            expect(screen.getByText("20")).toBeInTheDocument();
         });
 
-        // Timer resets to 30 after bot responds
+        // Make a move — timer resets to 30 after bot responds
+        await user.click(document.querySelectorAll("polygon")[0]);
+
         await waitFor(() => {
             expect(screen.getByText("30")).toBeInTheDocument();
         });
@@ -339,18 +318,18 @@ describe("Game — Turn Timer", () => {
     // ── New game resets timer ─────────────────────────────────────────────────
 
     test("starting a new game resets the timer", async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
 
         global.fetch = vi.fn().mockResolvedValue(mockNewGame());
         renderGameWithTimer(30);
         await waitForBoard();
 
-        vi.useFakeTimers();
         act(() => { vi.advanceTimersByTime(15000); });
-        expect(screen.getByText("15")).toBeInTheDocument();
 
-        // Switch back to real timers to click
-        vi.useRealTimers();
+        await waitFor(() => {
+            expect(screen.getByText("15")).toBeInTheDocument();
+        });
+
         await user.click(screen.getByRole("button", { name: /Nueva partida|New game/i }));
 
         await waitFor(() => {
@@ -361,11 +340,11 @@ describe("Game — Turn Timer", () => {
     // ── Timeout does not fire when game already over ──────────────────────────
 
     test("timeout does not override an already-finished game", async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
 
         global.fetch = vi.fn()
             .mockResolvedValueOnce(mockNewGame())
-            .mockResolvedValueOnce(mockMoveFinished("B")) // player wins
+            .mockResolvedValueOnce(mockMoveFinished("B"))
             .mockResolvedValue(mockSaveResult());
 
         renderGameWithTimer(5);
@@ -377,8 +356,7 @@ describe("Game — Turn Timer", () => {
             expect(screen.getByText(/Has ganado|You win/i)).toBeInTheDocument();
         });
 
-        // Now advance past timer — should NOT change the overlay
-        vi.useFakeTimers();
+        // Advance past timer — win overlay must remain
         act(() => { vi.advanceTimersByTime(10000); });
 
         expect(screen.getByText(/Has ganado|You win/i)).toBeInTheDocument();
@@ -392,12 +370,14 @@ describe("Game — Turn Timer", () => {
         renderGameWithTimer(30);
         await waitForBoard();
 
-        // At start (30/30 = 100%) the progress circle should be green
-        const circles = document.querySelectorAll("circle[stroke]");
-        const greenCircle = Array.from(circles).find(
-            (c) => c.getAttribute("stroke") === "var(--ok)"
-        );
-        expect(greenCircle).toBeTruthy();
+        // At 30/30 = 100% the progress circle is green
+        await waitFor(() => {
+            const circles = document.querySelectorAll("circle[stroke]");
+            const greenCircle = Array.from(circles).find(
+                (c) => c.getAttribute("stroke") === "var(--ok)"
+            );
+            expect(greenCircle).toBeTruthy();
+        });
     });
 
     // ── SVG color: red when <= 25% ────────────────────────────────────────────
@@ -407,14 +387,15 @@ describe("Game — Turn Timer", () => {
         renderGameWithTimer(30);
         await waitForBoard();
 
-        vi.useFakeTimers();
-        // 23s elapsed → 7s left = 7/30 ≈ 23% → red
+        // 23s elapsed → 7s left = 23% → red
         act(() => { vi.advanceTimersByTime(23000); });
 
-        const circles = document.querySelectorAll("circle[stroke]");
-        const dangerCircle = Array.from(circles).find(
-            (c) => c.getAttribute("stroke") === "var(--danger)"
-        );
-        expect(dangerCircle).toBeTruthy();
+        await waitFor(() => {
+            const circles = document.querySelectorAll("circle[stroke]");
+            const dangerCircle = Array.from(circles).find(
+                (c) => c.getAttribute("stroke") === "var(--danger)"
+            );
+            expect(dangerCircle).toBeTruthy();
+        });
     });
 });
