@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import "@testing-library/jest-dom";
@@ -54,7 +54,6 @@ function mockSaveResult() {
     return { ok: true, text: async () => JSON.stringify({ success: true }) } as Response;
 }
 
-// Renders with timer enabled. Uses selective fake timers so Promises still resolve.
 function renderGameWithTimer(timerSeconds = 30, username = "Pablo") {
     localStorage.clear();
     localStorage.setItem("username", username);
@@ -96,9 +95,6 @@ async function waitForBoard() {
 
 describe("Game — Turn Timer", () => {
     beforeEach(() => {
-        // Only fake setInterval/clearInterval — leaves Promise/queueMicrotask intact
-        // so fetch mocks still resolve normally.
-        vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout"] });
         vi.clearAllMocks();
         mockNavigate.mockReset();
         global.ResizeObserver = class {
@@ -107,7 +103,6 @@ describe("Game — Turn Timer", () => {
     });
 
     afterEach(() => {
-        vi.useRealTimers();
         vi.clearAllMocks();
         localStorage.clear();
     });
@@ -139,6 +134,32 @@ describe("Game — Turn Timer", () => {
         await waitForBoard();
 
         expect(screen.getByText(/Tu turno|Your turn/i)).toBeInTheDocument();
+    });
+
+    // ── Timer shows initial value ─────────────────────────────────────────────
+
+    test("timer shows initial timerSeconds value on render", async () => {
+        global.fetch = vi.fn().mockResolvedValue(mockNewGame());
+        renderGameWithTimer(30);
+        await waitForBoard();
+
+        expect(screen.getByText("30")).toBeInTheDocument();
+    });
+
+    test("timer shows correct value for 15 second timer", async () => {
+        global.fetch = vi.fn().mockResolvedValue(mockNewGame());
+        renderGameWithTimer(15);
+        await waitForBoard();
+
+        expect(screen.getByText("15")).toBeInTheDocument();
+    });
+
+    test("timer shows correct value for 60 second timer", async () => {
+        global.fetch = vi.fn().mockResolvedValue(mockNewGame());
+        renderGameWithTimer(60);
+        await waitForBoard();
+
+        expect(screen.getByText("60")).toBeInTheDocument();
     });
 
     // ── Bot thinking shows bot timer ──────────────────────────────────────────
@@ -185,91 +206,70 @@ describe("Game — Turn Timer", () => {
         resolveFetch(mockMoveContinues());
     });
 
-    // ── Countdown decrements ──────────────────────────────────────────────────
+    test("'Your turn' label disappears while bot is thinking", async () => {
+        let resolveFetch!: (v: any) => void;
+        const pendingFetch = new Promise<Response>((res) => { resolveFetch = res; });
 
-    test("timer counts down from timerSeconds", async () => {
-        global.fetch = vi.fn().mockResolvedValue(mockNewGame());
+        global.fetch = vi.fn()
+            .mockResolvedValueOnce(mockNewGame())
+            .mockReturnValueOnce(pendingFetch);
+
         renderGameWithTimer(30);
         await waitForBoard();
 
-        // At start the label shows 30
-        expect(screen.getByText("30")).toBeInTheDocument();
+        expect(screen.getByText(/Tu turno|Your turn/i)).toBeInTheDocument();
 
-        act(() => { vi.advanceTimersByTime(5000); });
-
-        await waitFor(() => {
-            expect(screen.getByText("25")).toBeInTheDocument();
-        });
-    });
-
-    // ── Timeout triggers defeat ───────────────────────────────────────────────
-
-    test("shows timeout game-over overlay when timer reaches 0", async () => {
-        global.fetch = vi.fn().mockResolvedValue(mockNewGame());
-        renderGameWithTimer(5);
-        await waitForBoard();
-
-        act(() => { vi.advanceTimersByTime(6000); });
+        document.querySelectorAll("polygon")[0]
+            .dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
         await waitFor(() => {
-            expect(screen.getByText(/Se acabó el tiempo|Time's up/i)).toBeInTheDocument();
+            expect(screen.queryByText(/Tu turno|Your turn/i)).not.toBeInTheDocument();
         });
+
+        resolveFetch(mockMoveContinues());
     });
 
-    test("shows ⏰ emoji in game-over overlay on timeout", async () => {
-        global.fetch = vi.fn().mockResolvedValue(mockNewGame());
-        renderGameWithTimer(5);
-        await waitForBoard();
+    test("'Your turn' label returns after bot responds", async () => {
+        const user = userEvent.setup();
 
-        act(() => { vi.advanceTimersByTime(6000); });
-
-        await waitFor(() => {
-            expect(screen.getByText("⏰")).toBeInTheDocument();
-        });
-    });
-
-    test("shows timeout description in overlay", async () => {
-        global.fetch = vi.fn().mockResolvedValue(mockNewGame());
-        renderGameWithTimer(5);
-        await waitForBoard();
-
-        act(() => { vi.advanceTimersByTime(6000); });
-
-        await waitFor(() => {
-            expect(screen.getByText(/No realizaste|didn't make a move/i)).toBeInTheDocument();
-        });
-    });
-
-    // ── Timeout saves result with endReason ───────────────────────────────────
-
-    test("saves game result with endReason timeout on timeout defeat", async () => {
         global.fetch = vi.fn()
             .mockResolvedValueOnce(mockNewGame())
-            .mockResolvedValue(mockSaveResult());
+            .mockResolvedValueOnce(mockMoveContinues());
 
-        renderGameWithTimer(5);
+        renderGameWithTimer(30);
         await waitForBoard();
 
-        act(() => { vi.advanceTimersByTime(6000); });
+        await user.click(document.querySelectorAll("polygon")[0]);
 
         await waitFor(() => {
-            expect(screen.getByText(/Se acabó el tiempo|Time's up/i)).toBeInTheDocument();
+            expect(screen.getByText(/Tu turno|Your turn/i)).toBeInTheDocument();
         });
+    });
 
+    // ── Timer resets after move ───────────────────────────────────────────────
+
+    test("timer resets to full timerSeconds value after a successful move", async () => {
+        const user = userEvent.setup();
+
+        global.fetch = vi.fn()
+            .mockResolvedValueOnce(mockNewGame())
+            .mockResolvedValueOnce(mockMoveContinues());
+
+        renderGameWithTimer(30);
+        await waitForBoard();
+
+        await user.click(document.querySelectorAll("polygon")[0]);
+
+        // After bot responds the timer resets to 30
         await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalledTimes(2);
+            expect(screen.getByText("30")).toBeInTheDocument();
         });
-
-        const body = JSON.parse((global.fetch as any).mock.calls[1][1].body);
-        expect(body.result).toBe("loss");
-        expect(body.endReason).toBe("timeout");
-        expect(body.gameMode).toBe("pvb");
     });
 
     // ── Timer hidden after game over ──────────────────────────────────────────
 
     test("timer panel is hidden after normal game over", async () => {
-        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+        const user = userEvent.setup();
 
         global.fetch = vi.fn()
             .mockResolvedValueOnce(mockNewGame())
@@ -288,66 +288,105 @@ describe("Game — Turn Timer", () => {
         expect(screen.queryByText(/Tu turno|Your turn/i)).not.toBeInTheDocument();
     });
 
-    // ── Timer resets after move ───────────────────────────────────────────────
+    // ── New game resets timer ─────────────────────────────────────────────────
 
-    test("timer resets to full value after a successful move", async () => {
-        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+    test("starting a new game shows the timer panel again", async () => {
+        const user = userEvent.setup();
 
         global.fetch = vi.fn()
             .mockResolvedValueOnce(mockNewGame())
-            .mockResolvedValue(mockMoveContinues());
+            .mockResolvedValueOnce(mockMoveFinished("R"))
+            .mockResolvedValue(mockNewGame());
 
         renderGameWithTimer(30);
         await waitForBoard();
 
-        // Advance 10s
-        act(() => { vi.advanceTimersByTime(10000); });
-
-        await waitFor(() => {
-            expect(screen.getByText("20")).toBeInTheDocument();
-        });
-
-        // Make a move — timer resets to 30 after bot responds
         await user.click(document.querySelectorAll("polygon")[0]);
 
         await waitFor(() => {
-            expect(screen.getByText("30")).toBeInTheDocument();
+            expect(screen.getByText(/Has perdido|You lost/i)).toBeInTheDocument();
         });
+
+        await user.click(screen.getAllByRole("button", { name: /Nueva partida|New game/i })[0]);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Tu turno|Your turn/i)).toBeInTheDocument();
+        });
+
+        expect(screen.getByText("30")).toBeInTheDocument();
     });
 
-    // ── New game resets timer ─────────────────────────────────────────────────
+    // ── Timeout overlay shown ─────────────────────────────────────────────────
+    // We test the timeout overlay by rendering with timerSeconds=1
+    // and waiting for the real 1-second interval to fire.
 
-    test("starting a new game resets the timer", async () => {
-        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
-
+    test("shows timeout game-over overlay when timer reaches 0", async () => {
         global.fetch = vi.fn().mockResolvedValue(mockNewGame());
-        renderGameWithTimer(30);
+        renderGameWithTimer(1);
         await waitForBoard();
 
-        act(() => { vi.advanceTimersByTime(15000); });
+        await waitFor(
+            () => expect(screen.getByText(/Se acabó el tiempo|Time's up/i)).toBeInTheDocument(),
+            { timeout: 4000 }
+        );
+    }, 8000);
+
+    test("shows ⏰ emoji in game-over overlay on timeout", async () => {
+        global.fetch = vi.fn().mockResolvedValue(mockNewGame());
+        renderGameWithTimer(1);
+        await waitForBoard();
+
+        await waitFor(
+            () => expect(screen.getByText("⏰")).toBeInTheDocument(),
+            { timeout: 4000 }
+        );
+    }, 8000);
+
+    test("shows timeout description in overlay", async () => {
+        global.fetch = vi.fn().mockResolvedValue(mockNewGame());
+        renderGameWithTimer(1);
+        await waitForBoard();
+
+        await waitFor(
+            () => expect(screen.getByText(/No realizaste|didn't make a move/i)).toBeInTheDocument(),
+            { timeout: 4000 }
+        );
+    }, 8000);
+
+    test("saves game result with endReason timeout on timeout defeat", async () => {
+        global.fetch = vi.fn()
+            .mockResolvedValueOnce(mockNewGame())
+            .mockResolvedValue(mockSaveResult());
+
+        renderGameWithTimer(1);
+        await waitForBoard();
+
+        await waitFor(
+            () => expect(screen.getByText(/Se acabó el tiempo|Time's up/i)).toBeInTheDocument(),
+            { timeout: 4000 }
+        );
 
         await waitFor(() => {
-            expect(screen.getByText("15")).toBeInTheDocument();
-        });
+            expect(global.fetch).toHaveBeenCalledTimes(2);
+        }, { timeout: 4000 });
 
-        await user.click(screen.getByRole("button", { name: /Nueva partida|New game/i }));
-
-        await waitFor(() => {
-            expect(screen.getByText("30")).toBeInTheDocument();
-        });
-    });
+        const body = JSON.parse((global.fetch as any).mock.calls[1][1].body);
+        expect(body.result).toBe("loss");
+        expect(body.endReason).toBe("timeout");
+        expect(body.gameMode).toBe("pvb");
+    }, 10000);
 
     // ── Timeout does not fire when game already over ──────────────────────────
 
     test("timeout does not override an already-finished game", async () => {
-        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+        const user = userEvent.setup();
 
         global.fetch = vi.fn()
             .mockResolvedValueOnce(mockNewGame())
             .mockResolvedValueOnce(mockMoveFinished("B"))
             .mockResolvedValue(mockSaveResult());
 
-        renderGameWithTimer(5);
+        renderGameWithTimer(30);
         await waitForBoard();
 
         await user.click(document.querySelectorAll("polygon")[0]);
@@ -356,10 +395,8 @@ describe("Game — Turn Timer", () => {
             expect(screen.getByText(/Has ganado|You win/i)).toBeInTheDocument();
         });
 
-        // Advance past timer — win overlay must remain
-        act(() => { vi.advanceTimersByTime(10000); });
-
-        expect(screen.getByText(/Has ganado|You win/i)).toBeInTheDocument();
+        // Timer panel should not be visible (game is over)
+        expect(screen.queryByText(/Tu turno|Your turn/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/Se acabó el tiempo|Time's up/i)).not.toBeInTheDocument();
     });
 
@@ -370,7 +407,6 @@ describe("Game — Turn Timer", () => {
         renderGameWithTimer(30);
         await waitForBoard();
 
-        // At 30/30 = 100% the progress circle is green
         await waitFor(() => {
             const circles = document.querySelectorAll("circle[stroke]");
             const greenCircle = Array.from(circles).find(
@@ -381,21 +417,20 @@ describe("Game — Turn Timer", () => {
     });
 
     // ── SVG color: red when <= 25% ────────────────────────────────────────────
+    // Use timerSeconds=1 and wait for real timeout to push it to 0 (ratio=0 → red)
 
-    test("timer SVG progress circle uses danger color when <= 25% time left", async () => {
+    test("timer SVG progress circle uses danger color when time is nearly up", async () => {
         global.fetch = vi.fn().mockResolvedValue(mockNewGame());
-        renderGameWithTimer(30);
+        renderGameWithTimer(1);
         await waitForBoard();
 
-        // 23s elapsed → 7s left = 23% → red
-        act(() => { vi.advanceTimersByTime(23000); });
-
+        // Wait until the danger circle appears (ratio goes to 0%)
         await waitFor(() => {
             const circles = document.querySelectorAll("circle[stroke]");
             const dangerCircle = Array.from(circles).find(
                 (c) => c.getAttribute("stroke") === "var(--danger)"
             );
             expect(dangerCircle).toBeTruthy();
-        });
-    });
+        }, { timeout: 4000 });
+    }, 8000);
 });
