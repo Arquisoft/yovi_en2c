@@ -29,30 +29,34 @@ function renderStatistics(username = "Pablo", token = "fake-token") {
   );
 }
 
-function mockFetchStats(overrides = {}) {
-  const defaultStats = {
-    totalGames: 10,
-    wins: 7,
-    losses: 3,
-    winRate: 70,
-    pvbGames: 8,
-    pvpGames: 2,
-    lastFive: [
-      { opponent: "heuristic_bot",      result: "win",  boardSize: 7,  gameMode: "pvb", date: "2026-04-13T10:00:00Z" },
-      { opponent: "alfa_beta_bot",       result: "loss", boardSize: 9,  gameMode: "pvb", date: "2026-04-12T10:00:00Z" },
-      { opponent: "minimax_bot",         result: "win",  boardSize: 7,  gameMode: "pvb", date: "2026-04-11T10:00:00Z" },
-      { opponent: "carlos",              result: "win",  boardSize: 7,  gameMode: "pvp", date: "2026-04-10T10:00:00Z" },
-      { opponent: "monte_carlo_extreme", result: "loss", boardSize: 11, gameMode: "pvb", date: "2026-04-09T10:00:00Z" },
-    ],
-    ...overrides,
-  };
+const DEFAULT_LAST_FIVE = [
+  { opponent: "heuristic_bot",      result: "win",  boardSize: 7,  gameMode: "pvb", date: "2026-04-13T10:00:00Z" },
+  { opponent: "alfa_beta_bot",       result: "loss", boardSize: 9,  gameMode: "pvb", date: "2026-04-12T10:00:00Z" },
+  { opponent: "minimax_bot",         result: "win",  boardSize: 7,  gameMode: "pvb", date: "2026-04-11T10:00:00Z" },
+  { opponent: "carlos",              result: "win",  boardSize: 7,  gameMode: "pvp", date: "2026-04-10T10:00:00Z" },
+  { opponent: "monte_carlo_extreme", result: "loss", boardSize: 11, gameMode: "pvb", date: "2026-04-09T10:00:00Z" },
+];
 
-  global.fetch = vi.fn().mockResolvedValueOnce({
+const DEFAULT_STATS = {
+  totalGames: 10, wins: 7, losses: 3, winRate: 70,
+  pvbGames: 8, pvpGames: 2,
+  lastFive: DEFAULT_LAST_FIVE,
+};
+
+function makeStatsResponse(overrides = {}) {
+  return {
     ok: true,
-    json: async () => ({ success: true, username: "Pablo", stats: defaultStats }),
-  } as Response);
+    json: async () => ({ success: true, username: "Pablo", stats: { ...DEFAULT_STATS, ...overrides } }),
+  } as Response;
+}
 
-  return defaultStats;
+// Mocks fetch N times with the same stats payload
+function mockFetchStats(times = 1) {
+  let mock = vi.fn();
+  for (let i = 0; i < times; i++) {
+    mock = mock.mockResolvedValueOnce(makeStatsResponse());
+  }
+  global.fetch = mock;
 }
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
@@ -164,7 +168,7 @@ describe("Statistics", () => {
     expect(screen.queryByText("monte_carlo_extreme")).not.toBeInTheDocument();
   });
 
-  test("PvP opponent username is displayed unchanged", async () => {
+  test("PvP opponent username is displayed unchanged in ES", async () => {
     mockFetchStats();
     renderStatistics();
     await screen.findByText("Bot - Fácil");
@@ -172,13 +176,14 @@ describe("Statistics", () => {
   });
 
   // ── Bot label mapping (EN) ────────────────────────────────────────────────
+  // Switching language triggers a re-fetch because t() changes.
+  // We mock fetch TWICE: once for the initial load, once for the refetch after language change.
 
   test("displays 'Bot - Easy' instead of heuristic_bot in EN", async () => {
-    mockFetchStats();
+    mockFetchStats(2); // initial + refetch after lang change
     const { getByRole } = renderStatistics();
-    await screen.findByText("Bot - Fácil");
 
-    // Switch to EN
+    await screen.findByText("Bot - Fácil");
     await userEvent.click(getByRole("button", { name: /^EN$/i }));
 
     await waitFor(() => {
@@ -188,34 +193,36 @@ describe("Statistics", () => {
   });
 
   test("displays 'Bot - Hard' instead of alfa_beta_bot in EN", async () => {
-    mockFetchStats();
+    mockFetchStats(2);
     const { getByRole } = renderStatistics();
-    await screen.findByText("Bot - Fácil");
 
+    await screen.findByText("Bot - Fácil");
     await userEvent.click(getByRole("button", { name: /^EN$/i }));
 
     await waitFor(() => {
       expect(screen.getByText("Bot - Hard")).toBeInTheDocument();
     });
+    expect(screen.queryByText("alfa_beta_bot")).not.toBeInTheDocument();
   });
 
   test("displays 'Bot - Medium' instead of minimax_bot in EN", async () => {
-    mockFetchStats();
+    mockFetchStats(2);
     const { getByRole } = renderStatistics();
-    await screen.findByText("Bot - Fácil");
 
+    await screen.findByText("Bot - Fácil");
     await userEvent.click(getByRole("button", { name: /^EN$/i }));
 
     await waitFor(() => {
       expect(screen.getByText("Bot - Medium")).toBeInTheDocument();
     });
+    expect(screen.queryByText("minimax_bot")).not.toBeInTheDocument();
   });
 
   test("PvP username remains unchanged after switching to EN", async () => {
-    mockFetchStats();
+    mockFetchStats(2);
     const { getByRole } = renderStatistics();
-    await screen.findByText("Bot - Fácil");
 
+    await screen.findByText("Bot - Fácil");
     await userEvent.click(getByRole("button", { name: /^EN$/i }));
 
     await waitFor(() => {
@@ -318,13 +325,7 @@ describe("Statistics", () => {
     const user = userEvent.setup();
     global.fetch = vi.fn()
         .mockRejectedValueOnce(new Error("Network error"))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            success: true, username: "Pablo",
-            stats: { totalGames: 5, wins: 4, losses: 1, winRate: 80, pvbGames: 5, pvpGames: 0, lastFive: [] },
-          }),
-        } as Response);
+        .mockResolvedValueOnce(makeStatsResponse({ totalGames: 5, wins: 4, losses: 1, winRate: 80, lastFive: [] }));
 
     renderStatistics();
     await screen.findByRole("button", { name: /Reintentar|Retry/i });
@@ -338,14 +339,7 @@ describe("Statistics", () => {
 
   test("refresh button triggers a new fetch", async () => {
     const user = userEvent.setup();
-    const payload = {
-      success: true, username: "Pablo",
-      stats: { totalGames: 10, wins: 7, losses: 3, winRate: 70, pvbGames: 8, pvpGames: 2, lastFive: [] },
-    };
-    global.fetch = vi.fn()
-        .mockResolvedValueOnce({ ok: true, json: async () => payload } as Response)
-        .mockResolvedValueOnce({ ok: true, json: async () => payload } as Response);
-
+    mockFetchStats(2);
     renderStatistics();
     await screen.findByText(/Partidas jugadas|Games played/i);
     await user.click(screen.getByRole("button", { name: /Actualizar|Refresh/i }));
