@@ -473,7 +473,13 @@ body {
   to   { transform: rotate(360deg); }
 }
 
-/* Wrapper that places the board and timer side by side */
+/* Pulsing animation for the hint highlighted cell */
+@keyframes hint-pulse {
+  from { opacity: 0.6; }
+  to   { opacity: 1;   }
+}
+
+/* Wrapper that places the board and side panel side by side */
 .game-board-area {
   display: flex;
   flex-direction: row;
@@ -496,8 +502,20 @@ body {
   flex: 0 0 auto;
 }
 
-/* Timer panel sits to the right of the board.
-   Fixed dimensions so swapping between player/bot timer never shifts the layout. */
+/* Side panel: holds the timer (optional) and the hint button.
+   Fixed width so swapping between player/bot timer or showing/hiding
+   the timer section never shifts the board layout. */
+.game-side-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+/* Legacy alias kept for backward compatibility during migration */
 .game-timer-panel {
   display: flex;
   flex-direction: column;
@@ -563,16 +581,56 @@ body {
   animation: bot-spin 1s linear infinite;
 }
 
-/* On small screens stack the timer below the board */
+/* ── HINT BUTTON ─────────────────────────────────────────────────────────────
+   Sits below the timer inside .game-side-panel.
+   Width matches the panel so it never causes horizontal overflow. */
+.game-hint-btn {
+  width: 100%;
+  padding: 8px 6px;
+  border-radius: var(--r2);
+  border: 1px solid rgba(254,235,160,.45);
+  background: rgba(254,235,160,.10);
+  color: var(--amber);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.3;
+  word-break: break-word;
+  transition: background .12s ease, opacity .12s ease, transform .08s ease;
+}
+
+.game-hint-btn:hover:not(:disabled) {
+  background: rgba(254,235,160,.18);
+  transform: translateY(-1px);
+}
+
+.game-hint-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* On small screens stack the side panel below the board */
 @media (max-width: 560px) {
   .game-board-area {
     flex-direction: column;
     gap: 12px;
   }
 
+  .game-side-panel {
+    flex-direction: row;
+    gap: 12px;
+    width: auto;
+  }
+
   .game-timer-panel {
     flex-direction: row;
     gap: 12px;
     min-width: unset;
+  }
+
+  .game-hint-btn {
+    width: auto;
+    padding: 8px 14px;
   }
 }
