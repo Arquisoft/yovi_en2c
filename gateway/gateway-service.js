@@ -14,13 +14,6 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
-// PROMETHEUS METRICS MIDDLEWARE
-// express-prom-bundle automatically exposes a /metrics endpoint
-// and instruments all requests with: http_request_duration_seconds (histogram),
-// http_requests_total (counter), and http_request_size_bytes / http_response_size_bytes.
-// includeMethod: adds HTTP method label (GET, POST...)
-// includePath: adds path label (/login, /game/new...)
-// includeStatusCode: adds HTTP status code label (200, 404, 500...)
 const metricsMiddleware = promBundle({
   includeMethod: true,
   includePath: true,
@@ -31,7 +24,6 @@ const metricsMiddleware = promBundle({
 });
 app.use(metricsMiddleware);
 
-// Internal network communication -> no need for https
 const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://gamey:4000" || "http://localhost:4000"; //NOSONAR
 const AUTH_BASE_URL = process.env.AUTH_BASE_URL || "http://authentication:5000" || "http://localhost:5000"; //NOSONAR
 const USERS_BASE_URL = process.env.USERS_BASE_URL || "http://users:3000" || "http://localhost:3000"; //NOSONAR
@@ -40,7 +32,6 @@ const AUTH_REGISTER_URL = `${AUTH_BASE_URL}/register`;
 const AUTH_LOGIN_URL = `${AUTH_BASE_URL}/login`;
 const AUTH_VERIFY_URL = `${AUTH_BASE_URL}/verify`;
 const GAME_RESULT_URL = `${USERS_BASE_URL}/gameresult`;
-const USERS_STATS_URL = `${USERS_BASE_URL}/stats`;
 
 const PVB_MOVE_ROUTES = {
   random_bot: `${GAMEY_BASE_URL}/v1/game/pvb/random_bot`,
@@ -75,10 +66,7 @@ function forwardAxiosError(res, error, fallbackMessage) {
     });
   }
 
-  return res.status(502).json({
-    ok: false,
-    error: fallbackMessage,
-  });
+  return res.status(502).json({ ok: false, error: fallbackMessage });
 }
 
 app.post("/game/new", async (req, res) => {
@@ -133,13 +121,32 @@ app.post("/game/bot/choose", async (req, res) => {
   }
 });
 
+// POST /hint
+// Always uses alfa_beta_bot to compute the suggestion, regardless of the bot
+// the player is currently facing. This ensures hints are always high quality.
+const HINT_BOT_ID = "alfa_beta_bot";
+
+app.post("/hint", async (req, res) => {
+  const { yen } = req.body;
+
+  if (!yen) return res.status(400).json({ ok: false, error: "Missing YEN" });
+
+  const route = BOT_CHOOSE_ROUTES[HINT_BOT_ID];
+  if (!route) return res.status(400).json({ ok: false, error: "Hint bot unavailable" });
+
+  try {
+    const response = await axios.post(route, yen); // NOSONAR
+    const coords = response.data?.coords ?? response.data;
+    return res.status(200).json({ ok: true, coords });
+  } catch (error) {
+    return forwardAxiosError(res, error, "Game server unavailable");
+  }
+});
+
 app.get("/game/status", async (req, res) => {
   try {
     const response = await axios.get(GAME_STATUS_URL);
-    return res.status(200).json({
-      ok: true,
-      message: response.data,
-    });
+    return res.status(200).json({ ok: true, message: response.data });
   } catch (error) {
     return forwardAxiosError(res, error, "Game server unavailable");
   }
@@ -187,11 +194,8 @@ app.post("/register", async (req, res) => {
 app.get("/verify", async (req, res) => {
   try {
     const response = await axios.get(AUTH_VERIFY_URL, {
-      headers: {
-        Authorization: req.headers.authorization,
-      },
+      headers: { Authorization: req.headers.authorization },
     });
-
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Auth service unavailable");
