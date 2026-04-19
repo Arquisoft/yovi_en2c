@@ -4,7 +4,6 @@ import { useI18n } from "./i18n/I18nProvider";
 import Navbar from "./Navbar";
 import logo from "../img/logo.png";
 
-// Definimos las dificultades y el bot correspondiente
 const difficulties = [
     { id: "heuristic_bot", nameKey: "difficulty.easy", botId: "heuristic_bot" },
     { id: "minimax_bot", nameKey: "difficulty.medium", botId: "minimax_bot" },
@@ -17,6 +16,9 @@ const PRESET_SIZES = [5, 7, 9, 11];
 const MIN_RECOMMENDED = 5;
 const MAX_RECOMMENDED = 11;
 
+// 0 = no limit
+const PRESET_TIMERS = [0, 15, 30, 60];
+
 const SelectDifficulty: React.FC = () => {
     const navigate = useNavigate();
     const { t } = useI18n();
@@ -24,7 +26,16 @@ const SelectDifficulty: React.FC = () => {
     const [selected, setSelected] = useState<string>("");
     const [presetSize, setPresetSize] = useState<number | null>(7);
     const [customSize, setCustomSize] = useState<string>("");
+
+    // Timer state: presetTimer = selected preset (null = custom), customTimer = raw input
+    const [presetTimer, setPresetTimer] = useState<number | null>(0);
+    const [customTimer, setCustomTimer] = useState<string>("");
+
     const boardSize = customSize !== "" ? parseInt(customSize, 10) : (presetSize ?? 7);
+    const timerSeconds: number =
+        customTimer !== ""
+            ? parseInt(customTimer, 10)
+            : (presetTimer ?? 0);
 
     useEffect(() => {
         const storedUser = localStorage.getItem("username");
@@ -41,10 +52,6 @@ const SelectDifficulty: React.FC = () => {
         navigate("/", { replace: true });
     };
 
-    const handleSelect = (botId: string) => {
-        setSelected(botId);
-    };
-
     const handlePresetSize = (size: number) => {
         setPresetSize(size);
         setCustomSize("");
@@ -55,6 +62,16 @@ const SelectDifficulty: React.FC = () => {
         setCustomSize(e.target.value);
     };
 
+    const handlePresetTimer = (seconds: number) => {
+        setPresetTimer(seconds);
+        setCustomTimer("");
+    };
+
+    const handleCustomTimer = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPresetTimer(null);
+        setCustomTimer(e.target.value);
+    };
+
     const sizeWarning = (): string | null => {
         if (!boardSize || isNaN(boardSize)) return null;
         if (boardSize < MIN_RECOMMENDED) return t("boardsize.warning.small");
@@ -62,17 +79,32 @@ const SelectDifficulty: React.FC = () => {
         return null;
     };
 
+    const timerWarning = (): string | null => {
+        if (timerSeconds === 0) return null;
+        if (isNaN(timerSeconds)) return null;
+        if (timerSeconds < 5) return t("timer.warning.short");
+        if (timerSeconds > 300) return t("timer.warning.long");
+        return null;
+    };
+
     const handleStart = () => {
         if (selected) {
             localStorage.setItem("selectedBot", selected);
-            navigate("/game", { state: { username, bot: selected, boardSize } });
+            navigate("/game", {
+                state: {
+                    username,
+                    bot: selected,
+                    boardSize,
+                    timerSeconds: isNaN(timerSeconds) ? 0 : timerSeconds,
+                },
+            });
         }
     };
 
-
     if (!username) return null;
 
-    const warning = sizeWarning();
+    const sizeWarn = sizeWarning();
+    const timerWarn = timerWarning();
 
     return (
         <div className="page">
@@ -80,7 +112,6 @@ const SelectDifficulty: React.FC = () => {
             <main className="container" style={{ paddingTop: 40, textAlign: "center" }}>
                 <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
 
-                    {/* Cabecera */}
                     <div className="hero" style={{ textAlign: "center" }}>
                         <div className="hero__top">
                             <img src={logo} alt="GameY" className="hero__logo" />
@@ -89,14 +120,14 @@ const SelectDifficulty: React.FC = () => {
                         <p className="hero__subtitle">{t("difficulty.subtitle")}</p>
                     </div>
 
-                    {/* Div para sleeccion de bot */}
+                    {/* Bot selection */}
                     <div className="card">
                         <h2 className="card__title">{t("difficulty.subtitle")}</h2>
                         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
                             {difficulties.map((diff) => (
                                 <button
                                     key={diff.id}
-                                    onClick={() => handleSelect(diff.botId)}
+                                    onClick={() => setSelected(diff.botId)}
                                     className={`btn ${selected === diff.botId ? "btn--primary" : ""}`}
                                     style={{ width: "100%", textAlign: "center" }}
                                 >
@@ -106,11 +137,10 @@ const SelectDifficulty: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Div para seleccion de tamaño de tablero */}
+                    {/* Board size */}
                     <div className="card">
                         <h2 className="card__title">{t("boardsize.title")}</h2>
                         <p className="card__text">{t("boardsize.subtitle")}</p>
-
                         <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 12, flexWrap: "wrap" }}>
                             {PRESET_SIZES.map((size) => (
                                 <button
@@ -123,8 +153,6 @@ const SelectDifficulty: React.FC = () => {
                                 </button>
                             ))}
                         </div>
-
-                        {/* Textfield tamaño personalizado */}
                         <input
                             type="number"
                             min={1}
@@ -134,9 +162,7 @@ const SelectDifficulty: React.FC = () => {
                             className="form-input"
                             style={{ marginTop: 12, textAlign: "center" }}
                         />
-
-                        {/* Alerta amarilla — solo visible si hay advertencia */}
-                        {warning && (
+                        {sizeWarn && (
                             <p style={{
                                 marginTop: 10,
                                 padding: "8px 12px",
@@ -147,12 +173,53 @@ const SelectDifficulty: React.FC = () => {
                                 fontWeight: 700,
                                 fontSize: "0.9rem",
                             }}>
-                                {warning}
+                                {sizeWarn}
                             </p>
                         )}
                     </div>
 
-                    {/* Botón de inicio */}
+                    {/* Turn timer */}
+                    <div className="card">
+                        <h2 className="card__title">{t("timer.title")}</h2>
+                        <p className="card__text">{t("timer.subtitle")}</p>
+                        <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 12, flexWrap: "wrap" }}>
+                            {PRESET_TIMERS.map((seconds) => (
+                                <button
+                                    key={seconds}
+                                    onClick={() => handlePresetTimer(seconds)}
+                                    className={`btn ${presetTimer === seconds ? "btn--primary" : ""}`}
+                                    style={{ minWidth: 60 }}
+                                >
+                                    {seconds === 0 ? t("timer.noLimit") : `${seconds}s`}
+                                </button>
+                            ))}
+                        </div>
+                        <input
+                            type="number"
+                            min={5}
+                            max={300}
+                            value={customTimer}
+                            onChange={handleCustomTimer}
+                            placeholder={t("timer.custom.placeholder")}
+                            className="form-input"
+                            style={{ marginTop: 12, textAlign: "center" }}
+                        />
+                        {timerWarn && (
+                            <p style={{
+                                marginTop: 10,
+                                padding: "8px 12px",
+                                borderRadius: 10,
+                                background: "rgba(254,235,160,.15)",
+                                border: "1px solid rgba(254,235,160,.50)",
+                                color: "#feeba0",
+                                fontWeight: 700,
+                                fontSize: "0.9rem",
+                            }}>
+                                {timerWarn}
+                            </p>
+                        )}
+                    </div>
+
                     <button
                         onClick={handleStart}
                         disabled={!selected}
@@ -162,7 +229,6 @@ const SelectDifficulty: React.FC = () => {
                         {t("difficulty.start")}
                     </button>
 
-                    {/* Botón de instrucciones */}
                     <button
                         type="button"
                         className="btn"

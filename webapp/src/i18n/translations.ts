@@ -145,6 +145,18 @@ export const translations: Record<Lang, Dict> = {
     "stats.error.generic": "Error al cargar las estadísticas",
     "stats.error.network": "Error de red",
     "common.stats": "Estadísticas",
+
+    //Timer
+    "timer.title": "Tiempo por turno",
+    "timer.subtitle": "El jugador pierde si no mueve a tiempo. 0 = sin límite.",
+    "timer.noLimit": "Sin límite",
+    "timer.custom.placeholder": "Segundos personalizados (5–300)",
+    "timer.warning.short": "El tiempo mínimo recomendado es 5 segundos",
+    "timer.warning.long": "El tiempo máximo recomendado es 300 segundos",
+    "timer.botThinking": "El bot está pensando…",
+    "timer.yourTurn": "Tu turno",
+    "timer.timeout.lost": "¡Se acabó el tiempo! Has perdido",
+    "timer.timeout.description": "No realizaste un movimiento a tiempo.",
   },
 
   en: {
@@ -285,5 +297,17 @@ export const translations: Record<Lang, Dict> = {
     "stats.error.generic": "Failed to load statistics",
     "stats.error.network": "Network error",
     "common.stats": "Statistics",
+
+    //Timer
+    "timer.title": "Turn Timer",
+    "timer.subtitle": "Player loses if they don't move in time. 0 = no limit.",
+    "timer.noLimit": "No limit",
+    "timer.custom.placeholder": "Custom seconds (5–300)",
+    "timer.warning.short": "Minimum recommended time is 5 seconds",
+    "timer.warning.long": "Maximum recommended time is 300 seconds",
+    "timer.botThinking": "Bot is thinking…",
+    "timer.yourTurn": "Your turn",
+    "timer.timeout.lost": "Time's up! You lost",
+    "timer.timeout.description": "You didn't make a move in time.",
   },
 };
