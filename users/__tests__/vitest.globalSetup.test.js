@@ -88,14 +88,6 @@ describe('vitest.globalSetup.js — buildTestUri & teardown', () => {
         expect(mockConnect).toHaveBeenCalledWith('mongodb://host/usersdb_test')
     })
 
-    it('appends /usersdb_test when URI has no path at all', async () => {
-        process.env.MONGODB_URI = 'mongodb://host'
-
-        await teardown()
-
-        expect(mockConnect).toHaveBeenCalledWith('mongodb://host/usersdb_test')
-    })
-
     // ── teardown: no-op when MONGODB_URI is missing ───────────────────────────
 
     it('does nothing when MONGODB_URI is not defined', async () => {

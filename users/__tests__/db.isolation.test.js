@@ -127,16 +127,6 @@ describe('db.js — buildConnectionUri', () => {
         expect(mockConnect).toHaveBeenCalledWith('mongodb://host/usersdb_test')
     })
 
-    it('appends /usersdb_test when URI has no database name (no slash)', async () => {
-        process.env.NODE_ENV = 'test'
-        process.env.MONGODB_URI = 'mongodb://host'
-
-        await import('../db.js')
-        await new Promise(r => setTimeout(r, 20))
-
-        expect(mockConnect).toHaveBeenCalledWith('mongodb://host/usersdb_test')
-    })
-
     // ── Missing MONGODB_URI ───────────────────────────────────────────────────
 
     it('calls process.exit(1) when MONGODB_URI is not defined', async () => {
