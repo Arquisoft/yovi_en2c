@@ -7,15 +7,15 @@ import { useI18n } from "./i18n/I18nProvider";
 type WinningEdge = [[number, number], [number, number]];
 
 type GatewayResponse =
-  | {
-      ok: true;
-      yen?: any;
-      finished?: boolean;
-      winner?: string | null;
-      winning_edges?: WinningEdge[];
-      message?: string;
-    }
-  | { ok: false; error: string; details?: any };
+    | {
+  ok: true;
+  yen?: any;
+  finished?: boolean;
+  winner?: string | null;
+  winning_edges?: WinningEdge[];
+  message?: string;
+}
+    | { ok: false; error: string; details?: any };
 
 const API_URL = "/api";
 
@@ -51,17 +51,17 @@ function useWindowSize() {
 function normalizeEdges(edgesRaw: any): WinningEdge[] {
   if (!Array.isArray(edgesRaw)) return [];
   return edgesRaw
-    .filter(
-      (e: any) =>
-        Array.isArray(e) &&
-        e.length === 2 &&
-        Array.isArray(e[0]) &&
-        Array.isArray(e[1])
-    )
-    .map((e: any) => [
-      [Number(e[0][0]), Number(e[0][1])],
-      [Number(e[1][0]), Number(e[1][1])],
-    ]);
+      .filter(
+          (e: any) =>
+              Array.isArray(e) &&
+              e.length === 2 &&
+              Array.isArray(e[0]) &&
+              Array.isArray(e[1])
+      )
+      .map((e: any) => [
+        [Number(e[0][0]), Number(e[0][1])],
+        [Number(e[1][0]), Number(e[1][1])],
+      ]);
 }
 
 function buildWinningCellSet(edgesRaw: any): Set<string> {
@@ -197,10 +197,10 @@ const Game: React.FC = () => {
   };
 
   const applyLocalHumanMove = (
-    currentYen: any,
-    row: number,
-    col: number,
-    token: string
+      currentYen: any,
+      row: number,
+      col: number,
+      token: string
   ) => {
     if (!currentYen?.layout) return currentYen;
 
@@ -216,7 +216,7 @@ const Game: React.FC = () => {
       ...currentYen,
       layout: rows.map((r: string[]) => r.join("")).join("/"),
       turn:
-        typeof currentYen.turn === "number" ? currentYen.turn + 1 : currentYen.turn,
+          typeof currentYen.turn === "number" ? currentYen.turn + 1 : currentYen.turn,
     };
   };
 
@@ -250,8 +250,8 @@ const Game: React.FC = () => {
   }, [cellSpacing, rowHeight]);
 
   const padPx = useMemo(
-    () => Math.round(Math.max(12, Math.min(28, winW * 0.03))),
-    [winW]
+      () => Math.round(Math.max(12, Math.min(28, winW * 0.03))),
+      [winW]
   );
 
   const bottomGutter = 28;
@@ -260,7 +260,7 @@ const Game: React.FC = () => {
   const boardPx = useMemo(() => {
     const byWidth = Math.floor(winW - padPx * 2);
     const byHeight = Math.floor(
-      winH - headerH - padPx * 3 - bottomGutter - extraSafety - 20
+        winH - headerH - padPx * 3 - bottomGutter - extraSafety - 20
     );
     return Math.max(220, Math.min(680, byWidth, byHeight));
   }, [winW, winH, headerH, padPx]);
@@ -278,10 +278,10 @@ const Game: React.FC = () => {
   };
 
   const saveGameResult = async (
-    result: "win" | "loss",
-    winner: string | null,
-    score: number,
-    currentBoardSize: number
+      result: "win" | "loss",
+      winner: string | null,
+      score: number,
+      currentBoardSize: number
   ) => {
     try {
       await fetch(`${API_URL}/gameresult`, {
@@ -303,10 +303,10 @@ const Game: React.FC = () => {
   };
 
   const applyFinishFromGateway = (
-    payload: any,
-    playersFixed: [string, string],
-    currentMoveCount: number,
-    currentBoardSize: number
+      payload: any,
+      playersFixed: [string, string],
+      currentMoveCount: number,
+      currentBoardSize: number
   ) => {
     const finished = typeof payload?.finished === "boolean" ? payload.finished : false;
     if (!finished) return;
@@ -326,19 +326,19 @@ const Game: React.FC = () => {
 
     const youWin = winner ? winner === playersFixed[0] : false;
     const result: "win" | "lost" | "draw" = winner
-      ? youWin
-        ? "win"
-        : "lost"
-      : "draw";
+        ? youWin
+            ? "win"
+            : "lost"
+        : "draw";
 
     setGameOver({ result, winner });
 
     if (result !== "draw") {
       saveGameResult(
-        result === "win" ? "win" : "loss",
-        winner,
-        currentMoveCount,
-        currentBoardSize
+          result === "win" ? "win" : "loss",
+          winner,
+          currentMoveCount,
+          currentBoardSize
       );
     }
   };
@@ -424,7 +424,7 @@ const Game: React.FC = () => {
       const nextYen = (data as any).yen;
 
       const players: [string, string] =
-        fixedPlayersRef.current ?? extractPlayers(nextYen);
+          fixedPlayersRef.current ?? extractPlayers(nextYen);
 
       if (!fixedPlayersRef.current) {
         setFixedPlayers(players);
@@ -456,7 +456,8 @@ const Game: React.FC = () => {
       return isWinningCell ? "#ff8a80" : "#d32f2f";
     }
 
-    return "#d0d0d0";
+    // Empty cell: use CSS variable so light/dark theme can override it
+    return "var(--board-cell-empty-fill)";
   };
 
   const getCellStroke = (cell: string, row: number, col: number) => {
@@ -464,283 +465,277 @@ const Game: React.FC = () => {
     const isWinningCell = !!winningPath?.cells.has(cellKey);
 
     if (isWinningCell) return "#ffffff";
-    if (cell === ".") return "#5b5b5b";
-    return "#3b3b3b";
+    if (cell === ".") return "var(--board-cell-empty-stroke)";
+    return "var(--board-cell-token-stroke)";
   };
 
   return (
-    <div
-      className="page"
-      style={{
-        height: "100dvh",
-        overflow: "auto",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Navbar username={username} onLogout={logout} />
-
-      <main
-        style={{
-          flex: "1 1 auto",
-          minHeight: 0,
-          padding: `${padPx}px`,
-          paddingBottom: `${padPx}px`,
-          fontFamily: "system-ui",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 12,
-          overflow: "auto",
-          boxSizing: "border-box",
-        }}
-      >
-        <div
-          ref={headerRef}
+      <div
+          className="page"
           style={{
-            width: "100%",
-            maxWidth: 980,
-            position: "relative",
+            height: "100dvh",
+            overflow: "auto",
             display: "flex",
             flexDirection: "column",
-            alignItems: "center",
           }}
-        >
-          <button
-            type="button"
-            onClick={() => navigate("/home", { state: { username } })}
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              padding: "8px 12px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,.18)",
-              background: "rgba(255,255,255,.06)",
-              color: "white",
-              fontWeight: 800,
-              cursor: "pointer",
-            }}
-          >
-            {t("game.back")}
-          </button>
+      >
+        <Navbar username={username} onLogout={logout} />
 
-          <h1 style={{ margin: 0, textAlign: "center", paddingTop: 6 }}>
-            {t("app.brand")}
-          </h1>
-
-          <div
+        <main
             style={{
+              flex: "1 1 auto",
+              minHeight: 0,
+              padding: `${padPx}px`,
+              paddingBottom: `${padPx}px`,
+              fontFamily: "system-ui",
               display: "flex",
-              gap: 10,
-              justifyContent: "center",
-              flexWrap: "wrap",
-              marginTop: 10,
-            }}
-          >
-            <button
-              onClick={newGame}
-              disabled={busy}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 12,
-                background: "#A52019",
-                color: "white",
-                border: "none",
-                opacity: busy ? 0.7 : 1,
-                cursor: busy ? "not-allowed" : "pointer",
-                fontWeight: 700,
-              }}
-            >
-              {t("game.new")}
-            </button>
-
-            <button
-              onClick={() => setShowInstructions((current) => !current)}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 12,
-                background: "rgba(255,255,255,.08)",
-                color: "white",
-                border: "1px solid rgba(255,255,255,.18)",
-                cursor: "pointer",
-                fontWeight: 700,
-              }}
-            >
-              {t("instructions.title")}
-            </button>
-          </div>
-
-          {error && (
-            <div
-              style={{
-                color: "red",
-                textAlign: "center",
-                fontWeight: 600,
-                marginTop: 10,
-              }}
-            >
-              {error}
-            </div>
-          )}
-        </div>
-
-        {showInstructions && (
-          <div style={{ width: "100%", maxWidth: 980 }}>
-            <InstructionsContent compact />
-          </div>
-        )}
-
-        <div
-          style={{
-            width: `${boardPx}px`,
-            height: `${boardPx}px`,
-            maxWidth: "100%",
-            maxHeight: "100%",
-            borderRadius: 18,
-            background: "linear-gradient(135deg, #FCF5E3, #F5F5F5)",
-            overflow: "hidden",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flex: "0 0 auto",
-            marginBottom: 0,
-          }}
-        >
-          <svg
-            viewBox={`0 0 ${boardWidth} ${boardWidth}`}
-            width="100%"
-            height="100%"
-            preserveAspectRatio="xMidYMid meet"
-            style={{ display: "block", touchAction: "manipulation" }}
-          >
-            {layoutMatrix.map((row, rowIndex) => {
-              const offsetX = padding + ((boardSize - row.length) * cellSpacing) / 2;
-
-              return row.map((cell, colIndex) => {
-                const x = offsetX + colIndex * cellSpacing;
-                const y = padding + rowIndex * rowHeight;
-                const clickable = cell === "." && !busy && !!yen && !gameOver;
-                const points = getHexagonPoints(x, y, pieceRadius);
-
-                return (
-                  <polygon
-                    key={`${rowIndex}-${colIndex}`}
-                    points={points}
-                    fill={getCellFill(cell, rowIndex, colIndex)}
-                    stroke={getCellStroke(cell, rowIndex, colIndex)}
-                    strokeWidth={
-                      winningPath?.cells.has(`${rowIndex}-${colIndex}`) ? 2.8 : 1.4
-                    }
-                    onClick={() => {
-                      if (!clickable) return;
-                      sendMove({ row: rowIndex, col: colIndex });
-                    }}
-                    style={{
-                      cursor: clickable ? "pointer" : "default",
-                      transition:
-                        "fill 180ms ease, stroke 180ms ease, opacity 120ms ease",
-                      opacity: cell === "." && clickable ? 0.95 : 1,
-                    }}
-                  />
-                );
-              });
-            })}
-          </svg>
-        </div>
-
-        {gameOver && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 100,
-              background: "rgba(0,0,0,0.35)",
-              backdropFilter: "blur(2px)",
-              display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
+              gap: 12,
+              overflow: "auto",
+              boxSizing: "border-box",
             }}
-          >
-            <div
+        >
+          <div
+              ref={headerRef}
               style={{
-                background:
-                  "linear-gradient(135deg, rgba(18,24,38,.78), rgba(18,24,38,.62))",
-                border: "1px solid rgba(255,255,255,.18)",
-                borderRadius: 20,
-                padding: "40px 48px",
-                textAlign: "center",
-                boxShadow: "0 24px 60px rgba(0,0,0,.6)",
+                width: "100%",
+                maxWidth: 980,
+                position: "relative",
                 display: "flex",
                 flexDirection: "column",
-                gap: 24,
-                minWidth: 260,
+                alignItems: "center",
               }}
+          >
+            <button
+                type="button"
+                onClick={() => navigate("/home", { state: { username } })}
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  padding: "8px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,.18)",
+                  background: "rgba(255,255,255,.06)",
+                  color: "white",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
             >
-              <div style={{ fontSize: 56 }}>
-                {gameOver.result === "win"
-                  ? "🏆"
-                  : gameOver.result === "lost"
-                  ? "💀"
-                  : "🤝"}
-              </div>
+              {t("game.back")}
+            </button>
 
-              <h2 style={{ margin: 0, fontSize: 28, color: "white" }}>
-                {gameOver.result === "win"
-                  ? t("game.finished.win")
-                  : gameOver.result === "lost"
-                  ? t("game.finished.lost")
-                  : t("game.finished.draw")}
-              </h2>
+            <h1 style={{ margin: 0, textAlign: "center", paddingTop: 6 }}>
+              {t("app.brand")}
+            </h1>
 
-              <div
+            <div
                 style={{
                   display: "flex",
-                  gap: 12,
+                  gap: 10,
                   justifyContent: "center",
                   flexWrap: "wrap",
+                  marginTop: 10,
                 }}
-              >
-                <button
-                  onClick={() => navigate("/home", { state: { username } })}
+            >
+              <button
+                  onClick={newGame}
+                  disabled={busy}
                   style={{
-                    padding: "12px 22px",
+                    padding: "8px 14px",
                     borderRadius: 12,
                     background: "#A52019",
                     color: "white",
                     border: "none",
-                    fontWeight: 800,
-                    fontSize: 16,
-                    cursor: "pointer",
+                    opacity: busy ? 0.7 : 1,
+                    cursor: busy ? "not-allowed" : "pointer",
+                    fontWeight: 700,
                   }}
-                >
-                  {t("game.finished.back")}
-                </button>
+              >
+                {t("game.new")}
+              </button>
 
-                <button
-                  onClick={() => {
-                    setGameOver(null);
-                    newGame();
-                  }}
+              <button
+                  onClick={() => setShowInstructions((current) => !current)}
                   style={{
-                    padding: "12px 22px",
+                    padding: "8px 14px",
                     borderRadius: 12,
-                    background: "rgba(67,195,221,.20)",
+                    background: "rgba(255,255,255,.08)",
                     color: "white",
-                    border: "1px solid rgba(67,195,221,.55)",
-                    fontWeight: 800,
-                    fontSize: 16,
+                    border: "1px solid rgba(255,255,255,.18)",
                     cursor: "pointer",
+                    fontWeight: 700,
                   }}
-                >
-                  {t("game.new")}
-                </button>
-              </div>
+              >
+                {t("instructions.title")}
+              </button>
             </div>
+
+            {error && (
+                <div
+                    style={{
+                      color: "red",
+                      textAlign: "center",
+                      fontWeight: 600,
+                      marginTop: 10,
+                    }}
+                >
+                  {error}
+                </div>
+            )}
           </div>
-        )}
-      </main>
-    </div>
+
+          {showInstructions && (
+              <div style={{ width: "100%", maxWidth: 980 }}>
+                <InstructionsContent compact />
+              </div>
+          )}
+
+          <div
+              className="board-container"
+              style={{
+                width: `${boardPx}px`,
+                height: `${boardPx}px`,
+                maxWidth: "100%",
+                maxHeight: "100%",
+                marginBottom: 0,
+              }}
+          >
+            <svg
+                viewBox={`0 0 ${boardWidth} ${boardWidth}`}
+                width="100%"
+                height="100%"
+                preserveAspectRatio="xMidYMid meet"
+                style={{ display: "block", touchAction: "manipulation" }}
+            >
+              {layoutMatrix.map((row, rowIndex) => {
+                const offsetX = padding + ((boardSize - row.length) * cellSpacing) / 2;
+
+                return row.map((cell, colIndex) => {
+                  const x = offsetX + colIndex * cellSpacing;
+                  const y = padding + rowIndex * rowHeight;
+                  const clickable = cell === "." && !busy && !!yen && !gameOver;
+                  const points = getHexagonPoints(x, y, pieceRadius);
+
+                  return (
+                      <polygon
+                          key={`${rowIndex}-${colIndex}`}
+                          points={points}
+                          fill={getCellFill(cell, rowIndex, colIndex)}
+                          stroke={getCellStroke(cell, rowIndex, colIndex)}
+                          strokeWidth={
+                            winningPath?.cells.has(`${rowIndex}-${colIndex}`) ? 2.8 : 1.4
+                          }
+                          onClick={() => {
+                            if (!clickable) return;
+                            sendMove({ row: rowIndex, col: colIndex });
+                          }}
+                          style={{
+                            cursor: clickable ? "pointer" : "default",
+                            transition:
+                                "fill 180ms ease, stroke 180ms ease, opacity 120ms ease",
+                            opacity: cell === "." && clickable ? 0.95 : 1,
+                          }}
+                      />
+                  );
+                });
+              })}
+            </svg>
+          </div>
+
+          {gameOver && (
+              <div
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 100,
+                    background: "rgba(0,0,0,0.35)",
+                    backdropFilter: "blur(2px)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+              >
+                <div
+                    style={{
+                      background:
+                          "linear-gradient(135deg, rgba(18,24,38,.78), rgba(18,24,38,.62))",
+                      border: "1px solid rgba(255,255,255,.18)",
+                      borderRadius: 20,
+                      padding: "40px 48px",
+                      textAlign: "center",
+                      boxShadow: "0 24px 60px rgba(0,0,0,.6)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 24,
+                      minWidth: 260,
+                    }}
+                >
+                  <div style={{ fontSize: 56 }}>
+                    {gameOver.result === "win"
+                        ? "🏆"
+                        : gameOver.result === "lost"
+                            ? "💀"
+                            : "🤝"}
+                  </div>
+
+                  <h2 style={{ margin: 0, fontSize: 28, color: "white" }}>
+                    {gameOver.result === "win"
+                        ? t("game.finished.win")
+                        : gameOver.result === "lost"
+                            ? t("game.finished.lost")
+                            : t("game.finished.draw")}
+                  </h2>
+
+                  <div
+                      style={{
+                        display: "flex",
+                        gap: 12,
+                        justifyContent: "center",
+                        flexWrap: "wrap",
+                      }}
+                  >
+                    <button
+                        onClick={() => navigate("/home", { state: { username } })}
+                        style={{
+                          padding: "12px 22px",
+                          borderRadius: 12,
+                          background: "#A52019",
+                          color: "white",
+                          border: "none",
+                          fontWeight: 800,
+                          fontSize: 16,
+                          cursor: "pointer",
+                        }}
+                    >
+                      {t("game.finished.back")}
+                    </button>
+
+                    <button
+                        onClick={() => {
+                          setGameOver(null);
+                          newGame();
+                        }}
+                        style={{
+                          padding: "12px 22px",
+                          borderRadius: 12,
+                          background: "rgba(67,195,221,.20)",
+                          color: "white",
+                          border: "1px solid rgba(67,195,221,.55)",
+                          fontWeight: 800,
+                          fontSize: 16,
+                          cursor: "pointer",
+                        }}
+                    >
+                      {t("game.new")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+          )}
+        </main>
+      </div>
   );
 };
 
