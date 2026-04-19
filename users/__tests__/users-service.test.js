@@ -4,16 +4,9 @@ import app from '../users-service.js'
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
 
-let isConnected = false;
-
 describe('POST /createuser', () => {
 
     beforeAll(async () => {
-        if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI;
-            await mongoose.connect(TEST_URI);
-            isConnected = true;
-        }
     });
 
     beforeEach(async () => {
@@ -199,11 +192,6 @@ describe('POST /createuser', () => {
 
     describe('POST /createuser - Generic error handling', () => {
         beforeAll(async () => {
-            if (!isConnected) {
-                const TEST_URI = process.env.MONGODB_URI || 'mongodb+srv://yovi_user:yovi1234@cluster0.xxxxx.mongodb.net/yovi_db_test';
-                await mongoose.connect(TEST_URI);
-                isConnected = true;
-            }
         });
 
         afterEach(() => {
@@ -403,11 +391,6 @@ describe('POST /createuser', () => {
 
 describe('GET /users/:username', () => {
     beforeAll(async () => {
-        if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI;
-            await mongoose.connect(TEST_URI);
-            isConnected = true;
-        }
     });
 
     beforeEach(async () => {
@@ -479,11 +462,6 @@ describe('GET /users/:username', () => {
 
 describe('GET /users', () => {
     beforeAll(async () => {
-        if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI;
-            await mongoose.connect(TEST_URI);
-            isConnected = true;
-        }
 
         await mongoose.connection.collections['users']?.deleteMany({});
 
@@ -634,11 +612,6 @@ describe('GET /users', () => {
 
 describe('POST /gameresult', () => {
     beforeAll(async () => {
-        if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI;
-            await mongoose.connect(TEST_URI);
-            isConnected = true;
-        }
 
         await mongoose.connection.collections['users']?.deleteMany({});
         await mongoose.connection.collections['gameresults']?.deleteMany({});
@@ -945,11 +918,6 @@ describe('POST /gameresult', () => {
 
     describe('POST /gameresult - Error handling', () => {
         beforeAll(async () => {
-            if (!isConnected) {
-                const TEST_URI = process.env.MONGODB_URI || 'mongodb+srv://yovi_user:yovi1234@cluster0.xxxxx.mongodb.net/yovi_db_test';
-                await mongoose.connect(TEST_URI);
-                isConnected = true;
-            }
 
             await mongoose.connection.collections['users']?.deleteMany({ username: 'jugador_error' });
             await request(app)
@@ -1138,11 +1106,6 @@ describe('POST /gameresult', () => {
 
 describe('GET /history/:username', () => {
     beforeAll(async () => {
-        if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI;
-            await mongoose.connect(TEST_URI);
-            isConnected = true;
-        }
 
         await mongoose.connection.collections['users']?.deleteMany({});
         await mongoose.connection.collections['gameresults']?.deleteMany({});
@@ -1199,11 +1162,6 @@ describe('GET /history/:username', () => {
 
     describe('GET /history/:username - Error handling', () => {
         beforeAll(async () => {
-            if (!isConnected) {
-                const TEST_URI = process.env.MONGODB_URI || 'mongodb+srv://yovi_user:yovi1234@cluster0.xxxxx.mongodb.net/yovi_db_test';
-                await mongoose.connect(TEST_URI);
-                isConnected = true;
-            }
 
             await mongoose.connection.collections['users']?.deleteMany({});
             await mongoose.connection.collections['gameresults']?.deleteMany({});
@@ -1412,11 +1370,6 @@ describe('GET /history/:username', () => {
 
 describe('GET /ranking', () => {
     beforeAll(async () => {
-        if (!isConnected) {
-            const TEST_URI = process.env.MONGODB_URI;
-            await mongoose.connect(TEST_URI);
-            isConnected = true;
-        }
 
         await mongoose.connection.collections['users']?.deleteMany({});
         await mongoose.connection.collections['gameresults']?.deleteMany({});
@@ -1482,11 +1435,6 @@ describe('GET /ranking', () => {
 
     describe('GET /ranking - Error handling', () => {
         beforeAll(async () => {
-            if (!isConnected) {
-                const TEST_URI = process.env.MONGODB_URI || 'mongodb+srv://yovi_user:yovi1234@cluster0.xxxxx.mongodb.net/yovi_db_test';
-                await mongoose.connect(TEST_URI);
-                isConnected = true;
-            }
         });
 
         afterEach(() => {
@@ -1721,10 +1669,4 @@ describe('GET /health', () => {
 
         expect(new Date(res.body.timestamp).toString()).not.toBe('Invalid Date')
     })
-});
-
-afterAll(async () => {
-    if (isConnected) {
-        await mongoose.connection.close();
-    }
 });
