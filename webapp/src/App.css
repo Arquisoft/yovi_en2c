@@ -111,6 +111,23 @@ body {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+.navbar__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar__divider {
+  width: 1px;
+  height: 28px;
+  background: var(--stroke);
+  flex-shrink: 0;
+}
+
+@media (max-width: 560px) {
+  .navbar__left  { flex-wrap: wrap; }
+  .navbar__divider { display: none; }
+}
 
 .navbar__user{
   border: 1px solid var(--stroke);
