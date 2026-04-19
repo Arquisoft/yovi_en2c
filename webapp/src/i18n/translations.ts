@@ -157,6 +157,11 @@ export const translations: Record<Lang, Dict> = {
     "timer.yourTurn": "Tu turno",
     "timer.timeout.lost": "¡Se acabó el tiempo! Has perdido",
     "timer.timeout.description": "No realizaste un movimiento a tiempo.",
+
+    //Pistas
+    "game.hint": "💡 Pista",
+    "game.hintLoading": "Calculando…",
+
   },
 
   en: {
@@ -309,5 +314,9 @@ export const translations: Record<Lang, Dict> = {
     "timer.yourTurn": "Your turn",
     "timer.timeout.lost": "Time's up! You lost",
     "timer.timeout.description": "You didn't make a move in time.",
+
+    //HInts
+    "game.hint": "💡 Hint",
+    "game.hintLoading": "Thinking…",
   },
 };
