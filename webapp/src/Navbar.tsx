@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useI18n } from "./i18n/I18nProvider";
 import logo from "../img/logo.png";
 import LanguageToggle from "./LanguageToggle";
+import ThemeToggle from "./ThemeToggle";
 
 type NavbarProps = {
   username?: string | null;
@@ -71,6 +72,7 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
             </div>
 
             <LanguageToggle />
+            <ThemeToggle />
 
             <button
                 type="button"

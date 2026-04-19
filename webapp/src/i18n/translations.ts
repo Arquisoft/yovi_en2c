@@ -146,6 +146,10 @@ export const translations: Record<Lang, Dict> = {
     "stats.error.network": "Error de red",
     "common.stats": "Estadísticas",
 
+    //Tema (colores )
+    "common.lightMode": "Cambiar a tema claro",
+    "common.darkMode":  "Cambiar a tema oscuro",
+    
     //Timer
     "timer.title": "Tiempo por turno",
     "timer.subtitle": "El jugador pierde si no mueve a tiempo. 0 = sin límite.",
@@ -303,6 +307,10 @@ export const translations: Record<Lang, Dict> = {
     "stats.error.network": "Network error",
     "common.stats": "Statistics",
 
+    //Theme
+    "common.lightMode": "Switch to light theme",
+    "common.darkMode":  "Switch to dark theme",
+    
     //Timer
     "timer.title": "Turn Timer",
     "timer.subtitle": "Player loses if they don't move in time. 0 = no limit.",
