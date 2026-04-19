@@ -3,25 +3,10 @@ import request from 'supertest'
 import app from '../users-service.js'
 import mongoose from 'mongoose'
 
-let isConnected = false
-
 describe('GET /stats/:username', () => {
-
-    beforeAll(async () => {
-        if (!isConnected) {
-            await mongoose.connect(process.env.MONGODB_URI)
-            isConnected = true
-        }
-    })
 
     afterEach(() => {
         vi.restoreAllMocks()
-    })
-
-    afterAll(async () => {
-        if (isConnected) {
-            await mongoose.connection.close()
-        }
     })
 
     // ── 404: user not found ───────────────────────────────────────────────────
