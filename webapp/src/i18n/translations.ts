@@ -145,6 +145,10 @@ export const translations: Record<Lang, Dict> = {
     "stats.error.generic": "Error al cargar las estadísticas",
     "stats.error.network": "Error de red",
     "common.stats": "Estadísticas",
+
+    //Tema (colores )
+    "common.lightMode": "Cambiar a tema claro",
+    "common.darkMode":  "Cambiar a tema oscuro",
   },
 
   en: {
@@ -285,5 +289,9 @@ export const translations: Record<Lang, Dict> = {
     "stats.error.generic": "Failed to load statistics",
     "stats.error.network": "Network error",
     "common.stats": "Statistics",
+
+    //Theme
+    "common.lightMode": "Switch to light theme",
+    "common.darkMode":  "Switch to dark theme",
   },
 };
