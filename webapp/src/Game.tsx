@@ -447,8 +447,7 @@ const Game: React.FC = () => {
     if (hintCell === key && cell === ".") return "rgba(254,235,160,0.55)";
     if (cell === humanToken) return isWin ? "#7fd3ff" : "#1e88e5";
     if (cell === botToken)   return isWin ? "#ff8a80" : "#d32f2f";
-    return "
-    ";
+    return "var(--board-cell-empty-fill)";
   };
 
   const getCellStroke = (cell: string, row: number, col: number) => {
