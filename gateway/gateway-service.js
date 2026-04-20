@@ -20,6 +20,7 @@ const metricsMiddleware = promBundle({
   includeStatusCode: true,
   normalizePath: [
     ['^/stats/.*', '/stats/:username'],
+    ['^/profile/.*', '/profile/:username'],
   ],
 });
 app.use(metricsMiddleware);
@@ -167,6 +168,16 @@ app.get("/stats/:username", async (req, res) => {
     const response = await axios.get(`${USERS_BASE_URL}/stats/${username}`, {
       headers: { Authorization: req.headers.authorization },
     });
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
+});
+
+app.get("/profile/:username", async (req, res) => {
+  try {
+    const { username } = req.params;
+    const response = await axios.get(`${USERS_BASE_URL}/profile/${username}`);
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Users service unavailable");

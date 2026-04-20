@@ -343,6 +343,60 @@ app.get('/stats/:username', async (req, res) => {
 });
 
 /**
+ * GET /profile/:username
+ * Public profile endpoint. Returns username, join date, and aggregated stats.
+ * Does NOT require JWT authentication.
+ * Password hash is never exposed.
+ */
+app.get('/profile/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+
+        const user = await User.findOne(
+            { username: username.toString() },
+            { password: 0 }  // explicitly exclude password hash
+        );
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: `User ${username} not found`
+            });
+        }
+
+        const games = await GameResult.find({ username: username.toString() })
+            .sort({ date: -1 });
+
+        const totalGames = games.length;
+        const wins = games.filter(g => g.result === 'win').length;
+        const losses = games.filter(g => g.result === 'loss').length;
+        const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+
+        const recentMatches = games.slice(0, 5).map(g => ({
+            opponent: g.opponent,
+            result: g.result,
+            boardSize: g.boardSize,
+            gameMode: g.gameMode,
+            date: g.date,
+        }));
+
+        res.json({
+            success: true,
+            profile: {
+                username: user.username,
+                joinDate: user.createdAt,
+                stats: { totalGames, wins, losses, winRate },
+                recentMatches
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in GET /profile/:username:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+/**
  * GET /health
  * Endpoint to check if all is okay
  */
