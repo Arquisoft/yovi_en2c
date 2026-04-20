@@ -82,7 +82,6 @@ services:
   bot-api:
     build: ./bot-api
     container_name: bot-api
-    image: ghcr.io/arquisoft/yovi_en2d-botapi:latest
     environment:
       - GAMEY_BASE_URL=http://gamey:4000
       - PORT=6000
