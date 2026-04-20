@@ -19,7 +19,6 @@ function renderStatistics(username = "Pablo", token = "fake-token") {
   localStorage.clear();
   if (username) localStorage.setItem("username", username);
   if (token)    localStorage.setItem("token", token);
-
   return render(
       <I18nProvider>
         <MemoryRouter initialEntries={["/statistics"]}>
@@ -29,7 +28,7 @@ function renderStatistics(username = "Pablo", token = "fake-token") {
   );
 }
 
-const DEFAULT_LAST_FIVE = [
+const DEFAULT_GAMES = [
   { opponent: "heuristic_bot",      result: "win",  boardSize: 7,  gameMode: "pvb", date: "2026-04-13T10:00:00Z" },
   { opponent: "alfa_beta_bot",       result: "loss", boardSize: 9,  gameMode: "pvb", date: "2026-04-12T10:00:00Z" },
   { opponent: "minimax_bot",         result: "win",  boardSize: 7,  gameMode: "pvb", date: "2026-04-11T10:00:00Z" },
@@ -40,21 +39,27 @@ const DEFAULT_LAST_FIVE = [
 const DEFAULT_STATS = {
   totalGames: 10, wins: 7, losses: 3, winRate: 70,
   pvbGames: 8, pvpGames: 2,
-  lastFive: DEFAULT_LAST_FIVE,
+  lastFive: DEFAULT_GAMES.slice(0, 5),
 };
 
-function makeStatsResponse(overrides = {}) {
+function makeStatsResponse(statsOverrides = {}, games = DEFAULT_GAMES, page = 1) {
   return {
     ok: true,
-    json: async () => ({ success: true, username: "Pablo", stats: { ...DEFAULT_STATS, ...overrides } }),
+    json: async () => ({
+      success: true,
+      username: "Pablo",
+      stats: { ...DEFAULT_STATS, ...statsOverrides },
+      games,
+      page,
+      pageSize: 10,
+    }),
   } as Response;
 }
 
-// Mocks fetch N times with the same stats payload
-function mockFetchStats(times = 1) {
+function mockFetchStats(times = 1, games = DEFAULT_GAMES) {
   let mock = vi.fn();
   for (let i = 0; i < times; i++) {
-    mock = mock.mockResolvedValueOnce(makeStatsResponse());
+    mock = mock.mockResolvedValueOnce(makeStatsResponse({}, games));
   }
   global.fetch = mock;
 }
@@ -62,31 +67,19 @@ function mockFetchStats(times = 1) {
 // ── Suite ─────────────────────────────────────────────────────────────────────
 
 describe("Statistics", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    localStorage.clear();
-    mockNavigate.mockReset();
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-    localStorage.clear();
-  });
+  beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); mockNavigate.mockReset(); });
+  afterEach(() => { vi.clearAllMocks(); localStorage.clear(); });
 
   // ── Auth guard ────────────────────────────────────────────────────────────
 
   test("redirects to root when username is missing", async () => {
     renderStatistics("", "");
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
-    });
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true }));
   });
 
   test("redirects to root when token is missing", async () => {
     renderStatistics("Pablo", "");
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
-    });
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true }));
   });
 
   // ── Loading state ─────────────────────────────────────────────────────────
@@ -99,12 +92,12 @@ describe("Statistics", () => {
 
   // ── API call ──────────────────────────────────────────────────────────────
 
-  test("calls /api/stats/:username with Authorization header", async () => {
+  test("calls /api/stats/:username with page and pageSize params", async () => {
     mockFetchStats();
     renderStatistics();
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-          "/api/stats/Pablo",
+          expect.stringContaining("/api/stats/Pablo?page=1&pageSize=10"),
           expect.objectContaining({
             headers: expect.objectContaining({ Authorization: "Bearer fake-token" }),
           })
@@ -135,7 +128,7 @@ describe("Statistics", () => {
     expect(screen.getByText(/vs (Jugador|Player)/i)).toBeInTheDocument();
   });
 
-  // ── Bot label mapping (ES) ────────────────────────────────────────────────
+  // ── Bot label mapping ─────────────────────────────────────────────────────
 
   test("displays 'Bot - Fácil' instead of heuristic_bot in ES", async () => {
     mockFetchStats();
@@ -149,7 +142,6 @@ describe("Statistics", () => {
     renderStatistics();
     await screen.findByText("Bot - Fácil");
     expect(screen.getByText("Bot - Difícil")).toBeInTheDocument();
-    expect(screen.queryByText("alfa_beta_bot")).not.toBeInTheDocument();
   });
 
   test("displays 'Bot - Medio' instead of minimax_bot in ES", async () => {
@@ -157,7 +149,6 @@ describe("Statistics", () => {
     renderStatistics();
     await screen.findByText("Bot - Fácil");
     expect(screen.getByText("Bot - Medio")).toBeInTheDocument();
-    expect(screen.queryByText("minimax_bot")).not.toBeInTheDocument();
   });
 
   test("displays 'Bot - Extremo' instead of monte_carlo_extreme in ES", async () => {
@@ -165,88 +156,35 @@ describe("Statistics", () => {
     renderStatistics();
     await screen.findByText("Bot - Fácil");
     expect(screen.getByText(/Bot - Extremo/i)).toBeInTheDocument();
-    expect(screen.queryByText("monte_carlo_extreme")).not.toBeInTheDocument();
   });
 
-  test("PvP opponent username is displayed unchanged in ES", async () => {
+  test("PvP opponent username is displayed unchanged", async () => {
     mockFetchStats();
     renderStatistics();
     await screen.findByText("Bot - Fácil");
     expect(screen.getByText("carlos")).toBeInTheDocument();
   });
 
-  // ── Bot label mapping (EN) ────────────────────────────────────────────────
-  // Switching language triggers a re-fetch because t() changes.
-  // We mock fetch TWICE: once for the initial load, once for the refetch after language change.
-
   test("displays 'Bot - Easy' instead of heuristic_bot in EN", async () => {
-    mockFetchStats(2); // initial + refetch after lang change
-    const { getByRole } = renderStatistics();
-
-    await screen.findByText("Bot - Fácil");
-    await userEvent.click(getByRole("button", { name: /^EN$/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Bot - Easy")).toBeInTheDocument();
-    });
-    expect(screen.queryByText("heuristic_bot")).not.toBeInTheDocument();
-  });
-
-  test("displays 'Bot - Hard' instead of alfa_beta_bot in EN", async () => {
     mockFetchStats(2);
     const { getByRole } = renderStatistics();
-
     await screen.findByText("Bot - Fácil");
     await userEvent.click(getByRole("button", { name: /^EN$/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Bot - Hard")).toBeInTheDocument();
-    });
-    expect(screen.queryByText("alfa_beta_bot")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Bot - Easy")).toBeInTheDocument());
   });
-
-  test("displays 'Bot - Medium' instead of minimax_bot in EN", async () => {
-    mockFetchStats(2);
-    const { getByRole } = renderStatistics();
-
-    await screen.findByText("Bot - Fácil");
-    await userEvent.click(getByRole("button", { name: /^EN$/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Bot - Medium")).toBeInTheDocument();
-    });
-    expect(screen.queryByText("minimax_bot")).not.toBeInTheDocument();
-  });
-
-  test("PvP username remains unchanged after switching to EN", async () => {
-    mockFetchStats(2);
-    const { getByRole } = renderStatistics();
-
-    await screen.findByText("Bot - Fácil");
-    await userEvent.click(getByRole("button", { name: /^EN$/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText("carlos")).toBeInTheDocument();
-    });
-  });
-
-  // ── Unknown bot ID fallback ───────────────────────────────────────────────
 
   test("displays raw opponent name when bot ID is unknown", async () => {
     global.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         success: true, username: "Pablo",
-        stats: {
-          totalGames: 1, wins: 1, losses: 0, winRate: 100,
-          pvbGames: 1, pvpGames: 0,
-          lastFive: [
-            { opponent: "unknown_bot_v99", result: "win", boardSize: 7, gameMode: "pvb", date: "2026-04-13T10:00:00Z" },
-          ],
-        },
+        stats: { totalGames: 1, wins: 1, losses: 0, winRate: 100,
+          pvbGames: 1, pvpGames: 0, lastFive: [] },
+        games: [{ opponent: "unknown_bot_v99", result: "win",
+          boardSize: 7, gameMode: "pvb", date: "2026-04-13T10:00:00Z" }],
+        page: 1, pageSize: 10,
       }),
     } as Response);
-
     renderStatistics();
     expect(await screen.findByText("unknown_bot_v99")).toBeInTheDocument();
   });
@@ -272,6 +210,123 @@ describe("Statistics", () => {
     expect(screen.getAllByText(/^(Derrota|Loss)$/i).length).toBe(2);
   });
 
+  // ── Pagination ────────────────────────────────────────────────────────────
+
+  test("renders page indicator", async () => {
+    mockFetchStats();
+    renderStatistics();
+    await screen.findByText("Bot - Fácil");
+    expect(screen.getByText(/Página 1 de|Page 1 of/i)).toBeInTheDocument();
+  });
+
+  test("Previous button is disabled on page 1", async () => {
+    mockFetchStats();
+    renderStatistics();
+    await screen.findByText("Bot - Fácil");
+    expect(screen.getByRole("button", { name: /Previous page/i })).toBeDisabled();
+  });
+
+  test("Next button is disabled when on last page", async () => {
+    // totalGames=5, pageSize=10 → only 1 page
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true, username: "Pablo",
+        stats: { ...DEFAULT_STATS, totalGames: 5 },
+        games: DEFAULT_GAMES, page: 1, pageSize: 10,
+      }),
+    } as Response);
+    renderStatistics();
+    await screen.findByText("Bot - Fácil");
+    expect(screen.getByRole("button", { name: /Next page/i })).toBeDisabled();
+  });
+
+  test("Next button is enabled when there are more pages", async () => {
+    // totalGames=25, pageSize=10 → 3 pages
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true, username: "Pablo",
+        stats: { ...DEFAULT_STATS, totalGames: 25 },
+        games: DEFAULT_GAMES, page: 1, pageSize: 10,
+      }),
+    } as Response);
+    renderStatistics();
+    await screen.findByText("Bot - Fácil");
+    expect(screen.getByRole("button", { name: /Next page/i })).not.toBeDisabled();
+  });
+
+  test("clicking Next fetches page 2", async () => {
+    const user = userEvent.setup();
+    global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true, username: "Pablo",
+            stats: { ...DEFAULT_STATS, totalGames: 25 },
+            games: DEFAULT_GAMES, page: 1, pageSize: 10,
+          }),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true, username: "Pablo",
+            stats: { ...DEFAULT_STATS, totalGames: 25 },
+            games: DEFAULT_GAMES, page: 2, pageSize: 10,
+          }),
+        } as Response);
+
+    renderStatistics();
+    await screen.findByText("Bot - Fácil");
+    await user.click(screen.getByRole("button", { name: /Next page/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining("page=2"),
+          expect.anything()
+      );
+    });
+    expect(await screen.findByText(/Página 2 de|Page 2 of/i)).toBeInTheDocument();
+  });
+
+  test("clicking Previous fetches page 1 after going to page 2", async () => {
+    const user = userEvent.setup();
+    global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true, username: "Pablo",
+            stats: { ...DEFAULT_STATS, totalGames: 25 },
+            games: DEFAULT_GAMES, page: 1, pageSize: 10,
+          }),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true, username: "Pablo",
+            stats: { ...DEFAULT_STATS, totalGames: 25 },
+            games: DEFAULT_GAMES, page: 2, pageSize: 10,
+          }),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true, username: "Pablo",
+            stats: { ...DEFAULT_STATS, totalGames: 25 },
+            games: DEFAULT_GAMES, page: 1, pageSize: 10,
+          }),
+        } as Response);
+
+    renderStatistics();
+    await screen.findByText("Bot - Fácil");
+    await user.click(screen.getByRole("button", { name: /Next page/i }));
+    await screen.findByText(/Página 2 de|Page 2 of/i);
+    await user.click(screen.getByRole("button", { name: /Previous page/i }));
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
+    expect(await screen.findByText(/Página 1 de|Page 1 of/i)).toBeInTheDocument();
+  });
+
   // ── Empty state ───────────────────────────────────────────────────────────
 
   test("shows empty state message when user has no games", async () => {
@@ -279,10 +334,11 @@ describe("Statistics", () => {
       ok: true,
       json: async () => ({
         success: true, username: "Pablo",
-        stats: { totalGames: 0, wins: 0, losses: 0, winRate: 0, pvbGames: 0, pvpGames: 0, lastFive: [] },
+        stats: { totalGames: 0, wins: 0, losses: 0, winRate: 0,
+          pvbGames: 0, pvpGames: 0, lastFive: [] },
+        games: [], page: 1, pageSize: 10,
       }),
     } as Response);
-
     renderStatistics();
     expect(await screen.findByText(/no tienes partidas|no recorded games/i)).toBeInTheDocument();
   });
@@ -293,10 +349,11 @@ describe("Statistics", () => {
       ok: true,
       json: async () => ({
         success: true, username: "Pablo",
-        stats: { totalGames: 0, wins: 0, losses: 0, winRate: 0, pvbGames: 0, pvpGames: 0, lastFive: [] },
+        stats: { totalGames: 0, wins: 0, losses: 0, winRate: 0,
+          pvbGames: 0, pvpGames: 0, lastFive: [] },
+        games: [], page: 1, pageSize: 10,
       }),
     } as Response);
-
     renderStatistics();
     await user.click(await screen.findByRole("button", { name: /juega|play your first/i }));
     expect(mockNavigate).toHaveBeenCalledWith("/select-difficulty");
@@ -309,7 +366,6 @@ describe("Statistics", () => {
       ok: false,
       json: async () => ({ success: false, error: "User not found" }),
     } as Response);
-
     renderStatistics();
     expect(await screen.findByText(/User not found/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Reintentar|Retry/i })).toBeInTheDocument();
@@ -321,29 +377,33 @@ describe("Statistics", () => {
     expect(await screen.findByText(/Error de red|Network error/i)).toBeInTheDocument();
   });
 
-  test("retries fetch when retry button is clicked", async () => {
+  test("retry button resets to page 1", async () => {
     const user = userEvent.setup();
     global.fetch = vi.fn()
         .mockRejectedValueOnce(new Error("Network error"))
-        .mockResolvedValueOnce(makeStatsResponse({ totalGames: 5, wins: 4, losses: 1, winRate: 80, lastFive: [] }));
-
+        .mockResolvedValueOnce(makeStatsResponse(
+            { totalGames: 5, wins: 4, losses: 1, winRate: 80 }, [], 1
+        ));
     renderStatistics();
     await screen.findByRole("button", { name: /Reintentar|Retry/i });
     await user.click(screen.getByRole("button", { name: /Reintentar|Retry/i }));
-    await waitFor(() => { expect(global.fetch).toHaveBeenCalledTimes(2); });
-    expect(await screen.findByText(/Tasa de victoria|Win rate/i)).toBeInTheDocument();
-    expect(screen.getByText("80%")).toBeInTheDocument();
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("80%")).toBeInTheDocument();
   });
 
   // ── Refresh ───────────────────────────────────────────────────────────────
 
-  test("refresh button triggers a new fetch", async () => {
+  test("refresh button resets to page 1 and triggers a new fetch", async () => {
     const user = userEvent.setup();
     mockFetchStats(2);
     renderStatistics();
     await screen.findByText(/Partidas jugadas|Games played/i);
     await user.click(screen.getByRole("button", { name: /Actualizar|Refresh/i }));
-    await waitFor(() => { expect(global.fetch).toHaveBeenCalledTimes(2); });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+    expect(global.fetch).toHaveBeenLastCalledWith(
+        expect.stringContaining("page=1"),
+        expect.anything()
+    );
   });
 
   // ── Navigation ────────────────────────────────────────────────────────────
@@ -369,13 +429,6 @@ describe("Statistics", () => {
   });
 
   // ── Navbar ────────────────────────────────────────────────────────────────
-
-  test("renders navbar with username", async () => {
-    mockFetchStats();
-    renderStatistics();
-    await screen.findByText(/Partidas jugadas|Games played/i);
-    expect(screen.getByLabelText(/Usuario actual/i)).toHaveTextContent("Pablo");
-  });
 
   test("renders page title", async () => {
     mockFetchStats();

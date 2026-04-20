@@ -67,9 +67,14 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
 
           {/* Right zone: user account actions */}
           <div className="navbar__right">
-            <div className="navbar__user" aria-label="Usuario actual">
-              👤 {t("common.user")}: {username || "—"}
-            </div>
+            <button
+                type="button"
+                className="navbar__user navbar__user--link"
+                onClick={() => username && navigate(`/profile/${username}`)}
+                aria-label={`Ver perfil de ${username}`}
+            >
+              👤 {username || "—"}
+            </button>
 
             <LanguageToggle />
             <ThemeToggle />
