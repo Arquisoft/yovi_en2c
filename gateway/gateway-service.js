@@ -55,6 +55,15 @@ const BOT_CHOOSE_ROUTES = {
 const GAME_NEW_URL = `${GAMEY_BASE_URL}/game/new`;
 const GAME_STATUS_URL = `${GAMEY_BASE_URL}/status`;
 
+// Validates that a username only contains safe characters.
+// Prevents path traversal (S7044) and SSRF (S5144) by rejecting
+// any value that could manipulate the upstream URL structure.
+const USERNAME_RE = /^[a-zA-Z0-9_\-]{1,60}$/;
+
+function isValidUsername(username) {
+  return typeof username === "string" && USERNAME_RE.test(username);
+}
+
 function forwardAxiosError(res, error, fallbackMessage) {
   const status = error?.response?.status;
   const data = error?.response?.data;
@@ -163,9 +172,16 @@ app.post("/gameresult", async (req, res) => {
 });
 
 app.get("/stats/:username", async (req, res) => {
+  const { username } = req.params;
+
+  if (!isValidUsername(username)) {
+    return res.status(400).json({ ok: false, error: "Invalid username" });
+  }
+
+  const usersUrl = new URL(`/stats/${username}`, USERS_BASE_URL).toString();
+
   try {
-    const { username } = req.params;
-    const response = await axios.get(`${USERS_BASE_URL}/stats/${username}`, {
+    const response = await axios.get(usersUrl, {
       headers: { Authorization: req.headers.authorization },
     });
     return res.status(response.status).json(response.data);
@@ -175,9 +191,16 @@ app.get("/stats/:username", async (req, res) => {
 });
 
 app.get("/profile/:username", async (req, res) => {
+  const { username } = req.params;
+
+  if (!isValidUsername(username)) {
+    return res.status(400).json({ ok: false, error: "Invalid username" });
+  }
+
+  const usersUrl = new URL(`/profile/${username}`, USERS_BASE_URL).toString();
+
   try {
-    const { username } = req.params;
-    const response = await axios.get(`${USERS_BASE_URL}/profile/${username}`);
+    const response = await axios.get(usersUrl);
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Users service unavailable");
@@ -185,10 +208,17 @@ app.get("/profile/:username", async (req, res) => {
 });
 
 app.patch("/profile/:username", async (req, res) => {
+  const { username } = req.params;
+
+  if (!isValidUsername(username)) {
+    return res.status(400).json({ ok: false, error: "Invalid username" });
+  }
+
+  const usersUrl = new URL(`/profile/${username}`, USERS_BASE_URL).toString();
+
   try {
-    const { username } = req.params;
     const response = await axios.patch(
-        `${USERS_BASE_URL}/profile/${username}`,
+        usersUrl,
         req.body,
         { headers: { Authorization: req.headers.authorization } }
     );
