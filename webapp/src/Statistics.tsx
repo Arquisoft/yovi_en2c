@@ -58,14 +58,18 @@ type WinRateBarProps = { winRate: number; labelWin: string; labelLoss: string };
 
 const WinRateBar: React.FC<WinRateBarProps> = ({ winRate, labelWin, labelLoss }) => (
     <div style={{ marginTop: 8 }}>
-        <div style={{ height: 12, borderRadius: 999, background: "rgba(255,255,255,.10)", overflow: "hidden" }}
-             role="progressbar" aria-valuenow={winRate} aria-valuemin={0} aria-valuemax={100}>
-            <div style={{
-                height: "100%", width: `${winRate}%`,
-                background: "linear-gradient(90deg, var(--aqua), var(--navy))",
-                borderRadius: 999, transition: "width .6s ease",
-            }} />
-        </div>
+        <progress
+            value={winRate}
+            max={100}
+            style={{
+                width: "100%", height: 12,
+                borderRadius: 999, overflow: "hidden",
+                appearance: "none", border: "none",
+                background: "rgba(255,255,255,.10)",
+                accentColor: "var(--aqua)",
+            }}
+            aria-label={`${labelWin}: ${winRate}%`}
+        />
         <div style={{ display: "flex", justifyContent: "space-between",
             marginTop: 6, fontSize: "0.82rem", color: "var(--muted)" }}>
             <span>{labelWin}: {winRate}%</span>
@@ -284,8 +288,8 @@ const Statistics: React.FC = () => {
                             </tr>
                             </thead>
                             <tbody>
-                            {games.map((game, i) => (
-                                <GameRow key={i} game={game}
+                            {games.map((game) => (
+                                <GameRow key={`${game.opponent}-${game.date}`} game={game}
                                          labelWin={t("stats.win")} labelLoss={t("stats.loss")}
                                          opponentLabel={getOpponentLabel(game.opponent, game.gameMode)} />
                             ))}
