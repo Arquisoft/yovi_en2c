@@ -279,4 +279,35 @@ if (process.env.NODE_ENV !== "test") {
   });
 }
 
+app.get("/play", async (req, res) => {
+  try {
+    const positionRaw = req.query.position;
+    const botId = req.query.bot_id;
+
+    if (typeof positionRaw !== "string") {
+      return res.status(400).json({ error: "Missing position" });
+    }
+
+    const position = JSON.parse(positionRaw);
+
+    const response = await axios.post(
+        `${BOT_API_URL}/bot/move`,
+        {
+          bot: botId || "random_bot",
+          yen: position
+        }
+    );
+
+    return res.json({
+      bot_id: botId,
+      coords: response.data.coords
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      error: "play failed"
+    });
+  }
+});
+
 export default app;
