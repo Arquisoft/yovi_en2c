@@ -290,13 +290,12 @@ app.get("/play", async (req, res) => {
 
     const position = JSON.parse(positionRaw);
 
-    const response = await axios.post(
-        `${BOT_API_URL}/bot/move`,
-        {
-          bot: botId || "random_bot",
-          yen: position
-        }
-    );
+    const response = await axios.get(`${BOT_API_URL}/play`, {
+      params: {
+        position: JSON.stringify(position),
+        bot_id: botId
+      }
+    });
 
     return res.json({
       bot_id: botId,
