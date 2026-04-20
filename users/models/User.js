@@ -36,6 +36,25 @@ const userSchema = new mongoose.Schema({
             message: 'Please insert a valid email'
         }
     },
+    realName: {
+        type: String,
+        trim: true,
+        maxlength: [60, 'Real name must be at most 60 characters']
+    },
+    bio: {
+        type: String,
+        trim: true,
+        maxlength: [280, 'Bio must be at most 280 characters']
+    },
+    location: {
+        city: { type: String, trim: true, maxlength: 60 },
+        country: { type: String, trim: true, maxlength: 60 }
+    },
+    preferredLanguage: {
+        type: String,
+        enum: ['es', 'en'],
+        default: 'en'
+    },
     password: {
         type: String,
         required: [true, 'Password is mandatory'],
