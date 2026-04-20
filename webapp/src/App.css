@@ -209,6 +209,18 @@ body {
   font-weight: 700;
 }
 
+.navbar__user--link {
+  cursor: pointer;
+  transition: border-color .12s ease, background .12s ease, transform .08s ease;
+}
+
+.navbar__user--link:hover {
+  border-color: rgba(67,195,221,.55);
+  background: rgba(67,195,221,.10);
+  transform: translateY(-1px);
+  color: var(--text);
+}
+
 .navbar__actions {
   display: flex;
   align-items: center;
@@ -752,4 +764,16 @@ body {
     width: auto;
     padding: 8px 14px;
   }
+}
+
+.modal-card {
+  background: #0a2235;
+  border: 1px solid var(--stroke);
+  border-radius: var(--r);
+  padding: 18px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.70);
+}
+
+[data-theme="light"] .modal-card {
+  background: #ffffff;
 }

@@ -9,6 +9,7 @@ import RegistrationForm from './RegistrationForm';
 import SelectDifficulty from './SelectDifficulty';
 import Instructions from './Instructions';
 import Statistics from './Statistics';
+import UserProfile from './UserProfile';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
             <Route path="/game" element={<Game />} />
             <Route path="/game/finished" element={<GameFinished />} />
             <Route path="/statistics" element={<Statistics />} />
+            <Route path="/profile/:username" element={<UserProfile />} />
             <Route path="/select-difficulty" element={<SelectDifficulty />} />
             <Route path="/instructions" element={<Instructions />} />
             <Route path="*" element={<Navigate to="/" replace />} />
