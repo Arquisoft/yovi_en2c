@@ -58,10 +58,22 @@ const GAME_STATUS_URL = `${GAMEY_BASE_URL}/status`;
 // Validates that a username only contains safe characters.
 // Prevents path traversal (S7044) and SSRF (S5144) by rejecting
 // any value that could manipulate the upstream URL structure.
-const USERNAME_RE = /^[a-zA-Z0-9_\-]{1,60}$/;
+const USERNAME_RE = /^[a-zA-Z0-9_-]{1,60}$/;
 
 function isValidUsername(username) {
   return typeof username === "string" && USERNAME_RE.test(username);
+}
+
+// Sanitizes the Authorization header before forwarding it to upstream services.
+// Extracts only the token value after "Bearer " and reconstructs the header,
+// breaking the direct taint flow from req.headers that Sonar tracks as SSRF (S5144).
+const BEARER_RE = /^Bearer\s+([A-Za-z0-9\-._~+/]+=*)$/;
+
+function sanitizeAuthHeader(authHeader) {
+  if (!authHeader || typeof authHeader !== "string") return undefined;
+  const match = BEARER_RE.exec(authHeader);
+  if (!match) return undefined;
+  return `Bearer ${match[1]}`;
 }
 
 function forwardAxiosError(res, error, fallbackMessage) {
@@ -179,10 +191,11 @@ app.get("/stats/:username", async (req, res) => {
   }
 
   const usersUrl = new URL(`/stats/${username}`, USERS_BASE_URL).toString();
+  const authStats = sanitizeAuthHeader(req.headers.authorization);
 
   try {
     const response = await axios.get(usersUrl, {
-      headers: { Authorization: req.headers.authorization },
+      headers: { Authorization: authStats },
     });
     return res.status(response.status).json(response.data);
   } catch (error) {
@@ -216,11 +229,13 @@ app.patch("/profile/:username", async (req, res) => {
 
   const usersUrl = new URL(`/profile/${username}`, USERS_BASE_URL).toString();
 
+  const authPatch = sanitizeAuthHeader(req.headers.authorization);
+
   try {
     const response = await axios.patch(
         usersUrl,
         req.body,
-        { headers: { Authorization: req.headers.authorization } }
+        { headers: { Authorization: authPatch } }
     );
     return res.status(response.status).json(response.data);
   } catch (error) {
@@ -247,9 +262,11 @@ app.post("/register", async (req, res) => {
 });
 
 app.get("/verify", async (req, res) => {
+  const authVerify = sanitizeAuthHeader(req.headers.authorization);
+
   try {
     const response = await axios.get(AUTH_VERIFY_URL, {
-      headers: { Authorization: req.headers.authorization },
+      headers: { Authorization: authVerify },
     });
     return res.status(response.status).json(response.data);
   } catch (error) {

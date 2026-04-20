@@ -233,7 +233,7 @@ app.get('/history/:username', async (req, res) => {
 
         const history = await GameResult.find({ username : username.toString() })
             .sort({ date: -1 }) // Order : from today to the past
-            .limit(Number.parseInt(limit));
+            .limit(Number.parseInt(limit, 10));
 
         // Stats
         const stats = {
@@ -296,8 +296,8 @@ app.get('/ranking', async (req, res) => {
 app.get('/stats/:username', async (req, res) => {
     try {
         const { username } = req.params;
-        const page     = Math.max(1, parseInt(req.query.page)     || 1);
-        const pageSize = Math.max(1, parseInt(req.query.pageSize) || 10);
+        const page     = Math.max(1, Number.parseInt(req.query.page, 10)     || 1);
+        const pageSize = Math.max(1, Number.parseInt(req.query.pageSize, 10) || 10);
 
         const userExists = await User.findOne({ username: username.toString() });
         if (!userExists) {
