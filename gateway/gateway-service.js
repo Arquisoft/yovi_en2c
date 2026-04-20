@@ -203,7 +203,7 @@ app.get("/stats/:username", async (req, res) => {
   }
 });
 
-app.get("/profile/:username", async (req, res) => {
+app.patch("/profile/:username", async (req, res) => {
   const { username } = req.params;
 
   if (!isValidUsername(username)) {
@@ -211,9 +211,18 @@ app.get("/profile/:username", async (req, res) => {
   }
 
   const usersUrl = new URL(`/profile/${username}`, USERS_BASE_URL).toString();
+  const authPatch = sanitizeAuthHeader(req.headers.authorization);
+
+  // Extract only the known editable fields to prevent mass assignment
+  const { realName, bio, city, country, preferredLanguage } = req.body ?? {};
+  const safeBody = { realName, bio, city, country, preferredLanguage };
 
   try {
-    const response = await axios.get(usersUrl);
+    const response = await axios.patch(
+        usersUrl,
+        safeBody,
+        { headers: { Authorization: authPatch } }
+    );
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Users service unavailable");

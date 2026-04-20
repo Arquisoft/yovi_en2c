@@ -162,8 +162,8 @@ const UserProfile: React.FC = () => {
         try {
             const res  = await fetch(`/api/profile/${profileUsername}`);
             const data = await res.json();
-            if (!data.success) setError(data.error ?? t("profile.error.generic"));
-            else setProfile(data.profile);
+            if (data.success) setProfile(data.profile);
+            else setError(data.error ?? t("profile.error.generic"));
         } catch {
             setError(t("profile.error.network"));
         } finally {
@@ -367,8 +367,8 @@ const UserProfile: React.FC = () => {
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {profile.recentMatches.map((match, i) => (
-                                    <tr key={i} style={{ borderBottom: "1px solid var(--stroke)" }}>
+                                {profile.recentMatches.map((match) => (
+                                    <tr key={`${match.opponent}-${match.date}`} style={{ borderBottom: "1px solid var(--stroke)" }}>
                                         <td style={{ padding: "10px 8px", fontWeight: 700 }}>
                                             {match.opponent}
                                         </td>
