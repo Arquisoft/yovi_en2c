@@ -138,7 +138,7 @@ describe("Navbar", () => {
     expect(screen.getByRole("button", { name: /^Home$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^New Game$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Logout$/i })).toBeInTheDocument();
-    expect(screen.getByText(/User/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ver perfil de Pablo/i })).toBeInTheDocument();
   });
 
   test("changes language from english back to spanish", async () => {
@@ -153,6 +153,6 @@ describe("Navbar", () => {
     expect(screen.getByRole("button", { name: /^Inicio$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Nuevo Juego$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Salir/i })).toBeInTheDocument();
-    expect(screen.getByText(/Usuario/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ver perfil de Pablo/i })).toBeInTheDocument();
   });
 });
