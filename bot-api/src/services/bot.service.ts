@@ -3,20 +3,40 @@ import { gameyClient } from "../clients/gamey.client";
 
 class BotService {
     async getMove(botId: string | undefined, yen: any) {
-        if (!botId) botId = "default";
+        const id = botId || "default";
 
-        // 🌍 Remote bot
-        if (botId.startsWith("http")) {
-            const res = await axios.get(`${botId}/play`, {
-                params: { position: JSON.stringify(yen) }
-            });
+        try {
+            // Remote bot
+            if (id.startsWith("http")) {
+                const res = await axios.get(`${id}/play`, {
+                    params: {
+                        position: JSON.stringify(yen)
+                    }
+                });
 
-            return res.data.coords;
+                return this.normalize(res.data);
+            }
+
+            // Local bot
+            const res = await gameyClient.chooseBotMove(id, yen);
+
+            return this.normalize(res);
+        } catch (err: any) {
+            console.error(
+                "Bot error:",
+                err?.response?.data || err.message
+            );
+            throw err;
         }
+    }
 
-        // 🧠 Local bot (Gamey)
-        const res = await gameyClient.chooseBotMove(botId, yen);
-        return res.coords;
+    normalize(data: any) {
+        if (!data) throw new Error("Empty bot response");
+
+        if (data.coords) return data.coords;
+        if (typeof data.x === "number") return data;
+
+        throw new Error("Invalid bot response: " + JSON.stringify(data));
     }
 }
 

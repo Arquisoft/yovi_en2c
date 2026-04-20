@@ -304,8 +304,11 @@ app.get("/play", async (req, res) => {
     });
 
   } catch (err) {
+    console.error("PLAY ERROR:", err?.response?.data || err.message);
+
     return res.status(500).json({
-      error: "play failed"
+      error: "play failed",
+      details: err?.response?.data || err.message
     });
   }
 });
