@@ -104,6 +104,8 @@ services:
       - "9091:3000"
     volumes:
       - ./users/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
     networks:
       - monitor-net
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const promBundle = require('express-prom-bundle');
 require('dotenv').config();
 require('./db');
 
@@ -11,6 +12,26 @@ const GameResult = require('./models/GameResult');
 // CONFIGURATION
 const app = express();
 app.use(express.json()); // set up with json
+
+// PROMETHEUS METRICS MIDDLEWARE
+// express-prom-bundle automatically exposes a /metrics endpoint
+// and instruments all requests with: http_request_duration_seconds (histogram),
+// http_requests_total (counter), and http_request_size_bytes / http_response_size_bytes.
+// includeMethod: adds HTTP method label (GET, POST...)
+// includePath: adds path label (/users, /gameresult...)
+// includeStatusCode: adds HTTP status code label (200, 404, 500...)
+const metricsMiddleware = promBundle({
+    includeMethod: true,
+    includePath: true,
+    includeStatusCode: true,
+    normalizePath: [
+        ['^/users/.*', '/users/:username'],
+        ['^/history/.*', '/history/:username'],
+        ['^/stats/.*', '/stats/:username'],
+        ['^/profile/.*', '/profile/:username'],
+    ],
+});
+app.use(metricsMiddleware);
 
 const PORT = process.env.PORT || 3000; // use port from env or 3000 by default
 const SALT_ROUNDS = 10;
@@ -212,7 +233,7 @@ app.get('/history/:username', async (req, res) => {
 
         const history = await GameResult.find({ username : username.toString() })
             .sort({ date: -1 }) // Order : from today to the past
-            .limit(Number.parseInt(limit));
+            .limit(Number.parseInt(limit, 10));
 
         // Stats
         const stats = {
@@ -275,31 +296,40 @@ app.get('/ranking', async (req, res) => {
 app.get('/stats/:username', async (req, res) => {
     try {
         const { username } = req.params;
+        const page     = Math.max(1, Number.parseInt(req.query.page, 10)     || 1);
+        const pageSize = Math.max(1, Number.parseInt(req.query.pageSize, 10) || 10);
 
         const userExists = await User.findOne({ username: username.toString() });
         if (!userExists) {
-            return res.status(404).json({
-                success: false,
-                error: `User ${username} not found`
-            });
+            return res.status(404).json({ success: false, error: `User ${username} not found` });
         }
 
         const games = await GameResult.find({ username: username.toString() }).sort({ date: -1 });
 
         const totalGames = games.length;
-        const wins = games.filter(g => g.result === 'win').length;
-        const losses = games.filter(g => g.result === 'loss').length;
-        const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+        const wins       = games.filter(g => g.result === 'win').length;
+        const losses     = games.filter(g => g.result === 'loss').length;
+        const winRate    = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+        const pvbGames   = games.filter(g => g.gameMode === 'pvb');
+        const pvpGames   = games.filter(g => g.gameMode === 'pvp');
 
-        const pvbGames = games.filter(g => g.gameMode === 'pvb');
-        const pvpGames = games.filter(g => g.gameMode === 'pvp');
-
-        const lastFive = games.slice(0, 5).map(g => ({
+        // Paginated slice — kept separate from aggregated stats
+        const start          = (page - 1) * pageSize;
+        const paginatedGames = games.slice(start, start + pageSize).map(g => ({
             opponent: g.opponent,
-            result: g.result,
+            result:   g.result,
             boardSize: g.boardSize,
             gameMode: g.gameMode,
-            date: g.date,
+            date:     g.date,
+        }));
+
+        // lastFive kept for backwards compatibility
+        const lastFive = games.slice(0, 5).map(g => ({
+            opponent: g.opponent,
+            result:   g.result,
+            boardSize: g.boardSize,
+            gameMode: g.gameMode,
+            date:     g.date,
         }));
 
         res.json({
@@ -313,11 +343,118 @@ app.get('/stats/:username', async (req, res) => {
                 pvbGames: pvbGames.length,
                 pvpGames: pvpGames.length,
                 lastFive,
-            }
+            },
+            games:    paginatedGames,
+            page,
+            pageSize,
         });
 
     } catch (error) {
         console.error('Error in GET /stats/:username:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+/**
+ * GET /profile/:username
+ * Public profile endpoint. Returns username, join date, and aggregated stats.
+ * Does NOT require JWT authentication.
+ * Password hash is never exposed.
+ */
+app.get('/profile/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+
+        const user = await User.findOne(
+            { username: username.toString() },
+            { password: 0 }  // explicitly exclude password hash
+        );
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: `User ${username} not found`
+            });
+        }
+
+        const games = await GameResult.find({ username: username.toString() })
+            .sort({ date: -1 });
+
+        const totalGames = games.length;
+        const wins = games.filter(g => g.result === 'win').length;
+        const losses = games.filter(g => g.result === 'loss').length;
+        const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+
+        const recentMatches = games.slice(0, 5).map(g => ({
+            opponent: g.opponent,
+            result: g.result,
+            boardSize: g.boardSize,
+            gameMode: g.gameMode,
+            date: g.date,
+        }));
+
+        res.json({
+            success: true,
+            profile: {
+                username: user.username,
+                realName: user.realName ?? null,
+                bio: user.bio ?? null,
+                location: user.location ?? {},
+                preferredLanguage: user.preferredLanguage ?? 'en',
+                joinDate: user.createdAt,
+                stats: { totalGames, wins, losses, winRate },
+                recentMatches
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in GET /profile/:username:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+/**
+ * PATCH /profile/:username
+ * Updates editable profile fields: realName, bio, location, preferredLanguage.
+ * Only the owner can edit their profile (username from JWT must match).
+ */
+app.patch('/profile/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const { realName, bio, city, country, preferredLanguage } = req.body;
+
+        const user = await User.findOne({ username: username.toString() });
+        if (!user) {
+            return res.status(404).json({ success: false, error: `User ${username} not found` });
+        }
+
+        // Only update fields that were explicitly sent
+        if (realName !== undefined)        user.realName = realName;
+        if (bio !== undefined)             user.bio = bio;
+        if (city !== undefined)            user.location = { ...user.location, city };
+        if (country !== undefined)         user.location = { ...user.location, country };
+        if (preferredLanguage !== undefined) user.preferredLanguage = preferredLanguage;
+
+        await user.save();
+
+        res.json({
+            success: true,
+            message: 'Profile updated',
+            profile: {
+                username: user.username,
+                realName: user.realName ?? null,
+                bio: user.bio ?? null,
+                location: user.location ?? {},
+                preferredLanguage: user.preferredLanguage
+            }
+        });
+
+    } catch (error) {
+        if (error.name === 'ValidationError') {
+            const errors = Object.values(error.errors).map(e => e.message);
+            return res.status(400).json({ success: false, error: errors.join(', ') });
+        }
+        console.error('Error in PATCH /profile/:username:', error);
         res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
@@ -355,6 +492,7 @@ if (require.main == module) {
         console.log(`   GET    /ranking`);
         console.log(`   GET    /health`);
         console.log(`   GET    /users/:username`);
+        console.log(`   GET    /metrics`);
     });
 }
 

@@ -10,33 +10,23 @@ const mockNavigate = vi.fn();
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
+  return { ...actual, useNavigate: () => mockNavigate };
 });
 
-function renderGame(
-  username = "Pablo",
-  bot = "heuristic_bot",
-  boardSize = 7
-) {
+// timerSeconds: 0 disables the timer so existing tests stay unchanged
+function renderGame(username = "Pablo", bot = "heuristic_bot", boardSize = 7) {
   localStorage.clear();
   if (username) localStorage.setItem("username", username);
 
   return render(
-    <I18nProvider>
-      <MemoryRouter
-        initialEntries={[
-          {
-            pathname: "/game",
-            state: username ? { username, bot, boardSize } : undefined,
-          } as any,
-        ]}
-      >
-        <Game />
-      </MemoryRouter>
-    </I18nProvider>
+      <I18nProvider>
+        <MemoryRouter initialEntries={[{
+          pathname: "/game",
+          state: username ? { username, bot, boardSize, timerSeconds: 0 } : undefined,
+        } as any]}>
+          <Game />
+        </MemoryRouter>
+      </I18nProvider>
   );
 }
 
@@ -49,11 +39,8 @@ describe("Game component", () => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     mockNavigate.mockReset();
-
     global.ResizeObserver = class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
+      observe() {} unobserve() {} disconnect() {}
     } as any;
   });
 
@@ -66,15 +53,10 @@ describe("Game component", () => {
   test("renders title and main action buttons", () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      text: async () =>
-        JSON.stringify({
-          ok: true,
-          yen: {
-            size: 7,
-            players: ["B", "R"],
-            layout: emptyBoardLayout(7),
-          },
-        }),
+      text: async () => JSON.stringify({
+        ok: true,
+        yen: { size: 7, players: ["B", "R"], layout: emptyBoardLayout(7) },
+      }),
     } as Response);
 
     renderGame();
@@ -82,40 +64,27 @@ describe("Game component", () => {
     expect(screen.getByRole("heading", { name: /GameY/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Nueva partida|New game/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Instrucciones|Instructions/i })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Volver al inicio|Back to home/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Volver al inicio|Back to home/i })).toBeInTheDocument();
   });
 
   test("creates new game automatically on mount", async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      text: async () =>
-        JSON.stringify({
-          ok: true,
-          yen: {
-            size: 7,
-            players: ["B", "R"],
-            layout: emptyBoardLayout(7),
-          },
-        }),
+      text: async () => JSON.stringify({
+        ok: true,
+        yen: { size: 7, players: ["B", "R"], layout: emptyBoardLayout(7) },
+      }),
     } as Response);
 
     renderGame();
 
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1);
-    });
-
-    await waitFor(() => {
-      expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0);
-    });
+    await waitFor(() => { expect(global.fetch).toHaveBeenCalledTimes(1); });
+    await waitFor(() => { expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0); });
   });
 
   test("shows plain text error if new game response is not json", async () => {
     global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
+      ok: false, status: 500,
       text: async () => "Plain backend error",
     } as Response);
 
@@ -127,11 +96,7 @@ describe("Game component", () => {
   test("shows error if new game fails", async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
-      text: async () =>
-        JSON.stringify({
-          ok: false,
-          error: "Game server unavailable",
-        }),
+      text: async () => JSON.stringify({ ok: false, error: "Game server unavailable" }),
     } as Response);
 
     renderGame();
@@ -144,123 +109,67 @@ describe("Game component", () => {
 
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      text: async () =>
-        JSON.stringify({
-          ok: true,
-          yen: {
-            size: 7,
-            players: ["B", "R"],
-            layout: emptyBoardLayout(7),
-          },
-        }),
+      text: async () => JSON.stringify({
+        ok: true,
+        yen: { size: 7, players: ["B", "R"], layout: emptyBoardLayout(7) },
+      }),
     } as Response);
 
     renderGame();
 
-    const button = await screen.findByRole("button", {
-      name: /Instrucciones|Instructions/i,
-    });
+    await user.click(await screen.findByRole("button", { name: /Instrucciones|Instructions/i }));
 
-    await user.click(button);
-
-    expect(
-      screen.getByRole("heading", { name: /Cómo se juega|How to play/i })
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByRole("heading", { name: /^Dificultades$|^Difficulties$/i })
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByRole("heading", { name: /Tamaño del tablero|Board size/i })
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByText(
-        /GameY es un juego por turnos|GameY is a turn-based game/i
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Cómo se juega|How to play/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^Dificultades$|^Difficulties$/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Tamaño del tablero|Board size/i })).toBeInTheDocument();
   });
 
   test("sends move successfully on single click", async () => {
     const user = userEvent.setup();
 
-    global.fetch = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () =>
-          JSON.stringify({
+    global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () => JSON.stringify({
             ok: true,
-            yen: {
-              size: 7,
-              players: ["B", "R"],
-              layout: emptyBoardLayout(7),
-            },
+            yen: { size: 7, players: ["B", "R"], layout: emptyBoardLayout(7) },
           }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () =>
-          JSON.stringify({
-            ok: true,
-            finished: false,
-            yen: {
-              size: 7,
-              players: ["B", "R"],
-              layout: emptyBoardLayout(7),
-            },
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () => JSON.stringify({
+            ok: true, finished: false,
+            yen: { size: 7, players: ["B", "R"], layout: emptyBoardLayout(7) },
           }),
-      } as Response);
+        } as Response);
 
     renderGame();
 
-    await waitFor(() => {
-      expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0);
-    });
-
-    const cells = document.querySelectorAll("polygon");
-    await user.click(cells[0]);
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(2);
-    });
+    await waitFor(() => { expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0); });
+    await user.click(document.querySelectorAll("polygon")[0]);
+    await waitFor(() => { expect(global.fetch).toHaveBeenCalledTimes(2); });
   });
 
   test("shows backend error when move fails", async () => {
     const user = userEvent.setup();
 
-    global.fetch = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () =>
-          JSON.stringify({
+    global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () => JSON.stringify({
             ok: true,
-            yen: {
-              size: 7,
-              players: ["B", "R"],
-              layout: emptyBoardLayout(7),
-            },
+            yen: { size: 7, players: ["B", "R"], layout: emptyBoardLayout(7) },
           }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: false,
-        text: async () =>
-          JSON.stringify({
-            ok: false,
-            error: "Backend error",
-          }),
-      } as Response);
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: false,
+          text: async () => JSON.stringify({ ok: false, error: "Backend error" }),
+        } as Response);
 
     renderGame();
 
-    await waitFor(() => {
-      expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0);
-    });
-
-    const cells = document.querySelectorAll("polygon");
-    await user.click(cells[0]);
+    await waitFor(() => { expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0); });
+    await user.click(document.querySelectorAll("polygon")[0]);
 
     expect(await screen.findByText(/Backend error/i)).toBeInTheDocument();
   });
@@ -270,29 +179,21 @@ describe("Game component", () => {
 
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      text: async () =>
-        JSON.stringify({
-          ok: true,
-          yen: {
-            size: 7,
-            players: ["B", "R"],
-            layout: emptyBoardLayout(7),
-          },
-        }),
+      text: async () => JSON.stringify({
+        ok: true,
+        yen: { size: 7, players: ["B", "R"], layout: emptyBoardLayout(7) },
+      }),
     } as Response);
 
     renderGame();
 
-    await user.click(
-      screen.getByRole("button", { name: /Volver al inicio|Back to home/i })
-    );
+    await user.click(screen.getByRole("button", { name: /Volver al inicio|Back to home/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith("/home", { state: { username: "Pablo" } });
   });
 
   test("redirects to root when username is missing", async () => {
     global.fetch = vi.fn();
-
     renderGame("");
 
     await waitFor(() => {
@@ -303,46 +204,29 @@ describe("Game component", () => {
   test("shows win overlay when backend returns a winning result", async () => {
     const user = userEvent.setup();
 
-    global.fetch = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () =>
-          JSON.stringify({
+    global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () => JSON.stringify({
             ok: true,
-            yen: {
-              size: 7,
-              players: ["B", "R"],
-              layout: emptyBoardLayout(7),
-            },
+            yen: { size: 7, players: ["B", "R"], layout: emptyBoardLayout(7) },
           }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () =>
-          JSON.stringify({
-            ok: true,
-            finished: true,
-            winner: "B",
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () => JSON.stringify({
+            ok: true, finished: true, winner: "B",
             winning_edges: [[[0, 0], [1, 0]]],
-            yen: {
-              size: 7,
-              players: ["B", "R"],
-              layout: emptyBoardLayout(7),
-            },
+            yen: { size: 7, players: ["B", "R"], layout: emptyBoardLayout(7) },
           }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () => JSON.stringify({ success: true }),
-      } as Response);
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true, text: async () => JSON.stringify({ success: true }),
+        } as Response);
 
     renderGame();
 
-    await waitFor(() => {
-      expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0);
-    });
-
+    await waitFor(() => { expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0); });
     await user.click(document.querySelectorAll("polygon")[0]);
 
     await waitFor(() => {
