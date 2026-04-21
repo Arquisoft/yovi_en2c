@@ -91,4 +91,20 @@ describe('Gateway — GET /metrics (Prometheus)', () => {
         expect(res.text).toMatch(/path="\/stats\/:username"/)
         expect(res.text).not.toMatch(/path="\/stats\/Pablo"/)
     })
+
+    //user profile
+
+    it("should normalize /profile/:username path in metrics labels", async () => {
+        axios.get.mockResolvedValueOnce({
+            status: 200,
+            data: { success: true, profile: {} },
+        });
+
+        await request(app).get("/profile/testuser");
+
+        const res = await request(app).get("/metrics");
+
+        expect(res.text).toMatch(/path="\/profile\/:username"/);
+        expect(res.text).not.toMatch(/path="\/profile\/testuser"/);
+    });
 })

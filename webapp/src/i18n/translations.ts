@@ -145,6 +145,49 @@ export const translations: Record<Lang, Dict> = {
     "stats.error.generic": "Error al cargar las estadísticas",
     "stats.error.network": "Error de red",
     "common.stats": "Estadísticas",
+    "stats.history": "Historial de partidas",
+    "stats.page": "Página {page} de {total}",
+
+    //Tema (colores )
+    "common.lightMode": "Cambiar a tema claro",
+    "common.darkMode":  "Cambiar a tema oscuro",
+    
+    //Timer
+    "timer.title": "Tiempo por turno",
+    "timer.subtitle": "El jugador pierde si no mueve a tiempo. 0 = sin límite.",
+    "timer.noLimit": "Sin límite",
+    "timer.custom.placeholder": "Segundos personalizados (5–300)",
+    "timer.warning.short": "El tiempo mínimo recomendado es 5 segundos",
+    "timer.warning.long": "El tiempo máximo recomendado es 300 segundos",
+    "timer.botThinking": "El bot está pensando…",
+    "timer.yourTurn": "Tu turno",
+    "timer.timeout.lost": "¡Se acabó el tiempo! Has perdido",
+    "timer.timeout.description": "No realizaste un movimiento a tiempo.",
+
+    //Pistas
+    "game.hint": "💡 Pista",
+    "game.hintLoading": "Calculando…",
+
+    //Profile
+    "profile.joinDate": "Se unió el",
+    "profile.error.generic": "Error al cargar el perfil",
+    "profile.error.network": "Error de red",
+    "profile.edit.button": "Editar perfil",
+    "profile.edit.title": "Editar perfil",
+    "profile.edit.realName": "Nombre real",
+    "profile.edit.realName.placeholder": "Tu nombre real (opcional)",
+    "profile.edit.bio": "Biografía",
+    "profile.edit.bio.placeholder": "Cuéntanos algo sobre ti…",
+    "profile.edit.city": "Ciudad",
+    "profile.edit.city.placeholder": "Tu ciudad (opcional)",
+    "profile.edit.country": "País",
+    "profile.edit.country.placeholder": "Tu país",
+    "profile.edit.preferredLanguage": "Idioma preferido",
+    "profile.edit.save": "Guardar",
+    "profile.edit.saving": "Guardando…",
+    "profile.edit.cancel": "Cancelar",
+    "profile.friends.placeholder": "Lista de amigos — próximamente",
+
   },
 
   en: {
@@ -285,5 +328,47 @@ export const translations: Record<Lang, Dict> = {
     "stats.error.generic": "Failed to load statistics",
     "stats.error.network": "Network error",
     "common.stats": "Statistics",
+    "stats.history": "Match history",
+    "stats.page": "Page {page} of {total}",
+
+    //Theme
+    "common.lightMode": "Switch to light theme",
+    "common.darkMode":  "Switch to dark theme",
+    
+    //Timer
+    "timer.title": "Turn Timer",
+    "timer.subtitle": "Player loses if they don't move in time. 0 = no limit.",
+    "timer.noLimit": "No limit",
+    "timer.custom.placeholder": "Custom seconds (5–300)",
+    "timer.warning.short": "Minimum recommended time is 5 seconds",
+    "timer.warning.long": "Maximum recommended time is 300 seconds",
+    "timer.botThinking": "Bot is thinking…",
+    "timer.yourTurn": "Your turn",
+    "timer.timeout.lost": "Time's up! You lost",
+    "timer.timeout.description": "You didn't make a move in time.",
+
+    //HInts
+    "game.hint": "💡 Hint",
+    "game.hintLoading": "Thinking…",
+
+    //Profile
+    "profile.joinDate": "Joined on",
+    "profile.error.generic": "Failed to load profile",
+    "profile.error.network": "Network error",
+    "profile.edit.button": "Edit profile",
+    "profile.edit.title": "Edit profile",
+    "profile.edit.realName": "Real name",
+    "profile.edit.realName.placeholder": "Your real name (optional)",
+    "profile.edit.bio": "Bio",
+    "profile.edit.bio.placeholder": "Tell us something about you…",
+    "profile.edit.city": "City",
+    "profile.edit.city.placeholder": "Your city (optional)",
+    "profile.edit.country": "Country",
+    "profile.edit.country.placeholder": "Your country",
+    "profile.edit.preferredLanguage": "Preferred language",
+    "profile.edit.save": "Save",
+    "profile.edit.saving": "Saving…",
+    "profile.edit.cancel": "Cancel",
+    "profile.friends.placeholder": "Friends list — coming soon",
   },
 };

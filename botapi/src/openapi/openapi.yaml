@@ -73,18 +73,25 @@ paths:
                 $ref: "#/components/schemas/GameState"
 
   /play:
-    post:
-      summary: Stateless play endpoint
-      description: Receives a YEN position and an optional bot_id, asks the local bot for its next move, and returns the updated YEN position.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PlayOnceRequest"
+    get:
+      summary: Competition play endpoint
+      description: Receives a YEN position through the position query parameter and returns the bot move.
+      parameters:
+        - in: query
+          name: position
+          required: true
+          description: JSON-encoded YEN position
+          schema:
+            type: string
+        - in: query
+          name: bot_id
+          required: false
+          description: Optional bot identifier
+          schema:
+            type: string
       responses:
         "200":
-          description: Updated YEN after local bot move
+          description: Bot move
           content:
             application/json:
               schema:
@@ -250,23 +257,12 @@ components:
     PlayOnceResponse:
       type: object
       required:
-        - move
-        - position
-        - status
+        - coords
       properties:
         bot_id:
           type: string
-        move:
+        coords:
           $ref: "#/components/schemas/Coordinates"
-        position:
-          $ref: "#/components/schemas/Yen"
-        status:
-          type: string
-          enum:
-            - ONGOING
-            - BOT_WON
-            - OPPONENT_WON
-            - DRAW
 
     RemoteConnectRequest:
       type: object
