@@ -62,17 +62,17 @@ end note
 @enduml
 ----
 
-**Steps:**  
+**Steps:**
 
-1. User fills registration form in browser.  
-2. Reverse proxy receives HTTPS request.  
-3. Proxy forwards request to Web Frontend.  
-4. Frontend performs validation.  
-5. Web frontend sends registration request to Proxy → Gateway.  
-6. Gateway forwards to User Service.  
-7. User Service hashes password and checks uniqueness.  
-8. **Alternative 1**: User exists → 409 Conflict sent back through Gateway → Proxy → Webapp → User.  
-9. **Alternative 2**: New user inserted into DB, JWT generated. Response flows back through Gateway → Proxy → Webapp → User.  
+1. User fills registration form in browser.
+2. Reverse proxy receives HTTPS request.
+3. Proxy forwards request to Web Frontend.
+4. Frontend performs validation.
+5. Web frontend sends registration request to Proxy → Gateway.
+6. Gateway forwards to User Service.
+7. User Service hashes password and checks uniqueness.
+8. **Alternative 1**: User exists → 409 Conflict sent back through Gateway → Proxy → Webapp → User.
+9. **Alternative 2**: New user inserted into DB, JWT generated. Response flows back through Gateway → Proxy → Webapp → User.
 
 === Runtime Scenario 2: Playthrough of a Game against Two Players
 
@@ -148,7 +148,7 @@ Gateway --> Proxy: 7. Forward
 Proxy --> Webapp: 8. Forward
 Webapp --> User: 9. Render empty board
 
-== Game Loop ==
+' Game Loop
 loop Each turn
     User -> Webapp: Place piece
     Webapp -> Proxy: POST /api/game/move
@@ -165,37 +165,37 @@ loop Each turn
         Gamey -> Gamey: Check win
         alt Player won
             Gamey --> Gateway: Return winner
-            Gateway --> Proxy --> Webapp --> User: Show victory
+            Gateway --> Proxy: Forward
+            Proxy --> Webapp: Forward
+            Webapp --> User: Show victory
             break
         else Game continues
             Gamey -> Gamey: Bot move
             Gamey --> Gateway: Return updated state
-            Gateway --> Proxy --> Webapp --> User: Show updated board
+            Gateway --> Proxy: Forward
+            Proxy --> Webapp: Forward
+            Webapp --> User: Show updated board
         end
     end
 end
+note over Webapp, DB: Finalization: Update match history
 
-== Finalization ==
-Webapp -> Proxy -> Gateway -> Users -> DB: Update match history
-DB --> Users --> Gateway --> Proxy --> Webapp: Confirm
+Webapp -> Proxy: Send match update
+Proxy -> Gateway: Forward update
+Gateway -> Users: Forward update
+Users -> DB: Persist match data
+DB --> Users: Confirm saved
+Users --> Gateway: Confirm
+Gateway --> Proxy: Confirm
+Proxy --> Webapp: Confirm
 Webapp -> User: Update local stats
 @enduml
 ----
 
 === Runtime Scenario 4: Error and Exception Handling
 
-*All scenarios updated to include Nginx Reverse Proxy as first hop for external requests.*  
+*All scenarios updated to include Nginx Reverse Proxy as first hop for external requests.*
 
-- **Game Engine Unavailable**: User request → Proxy → Gateway → Gamey → error returned through Proxy.  
-- **Invalid Move**: Same, request flows through Proxy → Gateway → Gamey.  
+- **Game Engine Unavailable**: User request → Proxy → Gateway → Gamey → error returned through Proxy.
+- **Invalid Move**: Same, request flows through Proxy → Gateway → Gamey.
 - **Database Connection Lost**: Requests from Webapp still go through Proxy → Gateway → Users → MongoDB.
-
-=== Summary of Runtime Scenarios
-
-|===
-| Scenario | Architectural Relevance | Building Blocks Involved | Quality Goals Demonstrated
-| **User Registration** | Stateless auth, data persistence | Proxy, Webapp, Gateway, Users, MongoDB | Usability, Reliability
-| **Player 1 vs Player 2** | Core game loop between two real users | Proxy, Webapp, Gateway, Gamey, Users, MongoDB | Functionality, Performance
-| **Game vs Bot** | Core game loop, AI strategies | Proxy, Webapp, Gateway, Gamey, Users, MongoDB | Functionality, Performance
-| **Error Handling** | Resilience, fault tolerance | Proxy, all services | Reliability, Availability
-|===

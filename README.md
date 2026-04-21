@@ -1,10 +1,10 @@
 # yovi_en2d - Game Y at UniOvi
 
-[![Release — Test, Build, Publish, Deploy](https://github.com/arquisoft/yovi_en2d/actions/workflows/release-deploy.yml/badge.svg)](https://github.com/arquisoft/yovi_en2c/actions/workflows/release-deploy.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_en2d&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_en2c)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_en2d&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_en2c)
+[![Release — Test, Build, Publish, Deploy](https://github.com/arquisoft/yovi_en2d/actions/workflows/release-deploy.yml/badge.svg)](https://github.com/arquisoft/yovi_en2d/actions/workflows/release-deploy.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_en2d&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_en2d)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_en2d&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_en2d)
 
-This project is a template with some basic functionality for the ASW labs.
+This project contains the yovi_en2d lab assignment. 
 
 ## Project Structure
 
