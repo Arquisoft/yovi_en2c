@@ -10,6 +10,7 @@ Given("I am logged in with a newly registered user", async function () {
   const username = `Quick_${uniqueSuffix}`;
   const email = `quick_${uniqueSuffix}@uniovi.es`;
   const password = "123456";
+  this.createdUser = { username, email, password };
 
   await page.goto(`${BASE_URL}/register`);
   await page.waitForSelector("#register-username");
