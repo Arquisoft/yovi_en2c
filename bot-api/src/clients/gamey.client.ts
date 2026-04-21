@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = process.env.GAMEY_URL || "http://localhost:4000";
+const BASE_URL = process.env.GAMEY_BASE_URL|| "http://gamey:4000";
 
 class GameyClient {
     async chooseBotMove(botId: string, yen: any) {
