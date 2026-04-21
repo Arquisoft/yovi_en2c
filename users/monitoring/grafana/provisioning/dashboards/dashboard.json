@@ -173,6 +173,7 @@
             "lastNotNull"
           ]
         },
+
         "orientation": "horizontal",
         "textMode": "valueAndName",
         "colorMode": "background",
