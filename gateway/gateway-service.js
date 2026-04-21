@@ -22,7 +22,7 @@ app.use(cors({
 
 const USERS_BASE_URL = process.env.USERS_BASE_URL || "http://users:3000";
 const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://gamey:4000";
-const AUTH_BASE_URL = process.env.AUTH_BASE_URL || "http://authentication:5000";
+const AUTH_BASE_URL = process.env.AUTH_BASE_URL || "http://authentication:5000"; //NOSONAR
 const LOGIN_USER_URL = `${USERS_BASE_URL}/login`;
 
 const CREATE_USER_URL = `${USERS_BASE_URL}/createuser`;
