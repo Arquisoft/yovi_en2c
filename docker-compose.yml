@@ -103,6 +103,11 @@ services:
       - "9090:9090"
     volumes:
       - ./users/monitoring/prometheus:/etc/prometheus
+    depends_on:
+      - users
+      - gateway
+      - gamey
+      - botapi
     networks:
       - monitor-net
 

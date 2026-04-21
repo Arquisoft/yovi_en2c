@@ -12,11 +12,11 @@
       "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
       "targets": [
         {
-          "expr": "rate(http_requests_total{job=\"users-service\"}[1m])",
+          "expr": "rate(http_request_duration_seconds_count{job=\"users-service\"}[1m])",
           "legendFormat": "users — {{method}} {{path}} {{status_code}}"
         },
         {
-          "expr": "rate(http_requests_total{job=\"gateway-service\"}[1m])",
+          "expr": "rate(http_request_duration_seconds_count{job=\"gateway-service\"}[1m])",
           "legendFormat": "gateway — {{method}} {{path}} {{status_code}}"
         },
         {
@@ -52,16 +52,144 @@
       "gridPos": { "x": 0, "y": 16, "w": 24, "h": 8 },
       "targets": [
         {
-          "expr": "rate(http_requests_total{job=\"users-service\", status_code=~\"4..|5..\"}[1m])",
+          "expr": "rate(http_request_duration_seconds_count{job=\"users-service\", status_code=~\"4..|5..\"}[1m])",
           "legendFormat": "users errors"
         },
         {
-          "expr": "rate(http_requests_total{job=\"gateway-service\", status_code=~\"4..|5..\"}[1m])",
+          "expr": "rate(http_request_duration_seconds_count{job=\"gateway-service\", status_code=~\"4..|5..\"}[1m])",
           "legendFormat": "gateway errors"
         },
         {
           "expr": "rate(axum_http_requests_total{job=\"gamey-service\", status_code=~\"4..|5..\"}[1m])",
           "legendFormat": "gamey errors"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Requests by Endpoint — users-service",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(http_request_duration_seconds_count{job=\"users-service\"}[1m])",
+          "legendFormat": "{{method}} {{path}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Requests by Endpoint — gateway-service",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(http_request_duration_seconds_count{job=\"gateway-service\"}[1m])",
+          "legendFormat": "{{method}} {{path}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Services UP",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 8,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              }
+            },
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "horizontal",
+        "textMode": "valueAndName",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"gamey-service\"}",
+          "legendFormat": "gamey-service"
+        },
+        {
+          "expr": "up{job=\"gateway-service\"}",
+          "legendFormat": "gateway-service"
+        },
+        {
+          "expr": "up{job=\"users-service\"}",
+          "legendFormat": "users-service"
         }
       ]
     }
