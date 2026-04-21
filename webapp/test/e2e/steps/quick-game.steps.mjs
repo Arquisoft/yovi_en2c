@@ -19,22 +19,42 @@ Given("I am logged in with a newly registered user", async function () {
   await page.fill("#register-password", password);
   await page.fill("#register-repeat-password", password);
 
-  await Promise.all([
-    page.waitForResponse((r) => r.url().includes("/api/register")),
+  const [registerResponse] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes("/api/register") && r.request().method() === "POST"
+    ),
     page.locator(".submit-button").click(),
   ]);
+
+  if (registerResponse.status() >= 400) {
+    throw new Error(
+      `Register failed with status ${registerResponse.status()}: ${await registerResponse.text()}`
+    );
+  }
 
   await page.waitForSelector("#login-username", { timeout: 15000 });
 
   await page.fill("#login-username", username);
   await page.fill("#login-password", password);
 
-  await Promise.all([
-    page.waitForResponse((r) => r.url().includes("/api/login")),
+  const [loginResponse] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes("/api/login") && r.request().method() === "POST"
+    ),
     page.locator(".submit-button").click(),
   ]);
 
-  await page.waitForURL((url) => url.pathname === "/home", { timeout: 15000 });
+  if (loginResponse.status() >= 400) {
+    throw new Error(
+      `Login failed with status ${loginResponse.status()}: ${await loginResponse.text()}`
+    );
+  }
+
+  await Promise.race([
+    page.waitForURL((url) => url.pathname === "/home", { timeout: 15000 }),
+    page.locator("section.hero").waitFor({ state: "visible", timeout: 15000 }),
+    page.locator("section.grid").waitFor({ state: "visible", timeout: 15000 }),
+  ]);
 });
 
 When("I click the quick game button", async function () {
