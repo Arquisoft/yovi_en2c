@@ -23,7 +23,6 @@ app.use(cors({
 const USERS_BASE_URL = process.env.USERS_BASE_URL || "http://users:3000";
 const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://gamey:4000";
 const AUTH_BASE_URL = process.env.AUTH_BASE_URL || "http://authentication:5000";
-const BOT_API_URL = process.env.BOT_API_URL || "http://bot-api:6000";
 const LOGIN_USER_URL = `${USERS_BASE_URL}/login`;
 
 const CREATE_USER_URL = `${USERS_BASE_URL}/createuser`;
@@ -114,15 +113,7 @@ app.post("/game/bot/choose", async (req, res) => {
   }
 
   try {
-    const response = await axios.post(`${BOT_API_URL}/bot/move`, {
-      bot,
-      yen
-    });
-
-    return res.status(200).json({
-      ok: true,
-      coordinates: response.data.coords
-    });
+    const response = await axios.post(botChooseUrl(bot), yen); // NOSONAR
     return res.status(200).json({ ok: true, coordinates: response.data.coords });
   } catch (error) {
     return forwardAxiosError(res, error, "Game server unavailable");
@@ -141,39 +132,29 @@ app.get("/game/status", async (req, res) => {
 // Discovery endpoint: probe each candidate bot ID against the Rust server
 // to find which ones are actually registered. Returns { ok: true, bots: [...] }.
 app.get("/bots", async (req, res) => {
+  // Use a minimal valid game to probe the choose endpoint
+  let probeYen;
   try {
-    const response = await axios.get(`${GAMEY_BASE_URL}/v1/ybot/info`);
-    return res.status(200).json({
-      ok: true,
-      bots: response.data.bots || []
-    });
-  } catch (err) {
-    return res.status(502).json({
-      ok: false,
-      error: "Game server unavailable"
-    });
-  }
-});
-
-app.post("/game/bvb", async (req, res) => {
-  const { yen, bot1, bot2 } = req.body;
-
-  if (!yen) return res.status(400).json({ ok: false, error: "Missing YEN" });
-  if (!bot1 || !bot2) {
-    return res.status(400).json({ ok: false, error: "Missing bot ids" });
+    const newRes = await axios.post(GAME_NEW_URL, { size: 3 });
+    probeYen = newRes.data;
+  } catch {
+    return res.status(502).json({ ok: false, error: "Game server unavailable" });
   }
 
-  try {
-    const response = await axios.post(`${BOT_API_URL}/bot/bvb`, {
-      yen,
-      bot1,
-      bot2
-    });
+  const available = [];
+  await Promise.all(
+      CANDIDATE_BOT_IDS.map(async (id) => {
+        try {
+          await axios.post(botChooseUrl(id), probeYen);
+          available.push(id);
+        } catch (err) {
+          // 400 "Bot not found" = not registered; any other error = treat as unavailable
+          // Either way, skip it
+        }
+      })
+  );
 
-    return res.status(200).json(response.data);
-  } catch (error) {
-    return forwardAxiosError(res, error, "Bot API unavailable");
-  }
+  return res.status(200).json({ ok: true, bots: available.sort() });
 });
 
 app.post("/createuser", async (req, res) => {
