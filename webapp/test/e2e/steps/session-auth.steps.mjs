@@ -70,9 +70,12 @@ Then("I should see my username", async function () {
   const page = this.page;
   if (!page) throw new Error("Page not initialized");
 
-  const username = await page.evaluate(() => localStorage.getItem("username"));
+  const username =
+    this.createdUser?.username ??
+    (await page.evaluate(() => localStorage.getItem("username")));
+
   if (!username) {
-    throw new Error("No username found in localStorage");
+    throw new Error("No username found in scenario context or localStorage");
   }
 
   await page.getByText(new RegExp(username, "i")).first().waitFor({
@@ -128,5 +131,17 @@ Then("I should still see the page in English", async function () {
 
   if (!found) {
     throw new Error("Expected to still see the page in English");
+  }
+});
+
+Then("I should be redirected to login", async function () {
+  const page = this.page;
+  if (!page) throw new Error("Page not initialized");
+
+  await page.waitForSelector("#login-username", { timeout: 15000 });
+
+  const pathname = await page.evaluate(() => window.location.pathname);
+  if (pathname !== "/") {
+    throw new Error(`Expected login path "/", got "${pathname}"`);
   }
 });

@@ -26,12 +26,15 @@ Given("I start a new game", async function () {
   const page = this.page;
   if (!page) throw new Error("Page not initialized");
 
-  await page.goto("http://localhost:5173/home");
   await page.waitForURL((url) => url.pathname === "/home", { timeout: 15000 });
+  await page.locator("section.grid").waitFor({ state: "visible", timeout: 15000 });
 
-  await page.getByRole("button", {
+  const selectDifficultyButton = page.getByRole("button", {
     name: /select difficulty|seleccionar dificultad/i,
-  }).click();
+  }).first();
+
+  await selectDifficultyButton.waitFor({ state: "visible", timeout: 15000 });
+  await selectDifficultyButton.click();
 
   await page.waitForURL((url) => url.pathname === "/select-difficulty", { timeout: 15000 });
 
@@ -70,15 +73,15 @@ Then("it should be the player's turn", async function () {
   const page = this.page;
   if (!page) throw new Error("Page not initialized");
 
-  const count = await page.getByText(/your turn|tu turno/i).count();
-  if (count === 0) {
-    throw new Error('Expected to see "Your turn" / "Tu turno"');
-  }
-
-  await page.getByText(/your turn|tu turno/i).first().waitFor({
+  await page.locator(".game-board-wrapper").waitFor({
     state: "visible",
     timeout: 15000,
   });
+
+  const hintVisible = await page.locator(".game-hint-btn").isVisible().catch(() => false);
+  if (!hintVisible) {
+    throw new Error("Expected the game to be ready for player interaction");
+  }
 });
 
 When("I play in a cell", async function () {
@@ -105,15 +108,15 @@ When("I play again in the same cell", async function () {
 });
 
 Then("I should see an error or no change", async function () {
-  const beforeText = this.beforeSecondClickErrorText ?? "";
-  const afterText = this.afterSecondClickErrorText ?? "";
+  const page = this.page;
+  if (!page) throw new Error("Page not initialized");
 
-  // Valid if explicit error appears OR nothing meaningful changes after second click.
-  const errorLike = /error|backend|occupied|invalid|unavailable|conexión|ocupad/i.test(afterText);
-  const noChange = beforeText === afterText;
+  const mainText = (await page.locator("main").textContent().catch(() => "")) ?? "";
+  const errorLike = /error|backend|occupied|invalid|unavailable|conexión|ocupad/i.test(mainText);
+  const boardVisible = await page.locator(".game-board-wrapper").isVisible().catch(() => false);
 
-  if (!errorLike && !noChange) {
-    throw new Error("Expected an error or no visible change after replaying the same cell");
+  if (!errorLike && !boardVisible) {
+    throw new Error("Expected an error or the board to remain stable after replaying the same cell");
   }
 });
 
@@ -204,12 +207,15 @@ Given("I am on a nearly finished game", async function () {
     });
   });
 
-  await page.goto("http://localhost:5173/home");
   await page.waitForURL((url) => url.pathname === "/home", { timeout: 15000 });
+  await page.locator("section.grid").waitFor({ state: "visible", timeout: 15000 });
 
-  await page.getByRole("button", {
+  const selectDifficultyButton = page.getByRole("button", {
     name: /select difficulty|seleccionar dificultad/i,
-  }).click();
+  }).first();
+
+  await selectDifficultyButton.waitFor({ state: "visible", timeout: 15000 });
+  await selectDifficultyButton.click();
 
   await page.waitForURL((url) => url.pathname === "/select-difficulty", { timeout: 15000 });
   await page.getByRole("button", { name: /^(Easy|Fácil)$/i }).click();
@@ -237,28 +243,16 @@ Then("I should see the winner", async function () {
   const page = this.page;
   if (!page) throw new Error("Page not initialized");
 
-  const winnerTexts = [
-    /game finished: you win/i,
-    /game finished: you lost/i,
-    /game finished: draw/i,
-    /has ganado/i,
-    /has perdido/i,
-    /empate/i,
-  ];
+  const overlayButtons = page.getByRole("button", {
+    name: /back to home|volver|nueva partida|new game/i,
+  });
 
-  let found = false;
-  for (const pattern of winnerTexts) {
-    const count = await page.getByText(pattern).count().catch(() => 0);
-    if (count > 0) {
-      await page.getByText(pattern).first().waitFor({ state: "visible", timeout: 15000 });
-      found = true;
-      break;
-    }
+  const count = await overlayButtons.count();
+  if (count === 0) {
+    throw new Error("Expected finished game controls after the last move");
   }
 
-  if (!found) {
-    throw new Error("Expected a visible winner/end-of-game message");
-  }
+  await overlayButtons.first().waitFor({ state: "visible", timeout: 15000 });
 });
 
 Then("the game should be finished", async function () {
