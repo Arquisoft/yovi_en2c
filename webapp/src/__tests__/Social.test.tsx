@@ -40,7 +40,7 @@ const SEARCH_RESULTS = [
 function mockSearchFetch(users = SEARCH_RESULTS) {
     global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ success: true, users, count: users.length }),
+        json: async () => ({ success: true, users: users ?? [], count: users?.length ?? 0 }),
     } as Response);
 }
 
@@ -110,7 +110,7 @@ describe("Social", () => {
             expect(global.fetch).toHaveBeenCalledWith(
                 expect.stringContaining("/api/search?q=maria")
             );
-        }, { timeout: 1000 });
+        });
     });
 
     test("encodes special characters in the search query", async () => {
@@ -122,9 +122,9 @@ describe("Social", () => {
 
         await waitFor(() => {
             expect(global.fetch).toHaveBeenCalledWith(
-                expect.stringContaining("q=a")
+                expect.stringContaining("/api/search?q=a%20b")
             );
-        }, { timeout: 1000 });
+        });
     });
 
     // ── Search results display ────────────────────────────────────────────────
@@ -140,7 +140,7 @@ describe("Social", () => {
             expect(screen.getByText("maria99")).toBeInTheDocument();
             expect(screen.getByText("marco_g")).toBeInTheDocument();
             expect(screen.getByText("maricel")).toBeInTheDocument();
-        }, { timeout: 1000 });
+        });
     });
 
     test("renders realName when present", async () => {
@@ -152,7 +152,7 @@ describe("Social", () => {
 
         await waitFor(() => {
             expect(screen.getByText("Maria García")).toBeInTheDocument();
-        }, { timeout: 1000 });
+        });
     });
 
     test("renders result count in the label", async () => {
@@ -164,7 +164,7 @@ describe("Social", () => {
 
         await waitFor(() => {
             expect(screen.getByText(/\(3\)/)).toBeInTheDocument();
-        }, { timeout: 1000 });
+        });
     });
 
     test("shows no results message when search returns empty array", async () => {
@@ -176,7 +176,7 @@ describe("Social", () => {
 
         await waitFor(() => {
             expect(screen.getByText(/Sin resultados|no results/i)).toBeInTheDocument();
-        }, { timeout: 1000 });
+        });
     });
 
     test("shows error message when fetch throws a network error", async () => {
@@ -188,7 +188,7 @@ describe("Social", () => {
 
         await waitFor(() => {
             expect(screen.getByText(/error|Error/i)).toBeInTheDocument();
-        }, { timeout: 1000 });
+        });
     });
 
     test("shows error message when API returns success false", async () => {
@@ -203,7 +203,7 @@ describe("Social", () => {
 
         await waitFor(() => {
             expect(screen.getByText(/Service unavailable|error/i)).toBeInTheDocument();
-        }, { timeout: 1000 });
+        });
     });
 
     // ── Send friend request button ────────────────────────────────────────────
@@ -216,10 +216,10 @@ describe("Social", () => {
         await user.type(screen.getByRole("textbox"), "mar");
 
         await waitFor(() => {
-            expect(
-                screen.getAllByRole("button", { name: /Send request|Enviar solicitud/i }).length
-            ).toBeGreaterThan(0);
-        }, { timeout: 1000 });
+            // The button text includes an emoji ➕ and "Enviar solicitud" or "Send request"
+            const btns = screen.getAllByRole("button", { name: /Enviar solicitud|Send request/i });
+            expect(btns.length).toBeGreaterThan(0);
+        });
     });
 
     test("does not render Send Request button for the logged-in user", async () => {
@@ -238,10 +238,10 @@ describe("Social", () => {
 
         await waitFor(() => {
             expect(screen.getByText("alex")).toBeInTheDocument();
-        }, { timeout: 1000 });
+        });
 
         expect(
-            screen.queryByRole("button", { name: /Send request|Enviar solicitud/i })
+            screen.queryByRole("button", { name: /Enviar solicitud|Send request/i })
         ).not.toBeInTheDocument();
     });
 
@@ -260,12 +260,15 @@ describe("Social", () => {
         renderSocial("alex");
         await user.type(screen.getByRole("textbox"), "mar");
 
-        await waitFor(() => screen.getByText("maria99"), { timeout: 1000 });
+        // Wait for the first result to appear
+        await screen.findByText("maria99");
 
-        // Click the first "Enviar solicitud" button (maria99's row)
-        const buttons = screen.getAllByRole("button", { name: /Enviar solicitud|Send request/i });
+        // Find all "Send request" buttons (they are in the UserCard components)
+        const buttons = await screen.findAllByRole("button", { name: /Enviar solicitud|Send request/i });
+        // The first button corresponds to maria99
         await user.click(buttons[0]);
 
+        // Wait for the button text to change to "✔ Solicitud enviada" or similar
         await waitFor(() => {
             expect(screen.getByText(/Solicitud enviada|Request sent/i)).toBeInTheDocument();
         });
@@ -287,12 +290,11 @@ describe("Social", () => {
         renderSocial("alex");
         await user.type(screen.getByRole("textbox"), "mar");
 
-        await waitFor(() => screen.getByText("maria99"), { timeout: 1000 });
+        await screen.findByText("maria99");
 
-        const buttons = screen.getAllByRole("button", { name: /Enviar solicitud|Send request/i });
+        const buttons = await screen.findAllByRole("button", { name: /Enviar solicitud|Send request/i });
         await user.click(buttons[0]);
 
-        // After 409 the button shows "Ya son amigos" (alreadyFriends state)
         await waitFor(() => {
             expect(screen.getByText(/Ya son amigos|Already friends/i)).toBeInTheDocument();
         });
@@ -314,9 +316,9 @@ describe("Social", () => {
         renderSocial("alex");
         await user.type(screen.getByRole("textbox"), "mar");
 
-        await waitFor(() => screen.getByText("maria99"), { timeout: 1000 });
+        await screen.findByText("maria99");
 
-        const buttons = screen.getAllByRole("button", { name: /Enviar solicitud|Send request/i });
+        const buttons = await screen.findAllByRole("button", { name: /Enviar solicitud|Send request/i });
         await user.click(buttons[0]);
 
         await waitFor(() => {
@@ -339,9 +341,9 @@ describe("Social", () => {
         renderSocial("alex", "my-secret-token");
         await user.type(screen.getByRole("textbox"), "mar");
 
-        await waitFor(() => screen.getByText("maria99"), { timeout: 1000 });
+        await screen.findByText("maria99");
 
-        const buttons = screen.getAllByRole("button", { name: /Enviar solicitud|Send request/i });
+        const buttons = await screen.findAllByRole("button", { name: /Enviar solicitud|Send request/i });
         await user.click(buttons[0]);
 
         await waitFor(() => {
@@ -364,22 +366,14 @@ describe("Social", () => {
         await user.type(screen.getByRole("textbox"), "mar");
 
         // Wait for maria99 to appear in results
-        const maria = await screen.findByText("maria99", {}, { timeout: 1000 });
+        await screen.findByText("maria99");
 
-        // Click the View Profile button in the same row as maria99
-        const row = maria.closest("div[style]")?.parentElement;
-        const viewBtn = row
-            ? row.querySelector("button")
-            : screen.getAllByRole("button", { name: /Ver perfil|View profile/i })[1];
-
-        // Fallback: click by index after the navbar profile button
-        if (!viewBtn) {
-            const allViewBtns = screen.getAllByRole("button", { name: /Ver perfil de|Ver perfil$|View profile/i });
-            // Skip the navbar "Ver perfil de alex" button (index 0) and click results button
-            await user.click(allViewBtns[1]);
-        } else {
-            await user.click(viewBtn as HTMLElement);
-        }
+        // Get all "View profile" buttons (there is one in navbar and one per result)
+        const viewButtons = screen.getAllByRole("button", { name: /Ver perfil|View profile/i });
+        // The navbar button contains the username "alex" in its aria-label or text, so we skip it
+        const resultButton = viewButtons.find(btn => !btn.textContent?.includes("alex"));
+        expect(resultButton).toBeDefined();
+        await user.click(resultButton!);
 
         expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining("/profile/maria99"));
     });

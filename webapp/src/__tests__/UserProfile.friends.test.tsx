@@ -252,9 +252,9 @@ describe("UserProfile — Friends system", () => {
         mockFetch(makeProfile({ friends: ["maria99"] }));
         renderProfile("testuser", "testuser");
 
-        // The card title is "👥 Amigos" in Spanish
+        // The card title contains an emoji and the word "Amigos" (or "Friends")
         await waitFor(() => {
-            expect(screen.getByText(/^Amigos$|^Friends$/i)).toBeInTheDocument();
+            expect(screen.getByText(/Amigos|Friends/i)).toBeInTheDocument();
         });
     });
 
@@ -264,7 +264,7 @@ describe("UserProfile — Friends system", () => {
 
         await screen.findByRole("heading", { name: /testuser/i });
 
-        expect(screen.queryByText(/^Amigos$|^Friends$/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Amigos|Friends/i)).not.toBeInTheDocument();
     });
 
     // ── FriendsListCard: empty state ──────────────────────────────────────────
@@ -273,7 +273,7 @@ describe("UserProfile — Friends system", () => {
         mockFetch(makeProfile({ friends: [] }));
         renderProfile("testuser", "testuser");
 
-        await waitFor(() => screen.getByText(/^Amigos$|^Friends$/i));
+        await waitFor(() => screen.getByText(/Amigos|Friends/i));
 
         expect(
             screen.getByText(/Aún no tienes amigos|No friends yet/i)
