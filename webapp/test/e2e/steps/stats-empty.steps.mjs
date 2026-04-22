@@ -34,22 +34,24 @@ Then("I should see the empty statistics state", async function () {
   const page = this.page;
   if (!page) throw new Error("Page not initialized");
 
-    const patterns = [
+  await page.waitForURL((url) => url.pathname === "/statistics", { timeout: 15000 });
+
+  const patterns = [
     /you have no recorded games yet/i,
     /play your first game/i,
     /aún no tienes partidas registradas/i,
     /juega tu primera partida/i,
-    ];
+  ];
 
   let found = false;
 
   for (const pattern of patterns) {
     const locator = page.getByText(pattern);
-    const count = await locator.count().catch(() => 0);
-    if (count > 0) {
+    try {
       await locator.first().waitFor({ state: "visible", timeout: 15000 });
       found = true;
       break;
+    } catch {
     }
   }
 
