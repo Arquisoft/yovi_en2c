@@ -18,7 +18,9 @@ services:
       - monitor-net
 
   users:
-    build: ./users
+    build:
+      context: .
+      dockerfile: ./users/Dockerfile
     container_name: users
     image: ghcr.io/arquisoft/yovi_en2c-users:latest
     ports:
@@ -27,8 +29,6 @@ services:
       - MONGODB_URI=${MONGODB_URI}
     networks:
       - monitor-net
-    volumes:
-      - ./monitoring:/app/monitoring:ro
 
   webapp:
     build:
@@ -70,7 +70,9 @@ services:
       - monitor-net
 
   authentication:
-    build: ./authentication
+    build:
+      context: .
+      dockerfile: ./authentication/Dockerfile
     container_name: authentication
     image: ghcr.io/arquisoft/yovi_en2c-authentication:latest
     ports:
@@ -80,8 +82,6 @@ services:
       - JWT_EXPIRES=24h
     networks:
       - monitor-net
-    volumes:
-      - ./monitoring:/app/monitoring:ro
 
   bot-api:
     build: ./bot-api
@@ -164,6 +164,9 @@ volumes:
   loki-data:
   grafana-data:
   prometheus-data:
+
+
+
 
 
 networks:

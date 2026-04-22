@@ -1,9 +1,9 @@
 const express = require('express');
 require('dotenv').config();
 
-const { login, verifyToken } = require('./authentication');
+const { register, login, verifyToken } = require('./authentication');
 const authMiddleware = require('./authMiddleware');
-const { httpMetricsMiddleware, register } = require("./monitoring/middleware/httpMetrics");
+const { httpMetricsMiddleware, registerHttp } = require("./monitoring/middleware/httpMetrics");
 const app = express();
 
 // Middleware
@@ -35,8 +35,8 @@ app.get('/health', (req, res) => {
 
 
 app.get("/metrics", async (req, res) => {
-    res.set("Content-Type", register.contentType);
-    res.end(await register.metrics());
+    res.set("Content-Type", registerHttp.contentType);
+    res.end(await registerHttp.metrics());
 });
 
 // ================= EXPORT FOR TESTING =================
