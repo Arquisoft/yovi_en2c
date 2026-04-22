@@ -26,10 +26,10 @@ Then("I should see a statistics error", async function () {
   if (!page) throw new Error("Page not initialized");
 
   const patterns = [
-    /something went wrong/i,
+    /failed to load statistics/i,
     /network error/i,
     /retry/i,
-    /algo ha ido mal/i,
+    /error al cargar las estadísticas/i,
     /error de red/i,
     /reintentar/i,
   ];

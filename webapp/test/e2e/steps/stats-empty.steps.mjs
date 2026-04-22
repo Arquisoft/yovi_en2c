@@ -34,12 +34,12 @@ Then("I should see the empty statistics state", async function () {
   const page = this.page;
   if (!page) throw new Error("Page not initialized");
 
-  const patterns = [
-    /no games yet/i,
+    const patterns = [
+    /you have no recorded games yet/i,
     /play your first game/i,
-    /no hay partidas/i,
+    /aún no tienes partidas registradas/i,
     /juega tu primera partida/i,
-  ];
+    ];
 
   let found = false;
 
