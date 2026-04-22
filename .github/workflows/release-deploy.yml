@@ -1,8 +1,10 @@
 name: Release — Test, Build, Publish, Deploy
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - master
+  workflow_dispatch:
 
 permissions:
   contents: read
