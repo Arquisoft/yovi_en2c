@@ -210,14 +210,14 @@ const Social: React.FC = () => {
                                 color: "var(--muted)", fontWeight: 700 }}>
                                 {loading
                                     ? t("social.searching")
-                                    : `${t("social.resultsLabel")} (${results.length})`}
+                                    : `${t("social.resultsLabel")} (${results?.length ?? 0})`}
                             </h2>
 
                             {error && (
                                 <p style={{ color: "var(--danger)", fontWeight: 700 }}>{error}</p>
                             )}
 
-                            {!loading && !error && results.length === 0 && (
+                            {!loading && !error && (results?.length ?? 0) === 0 && (
                                 <div className="card" style={{ textAlign: "center",
                                     opacity: 0.6, padding: "28px 0" }}>
                                     <p style={{ margin: 0, color: "var(--muted)" }}>

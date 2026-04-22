@@ -450,7 +450,7 @@ const UserProfile: React.FC = () => {
     const locationStr = [city, country].filter(Boolean).join(", ");
 
     // Derive whether current user already has a friend relationship with this profile
-    const alreadyFriends = profile.friends.includes(currentUser ?? "");
+    const alreadyFriends = (profile.friends ?? []).includes(currentUser ?? "");
 
     // ── Render ────────────────────────────────────────────────────────────────
 
