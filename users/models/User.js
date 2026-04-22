@@ -60,6 +60,16 @@ const userSchema = new mongoose.Schema({
         required: [true, 'Password is mandatory'],
         minlength: [4, 'Password must be at least 4 characters long']
     },
+    // Array of usernames of accepted friends
+    friends: {
+        type: [String],
+        default: []
+    },
+    // Array of usernames who sent a pending friend request to this user
+    friendRequests: {
+        type: [String],
+        default: []
+    },
     createdAt: {
         type: Date,
         default: Date.now
