@@ -27,6 +27,8 @@ services:
       - MONGODB_URI=${MONGODB_URI}
     networks:
       - monitor-net
+    volumes:
+      - ./monitoring:/app/monitoring:ro
 
   webapp:
     build:
@@ -78,6 +80,8 @@ services:
       - JWT_EXPIRES=24h
     networks:
       - monitor-net
+    volumes:
+      - ./monitoring:/app/monitoring:ro
 
   bot-api:
     build: ./bot-api
@@ -99,8 +103,10 @@ services:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=2d"
       - "--storage.tsdb.retention.size=500MB"
     networks:
@@ -112,6 +118,7 @@ services:
     ports:
       - "9091:3000"
     volumes:
+      - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
     networks:
       - monitor-net
@@ -152,8 +159,12 @@ services:
     command: -config.file=/etc/promtail/config.yml
     networks:
       - monitor-net
+
 volumes:
   loki-data:
+  grafana-data:
+  prometheus-data:
+
 
 networks:
   monitor-net:
