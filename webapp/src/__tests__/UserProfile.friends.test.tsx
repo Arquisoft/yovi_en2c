@@ -139,11 +139,14 @@ describe("UserProfile — Friends system", () => {
     });
 
     test("renders the badge count matching the number of pending requests", async () => {
-        mockFetch(makeProfile({ friendRequests: ["u1", "u2", "u3"] }));
+        // Use 2 requests to avoid collision with stats numbers (wins/losses)
+        mockFetch(makeProfile({ friendRequests: ["u1", "u2"], stats: { totalGames: 10, wins: 7, losses: 3, winRate: 70 } }));
         renderProfile("testuser", "testuser");
 
         await waitFor(() => {
-            expect(screen.getByText("3")).toBeInTheDocument();
+            // The badge "2" should appear in the span next to the card title
+            const badges = screen.getAllByText("2");
+            expect(badges.length).toBeGreaterThanOrEqual(1);
         });
     });
 
@@ -249,8 +252,9 @@ describe("UserProfile — Friends system", () => {
         mockFetch(makeProfile({ friends: ["maria99"] }));
         renderProfile("testuser", "testuser");
 
+        // The card title is "👥 Amigos" in Spanish
         await waitFor(() => {
-            expect(screen.getByText(/^Friends$/i)).toBeInTheDocument();
+            expect(screen.getByText(/^Amigos$|^Friends$/i)).toBeInTheDocument();
         });
     });
 
@@ -260,10 +264,7 @@ describe("UserProfile — Friends system", () => {
 
         await screen.findByRole("heading", { name: /testuser/i });
 
-        // "Friends" heading should not appear for visitors
-        expect(
-            screen.queryByRole("heading", { name: /^Friends$/i })
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText(/^Amigos$|^Friends$/i)).not.toBeInTheDocument();
     });
 
     // ── FriendsListCard: empty state ──────────────────────────────────────────
@@ -272,10 +273,10 @@ describe("UserProfile — Friends system", () => {
         mockFetch(makeProfile({ friends: [] }));
         renderProfile("testuser", "testuser");
 
-        await waitFor(() => screen.getByText(/^Friends$/i));
+        await waitFor(() => screen.getByText(/^Amigos$|^Friends$/i));
 
         expect(
-            screen.getByText(/No friends yet|Aún no tienes amigos/i)
+            screen.getByText(/Aún no tienes amigos|No friends yet/i)
         ).toBeInTheDocument();
     });
 
@@ -304,11 +305,13 @@ describe("UserProfile — Friends system", () => {
     });
 
     test("renders the friends count badge", async () => {
-        mockFetch(makeProfile({ friends: ["a", "b", "c"] }));
+        // Use 4 friends to avoid collision with stats values (wins=3, losses=2)
+        mockFetch(makeProfile({ friends: ["a", "b", "c", "d"] }));
         renderProfile("testuser", "testuser");
 
         await waitFor(() => {
-            expect(screen.getByText("3")).toBeInTheDocument();
+            const badges = screen.getAllByText("4");
+            expect(badges.length).toBeGreaterThanOrEqual(1);
         });
     });
 
@@ -319,9 +322,11 @@ describe("UserProfile — Friends system", () => {
 
         await waitFor(() => screen.getByText("maria99"));
 
-        await user.click(
-            screen.getAllByRole("button", { name: /View profile|Ver perfil/i })[0]
-        );
+        // "Ver perfil de testuser" is in navbar; "Ver perfil" buttons in the friends list come after
+        const allViewBtns = screen.getAllByRole("button", { name: /Ver perfil|View profile/i });
+        // Skip navbar button (contains username) and click the first friend's button
+        const friendBtn = allViewBtns.find(btn => !btn.getAttribute("aria-label")?.includes("testuser"));
+        await user.click(friendBtn ?? allViewBtns[allViewBtns.length - 1]);
 
         expect(mockNavigate).toHaveBeenCalledWith("/profile/maria99");
     });

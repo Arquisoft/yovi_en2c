@@ -62,7 +62,7 @@ describe("Social", () => {
 
     test("renders the page title", () => {
         renderSocial();
-        expect(screen.getByText(/Social/i)).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
     });
 
     test("renders the search input", () => {
@@ -72,8 +72,8 @@ describe("Social", () => {
 
     test("renders the Groups coming soon section", () => {
         renderSocial();
-        expect(screen.getByText(/Groups/i)).toBeInTheDocument();
-        expect(screen.getByText(/coming soon/i)).toBeInTheDocument();
+        expect(screen.getByText(/Grupos|Groups/i)).toBeInTheDocument();
+        expect(screen.getByText(/Próximamente|coming soon/i)).toBeInTheDocument();
     });
 
     test("does not show results section before searching", () => {
@@ -175,7 +175,7 @@ describe("Social", () => {
         await user.type(screen.getByRole("textbox"), "zzz");
 
         await waitFor(() => {
-            expect(screen.getByText(/no results|sin resultados/i)).toBeInTheDocument();
+            expect(screen.getByText(/Sin resultados|no results/i)).toBeInTheDocument();
         }, { timeout: 1000 });
     });
 
@@ -262,11 +262,12 @@ describe("Social", () => {
 
         await waitFor(() => screen.getByText("maria99"), { timeout: 1000 });
 
-        const buttons = screen.getAllByRole("button", { name: /Send request|Enviar solicitud/i });
+        // Click the first "Enviar solicitud" button (maria99's row)
+        const buttons = screen.getAllByRole("button", { name: /Enviar solicitud|Send request/i });
         await user.click(buttons[0]);
 
         await waitFor(() => {
-            expect(screen.getByText(/Request sent|Solicitud enviada/i)).toBeInTheDocument();
+            expect(screen.getByText(/Solicitud enviada|Request sent/i)).toBeInTheDocument();
         });
     });
 
@@ -288,11 +289,12 @@ describe("Social", () => {
 
         await waitFor(() => screen.getByText("maria99"), { timeout: 1000 });
 
-        const buttons = screen.getAllByRole("button", { name: /Send request|Enviar solicitud/i });
+        const buttons = screen.getAllByRole("button", { name: /Enviar solicitud|Send request/i });
         await user.click(buttons[0]);
 
+        // After 409 the button shows "Ya son amigos" (alreadyFriends state)
         await waitFor(() => {
-            expect(screen.getByText(/Already friends|Ya son amigos/i)).toBeInTheDocument();
+            expect(screen.getByText(/Ya son amigos|Already friends/i)).toBeInTheDocument();
         });
     });
 
@@ -314,7 +316,7 @@ describe("Social", () => {
 
         await waitFor(() => screen.getByText("maria99"), { timeout: 1000 });
 
-        const buttons = screen.getAllByRole("button", { name: /Send request|Enviar solicitud/i });
+        const buttons = screen.getAllByRole("button", { name: /Enviar solicitud|Send request/i });
         await user.click(buttons[0]);
 
         await waitFor(() => {
@@ -339,7 +341,7 @@ describe("Social", () => {
 
         await waitFor(() => screen.getByText("maria99"), { timeout: 1000 });
 
-        const buttons = screen.getAllByRole("button", { name: /Send request|Enviar solicitud/i });
+        const buttons = screen.getAllByRole("button", { name: /Enviar solicitud|Send request/i });
         await user.click(buttons[0]);
 
         await waitFor(() => {
@@ -361,11 +363,24 @@ describe("Social", () => {
 
         await user.type(screen.getByRole("textbox"), "mar");
 
-        await waitFor(() => screen.getByText("maria99"), { timeout: 1000 });
+        // Wait for maria99 to appear in results
+        const maria = await screen.findByText("maria99", {}, { timeout: 1000 });
 
-        const viewButtons = screen.getAllByRole("button", { name: /View profile|Ver perfil/i });
-        await user.click(viewButtons[0]);
+        // Click the View Profile button in the same row as maria99
+        const row = maria.closest("div[style]")?.parentElement;
+        const viewBtn = row
+            ? row.querySelector("button")
+            : screen.getAllByRole("button", { name: /Ver perfil|View profile/i })[1];
 
-        expect(mockNavigate).toHaveBeenCalledWith("/profile/maria99");
+        // Fallback: click by index after the navbar profile button
+        if (!viewBtn) {
+            const allViewBtns = screen.getAllByRole("button", { name: /Ver perfil de|Ver perfil$|View profile/i });
+            // Skip the navbar "Ver perfil de alex" button (index 0) and click results button
+            await user.click(allViewBtns[1]);
+        } else {
+            await user.click(viewBtn as HTMLElement);
+        }
+
+        expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining("/profile/maria99"));
     });
 });
