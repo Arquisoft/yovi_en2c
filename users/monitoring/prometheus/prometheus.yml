@@ -8,8 +8,8 @@ scrape_configs:
 
   - job_name: "authentication"
     static_configs:
-      - targets: ["authentication:4000"]
+      - targets: ["authentication:5000"]
 
   - job_name: "cadvisor"
     static_configs:
-      - targets: [ "cadvisor:8080" ]
+      - targets: [ "cadvisor:8085" ]
