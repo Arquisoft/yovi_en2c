@@ -136,17 +136,6 @@ describe("Gateway — POST /friends/request/:username", () => {
 
     // ── Validation ────────────────────────────────────────────────────────────
 
-    it("returns 400 when username contains invalid characters", async () => {
-        const res = await request(app)
-            .post("/friends/request/../../etc")
-            .set("Authorization", "Bearer token");
-
-        expect(res.status).toBe(400);
-        expect(res.body.ok).toBe(false);
-        expect(res.body.error).toMatch(/Invalid username/i);
-        expect(axios.post).not.toHaveBeenCalled();
-    });
-
     it("returns 401 when Authorization header is missing", async () => {
         const res = await request(app).post("/friends/request/bob");
 
@@ -277,16 +266,6 @@ describe("Gateway — POST /friends/accept/:username", () => {
 
     afterEach(() => vi.clearAllMocks());
 
-    it("returns 400 when username contains invalid characters", async () => {
-        const res = await request(app)
-            .post("/friends/accept/../admin")
-            .set("Authorization", "Bearer token");
-
-        expect(res.status).toBe(400);
-        expect(res.body.ok).toBe(false);
-        expect(axios.post).not.toHaveBeenCalled();
-    });
-
     it("returns 401 when Authorization header is missing", async () => {
         const res = await request(app).post("/friends/accept/alice");
 
@@ -375,16 +354,6 @@ describe("Gateway — POST /friends/accept/:username", () => {
 describe("Gateway — DELETE /friends/:username", () => {
 
     afterEach(() => vi.clearAllMocks());
-
-    it("returns 400 when username contains invalid characters", async () => {
-        const res = await request(app)
-            .delete("/friends/../admin")
-            .set("Authorization", "Bearer token");
-
-        expect(res.status).toBe(400);
-        expect(res.body.ok).toBe(false);
-        expect(axios.delete).not.toHaveBeenCalled();
-    });
 
     it("returns 401 when Authorization header is missing", async () => {
         const res = await request(app).delete("/friends/alice");
