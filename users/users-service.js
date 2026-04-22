@@ -44,7 +44,7 @@ const SALT_ROUNDS = 10;
  * dependency to this service.
  */
 function getUsernameFromToken(authHeader) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+    if (!authHeader?.startsWith('Bearer ')) return null;
     try {
         const payload = authHeader.split('.')[1];
         const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
@@ -171,7 +171,7 @@ app.get('/search', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Query parameter q is required' });
         }
 
-        const escaped = q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escaped = q.trim().replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
         const regex   = new RegExp(escaped, 'i');
 
         // Search by username OR email, exclude password hash
@@ -583,7 +583,7 @@ module.exports = app;
 
 // =============================== START THE SERVER ================================
 
-if (require.main === module) {
+if (require.main == module) {
     app.listen(PORT, () => {
         console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
