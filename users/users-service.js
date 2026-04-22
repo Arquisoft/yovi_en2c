@@ -244,16 +244,16 @@ app.get('/history/:username', async (req, res) => {
         const { username } = req.params;
         const { limit = 20 } = req.query;
 
-        const history = await GameResult.find({ username: username.toString() })
+        const games = await GameResult.find({ username: username.toString() })
             .sort({ date: -1 })
             .limit(Number.parseInt(limit, 10));
 
         const stats = {
-            wins:   history.filter(g => g.result === 'win').length,
-            losses: history.filter(g => g.result === 'loss').length,
+            wins:   games.filter(g => g.result === 'win').length,
+            losses: games.filter(g => g.result === 'loss').length,
         };
 
-        res.json({ success: true, username, stats, history });
+        res.json({ success: true, username, stats, total: games.length, games });
     } catch (error) {
         console.error('Error in GET /history/:username:', error);
         res.status(500).json({ success: false, error: error.message });
