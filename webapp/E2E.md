@@ -10,7 +10,7 @@ Quick commands:
   npm run test:e2e:install-browsers
   ```
 
-- Run E2E tests (requires both the app and the users service running):
+- Run E2E tests (requires the full backend stack minus the botapi: users, authentication, gateway and gamey services):
 
   - Start both dev servers and run tests automatically:
 
@@ -18,14 +18,14 @@ Quick commands:
     npm run test:e2e:dev
     ```
 
-  - Or, start the dev server yourself (`npm run dev`) and the users service (`(cd ../users && npm start)`) then run:
+  - Or, start the dev server yourself (`npm run dev`) and the users service (`(cd ../users && npm start), (cd ../authentication && npm start), (cd ../gateway && npm start), (cd ../gamey && cargo run -- --mode server --port 4000)`) then run:
 
     ```bash
     npm run test:e2e
     ```
 
 Files of interest:
-- `features/register.feature` - example Gherkin feature
+- `test/e2e/features` - Gherkin feature files (authentication, game, stats, i18n, etc.)
 - `test/e2e/steps` - step definitions
 - `test/e2e/support` - Cucumber World and Playwright hooks
 
@@ -49,6 +49,32 @@ Run tests in a visible browser / slow motion
   npm run test:e2e:debug
   ```
 
+### Mocking
+
+Some E2E tests mock backend endpoints using Playwright's `page.route`, for example:
+
+- `/api/stats/:username` (statistics tests)
+- `/api/game/*` (game flow tests)
+
+This allows deterministic scenarios such as:
+- finished games
+- empty statistics
+- server errors
+
+
+### Covered scenarios
+
+E2E tests currently cover:
+
+- Authentication (register, login, validation)
+- Session persistence
+- Game flow (start, moves, end game)
+- Difficulty and board selection
+- Statistics (data, empty state, error handling)
+- Internationalization (language toggle)
+- Navigation (home, instructions, profile)
+
 Notes:
 - For CI, ensure Playwright browsers are installed (e.g. `npx playwright install --with-deps`).
 - The `test:e2e:dev` script uses `concurrently` to start both Vite and the `users` service and then runs the Cucumber tests.
+- Some tests intentionally use invalid tokens to verify authentication behavior. This may produce JWT warnings in the console, which are expected.
