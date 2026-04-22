@@ -6,18 +6,10 @@ scrape_configs:
     static_configs:
       - targets: ["users:3000"]
 
-  - job_name: "gateway"
+  - job_name: "authentication"
     static_configs:
-      - targets: ["gateway:8080"]
-
-  - job_name: "gamey"
-    static_configs:
-      - targets: ["gamey:4000"]
+      - targets: ["authentication:4000"]
 
   - job_name: "cadvisor"
     static_configs:
       - targets: [ "cadvisor:8080" ]
-
-  - job_name: "nginx"
-    static_configs:
-      - targets: [ "reverse-proxy:80" ]

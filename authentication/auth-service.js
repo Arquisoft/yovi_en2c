@@ -32,6 +32,17 @@ app.get('/health', (req, res) => {
     });
 });
 
+// ================= METRICS =================
+
+const client = require("prom-client");
+
+// collect default Node metrics (CPU, memory, event loop, etc.)
+client.collectDefaultMetrics();
+
+app.get("/metrics", async (req, res) => {
+    res.set("Content-Type", client.register.contentType);
+    res.end(await client.register.metrics());
+});
 
 // ================= EXPORT FOR TESTING =================
 
