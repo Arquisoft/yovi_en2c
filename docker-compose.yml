@@ -99,6 +99,8 @@ services:
       - "9090:9090"
     volumes:
       - ./users/monitoring/prometheus:/etc/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
     networks:
       - monitor-net
 
@@ -109,6 +111,19 @@ services:
       - "9091:3000"
     volumes:
       - ./users/monitoring/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - monitor-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8085:8085"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
     networks:
       - monitor-net
 

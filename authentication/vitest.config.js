@@ -5,8 +5,8 @@ export default defineConfig({
         globals: true,
         environment: 'node',
         coverage: {
-            provider: 'v8', // you already installed this 👍
-            reporter: ['text', 'lcov'], // 👈 THIS is the key
+            provider: 'v8',
+            reporter: ['text', 'lcov'],
             reportsDirectory: './coverage'
         }
     }

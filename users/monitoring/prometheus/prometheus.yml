@@ -2,6 +2,22 @@ global:
   scrape_interval: 5s
 
 scrape_configs:
-  - job_name: 'users-service'
+  - job_name: "users"
     static_configs:
-      - targets: ['users:3000']
+      - targets: ["users:3000"]
+
+  - job_name: "gateway"
+    static_configs:
+      - targets: ["gateway:8080"]
+
+  - job_name: "gamey"
+    static_configs:
+      - targets: ["gamey:4000"]
+
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: [ "cadvisor:8080" ]
+
+  - job_name: "nginx"
+    static_configs:
+      - targets: [ "reverse-proxy:80" ]
