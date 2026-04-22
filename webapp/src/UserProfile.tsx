@@ -141,13 +141,13 @@ const EditModal: React.FC<EditModalProps> = ({ form, saving, onChange, onSave, o
 // Shows pending requests with an Accept button for each.
 
 type FriendRequestsCardProps = {
-    requests: string[];
+    requests?: string[];          // made optional, will default to []
     token: string;
     onAccepted: () => void;
     t: (key: string) => string;
 };
 
-const FriendRequestsCard: React.FC<FriendRequestsCardProps> = ({ requests, token, onAccepted, t }) => {
+const FriendRequestsCard: React.FC<FriendRequestsCardProps> = ({ requests = [], token, onAccepted, t }) => {
     // Track per-username accepting state to give individual feedback
     const [accepting, setAccepting] = useState<Record<string, boolean>>({});
     const [errors,    setErrors]    = useState<Record<string, string>>({});
@@ -173,7 +173,8 @@ const FriendRequestsCard: React.FC<FriendRequestsCardProps> = ({ requests, token
         }
     };
 
-    if (requests.length === 0) {
+    // Safe check: if requests is falsy or empty, show empty state
+    if (!requests?.length) {
         return (
             <div className="card">
                 <h2 className="card__title">📨 {t("profile.friendRequests.title")}</h2>
@@ -248,30 +249,46 @@ const FriendRequestsCard: React.FC<FriendRequestsCardProps> = ({ requests, token
 // Scrollable list of accepted friends, visible to the profile owner only.
 
 type FriendsListCardProps = {
-    friends: string[];
+    friends?: string[];
     onViewProfile: (username: string) => void;
     t: (key: string) => string;
 };
 
-const FriendsListCard: React.FC<FriendsListCardProps> = ({ friends, onViewProfile, t }) => (
-    <div className="card">
-        <h2 className="card__title">
-            👥 {t("profile.friends.title")}
-            <span style={{
-                marginLeft: 8, background: "var(--panel)", color: "var(--muted)",
-                borderRadius: 999, padding: "2px 9px", fontSize: "0.75rem", fontWeight: 900,
-                border: "1px solid var(--stroke)",
-            }}>
-                {friends.length}
-            </span>
-        </h2>
+const FriendsListCard: React.FC<FriendsListCardProps> = ({ friends = [], onViewProfile, t }) => {
+    // Safe check
+    if (!friends?.length) {
+        return (
+            <div className="card">
+                <h2 className="card__title">
+                    👥 {t("profile.friends.title")}
+                    <span style={{
+                        marginLeft: 8, background: "var(--panel)", color: "var(--muted)",
+                        borderRadius: 999, padding: "2px 9px", fontSize: "0.75rem", fontWeight: 900,
+                        border: "1px solid var(--stroke)",
+                    }}>
+                        0
+                    </span>
+                </h2>
+                <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.88rem" }}>
+                    {t("profile.friends.empty")}
+                </p>
+            </div>
+        );
+    }
 
-        {friends.length === 0 ? (
-            <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.88rem" }}>
-                {t("profile.friends.empty")}
-            </p>
-        ) : (
-            // Fixed-height scrollable area so the card doesn't grow unboundedly
+    return (
+        <div className="card">
+            <h2 className="card__title">
+                👥 {t("profile.friends.title")}
+                <span style={{
+                    marginLeft: 8, background: "var(--panel)", color: "var(--muted)",
+                    borderRadius: 999, padding: "2px 9px", fontSize: "0.75rem", fontWeight: 900,
+                    border: "1px solid var(--stroke)",
+                }}>
+                    {friends.length}
+                </span>
+            </h2>
+
             <div style={{
                 display: "flex", flexDirection: "column", gap: 8,
                 maxHeight: 240, overflowY: "auto",
@@ -308,9 +325,9 @@ const FriendsListCard: React.FC<FriendsListCardProps> = ({ friends, onViewProfil
                     </div>
                 ))}
             </div>
-        )}
-    </div>
-);
+        </div>
+    );
+};
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -343,7 +360,13 @@ const UserProfile: React.FC = () => {
             const res  = await fetch(`/api/profile/${profileUsername}`);
             const data = await res.json();
             if (data.success) {
-                setProfile(data.profile);
+                // Normalize friendRequests and friends to always be arrays
+                const normalizedProfile = {
+                    ...data.profile,
+                    friendRequests: data.profile.friendRequests ?? [],
+                    friends: data.profile.friends ?? [],
+                };
+                setProfile(normalizedProfile);
             } else {
                 setError(data.error ?? t("profile.error.generic"));
             }

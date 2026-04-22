@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { useI18n } from "./i18n/I18nProvider";
@@ -125,6 +125,8 @@ const Social: React.FC = () => {
     const [searched, setSearched] = useState(false);
     const [error,   setError]   = useState<string | null>(null);
 
+    const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
     const logout = () => {
         localStorage.removeItem("username");
         localStorage.removeItem("token");
@@ -148,12 +150,15 @@ const Social: React.FC = () => {
             const data = await res.json();
 
             if (data.success) {
-                setResults(data.users);
+                // Ensure data.users is always an array
+                setResults(data.users ?? []);
             } else {
                 setError(data.error ?? t("social.searchError"));
+                setResults([]); // Clear results on error
             }
         } catch {
             setError(t("social.searchError"));
+            setResults([]);
         } finally {
             setLoading(false);
             setSearched(true);
@@ -164,9 +169,9 @@ const Social: React.FC = () => {
         const value = e.target.value;
         setQuery(value);
 
-        // Simple debounce via a closure — clears the previous timeout on each keystroke
-        clearTimeout((onInputChange as any)._timer);
-        (onInputChange as any)._timer = setTimeout(() => handleSearch(value), 400);
+        // Clear previous timeout
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        debounceTimer.current = setTimeout(() => handleSearch(value), 400);
     };
 
     return (
@@ -226,7 +231,8 @@ const Social: React.FC = () => {
                                 </div>
                             )}
 
-                            {!loading && results.map(user => (
+                            {/* Safe map: results is always array now, but we add optional chaining for extra safety */}
+                            {!loading && results?.map(user => (
                                 <UserCard
                                     key={user.username}
                                     user={user}
