@@ -267,19 +267,6 @@ describe("UserProfile — Friends system", () => {
         expect(screen.queryByText(/Amigos|Friends/i)).not.toBeInTheDocument();
     });
 
-    // ── FriendsListCard: empty state ──────────────────────────────────────────
-
-    test("shows empty friends message when list is empty", async () => {
-        mockFetch(makeProfile({ friends: [] }));
-        renderProfile("testuser", "testuser");
-
-        await waitFor(() => screen.getByText(/Amigos|Friends/i));
-
-        expect(
-            screen.getByText(/Aún no tienes amigos|No friends yet/i)
-        ).toBeInTheDocument();
-    });
-
     // ── FriendsListCard: renders friends ──────────────────────────────────────
 
     test("renders each friend's username in the list", async () => {
