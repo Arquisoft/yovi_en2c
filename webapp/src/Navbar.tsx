@@ -62,6 +62,15 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
               >
                 {t("common.stats")}
               </button>
+
+              <button
+                  type="button"
+                  className="navbtn"
+                  aria-current={location.pathname === "/social" ? "page" : undefined}
+                  onClick={() => navigate("/social")}
+              >
+                {t("common.social")}
+              </button>
             </nav>
           </div>
 

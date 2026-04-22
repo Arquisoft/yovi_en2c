@@ -1,3 +1,4 @@
+// App.tsx
 import './App.css'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './ThemeProvider';
@@ -10,6 +11,7 @@ import SelectDifficulty from './SelectDifficulty';
 import Instructions from './Instructions';
 import Statistics from './Statistics';
 import UserProfile from './UserProfile';
+import Social from './Social';
 
 function App() {
   return (
@@ -25,6 +27,7 @@ function App() {
             <Route path="/profile/:username" element={<UserProfile />} />
             <Route path="/select-difficulty" element={<SelectDifficulty />} />
             <Route path="/instructions" element={<Instructions />} />
+            <Route path="/social" element={<Social />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
