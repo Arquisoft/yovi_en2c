@@ -51,10 +51,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 onClick={onClose}
             />
 
-            <div
-                role="dialog"
+            <dialog
                 aria-label={t("notifications.panelLabel")}
                 className="navbar__notif-panel"
+                onClick={onClose}
             >
                 {/* Header */}
                 <div className="navbar__notif-header">
@@ -128,7 +128,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         ))}
                     </ul>
                 )}
-            </div>
+            </dialog>
         </>
     );
 };

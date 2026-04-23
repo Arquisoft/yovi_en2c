@@ -167,7 +167,8 @@ app.get('/search', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Query parameter q is required' });
         }
 
-        const escaped = q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = /[.*+?^${}()|[\]\\]/g;
+        const escaped = q.trim().replaceAll(pattern, String.raw`\$&`);
         const regex   = new RegExp(escaped, 'i');
 
         const users = await User.find(
@@ -619,7 +620,7 @@ module.exports = app;
 
 // =============================== START THE SERVER ================================
 
-if (require.main === module) {
+if (require.main == module) {
     app.listen(PORT, () => {
         console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
