@@ -5,11 +5,13 @@ const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
 
-const { RoomManager } = require("./src/rooms");
-const { createNewGame, applyPvpMove } = require("./src/gamey-client");
+const { RoomManager } = require("./rooms");
+const { createNewGame, applyPvpMove } = require("./gamey-client");
 
 const PORT = Number(process.env.PORT || 7000);
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
+
+const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://localhost:4000";
 
 const app = express();
 app.disable("x-powered-by");

@@ -2,11 +2,11 @@
   "name": "multiplayer",
   "version": "1.0.0",
   "description": "Realtime multiplayer service for YOVI using WebSockets and GameY",
-  "main": "multiplayer-service.js",
+  "main": "src/multiplayer-service.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node multiplayer-service.js",
-    "dev": "node --watch multiplayer-service.js"
+    "start": "node src/multiplayer-service.js",
+    "dev": "node --watch src/multiplayer-service.js"
   },
   "dependencies": {
     "axios": "^1.7.7",
