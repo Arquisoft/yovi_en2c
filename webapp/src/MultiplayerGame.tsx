@@ -95,6 +95,7 @@ const MultiplayerGame: React.FC = () => {
   const { t } = useI18n();
   const socketRef = useRef<Socket | null>(null);
   const hintTimerRef = useRef<number | null>(null);
+  const multiplayerResultSavedRef = useRef(false);
 
   const state = (location.state as LocationState | null) ?? null;
   const username = state?.username ?? localStorage.getItem("username") ?? "";
@@ -126,6 +127,8 @@ const MultiplayerGame: React.FC = () => {
       navigate("/multiplayer", { replace: true, state: { username } });
       return;
     }
+
+    multiplayerResultSavedRef.current = false;
 
     const socket = io(MULTIPLAYER_URL, {
       path: MULTIPLAYER_SOCKET_PATH,
@@ -165,8 +168,10 @@ const MultiplayerGame: React.FC = () => {
     });
 
     socket.on("game_updated", (data: any) => {
-      if (data?.room) {
-        setRoom(data.room);
+      const nextRoom = data?.room ?? null;
+
+      if (nextRoom) {
+        setRoom(nextRoom);
         setHintCell(null);
       }
 
@@ -178,18 +183,25 @@ const MultiplayerGame: React.FC = () => {
           winner && winningCells.size > 0 ? { winner, cells: winningCells } : null
         );
 
-        const didIWin = winner ? winner === yourColorRef(data?.room ?? room, username) : false;
+        const myColor = yourColorRef(nextRoom ?? room, username);
+        const didIWin = winner ? winner === myColor : false;
 
         setGameOver({
           result: winner ? (didIWin ? "win" : "lost") : "draw",
           winner
         });
+
+        if (winner) {
+          saveMultiplayerGameResult(nextRoom ?? room, winner);
+        }
       }
     });
 
     socket.on("game_over", (data: any) => {
-      if (data?.room) {
-        setRoom(data.room);
+      const nextRoom = data?.room ?? null;
+
+      if (nextRoom) {
+        setRoom(nextRoom);
       }
 
       const winner = data?.winner != null ? String(data.winner) : null;
@@ -199,12 +211,17 @@ const MultiplayerGame: React.FC = () => {
         winner && winningCells.size > 0 ? { winner, cells: winningCells } : null
       );
 
-      const didIWin = winner ? winner === yourColorRef(data?.room ?? room, username) : false;
+      const myColor = yourColorRef(nextRoom ?? room, username);
+      const didIWin = winner ? winner === myColor : false;
 
       setGameOver({
         result: winner ? (didIWin ? "win" : "lost") : "draw",
         winner
       });
+
+      if (winner) {
+        saveMultiplayerGameResult(nextRoom ?? room, winner);
+      }
     });
 
     socket.on("opponent_left", () => {
@@ -348,6 +365,46 @@ const MultiplayerGame: React.FC = () => {
     } finally {
       socketRef.current?.disconnect();
       navigate("/multiplayer", { replace: true, state: { username } });
+    }
+  };
+
+  const saveMultiplayerGameResult = async (
+    finalRoom: RoomState | null,
+    winnerColor: string | null
+  ) => {
+    if (!finalRoom || multiplayerResultSavedRef.current) return;
+
+    const player1 = finalRoom.players.B?.username;
+    const player2 = finalRoom.players.R?.username;
+
+    if (!player1 || !player2 || !winnerColor) return;
+
+    const winnerUsername =
+      winnerColor === "B"
+        ? finalRoom.players.B?.username
+        : winnerColor === "R"
+          ? finalRoom.players.R?.username
+          : null;
+
+    if (!winnerUsername) return;
+
+    multiplayerResultSavedRef.current = true;
+
+    try {
+      await fetch("/api/gameresult/multiplayer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          player1,
+          player2,
+          winner: winnerUsername,
+          boardSize: finalRoom.yen.size
+        })
+      });
+    } catch {
+      // silencioso, igual que en PvB
     }
   };
 

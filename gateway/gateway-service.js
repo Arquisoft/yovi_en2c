@@ -35,6 +35,7 @@ const AUTH_LOGIN_URL    = `${AUTH_BASE_URL}/login`;
 const AUTH_VERIFY_URL   = `${AUTH_BASE_URL}/verify`;
 const GAME_RESULT_URL   = `${USERS_BASE_URL}/gameresult`;
 const MULTIPLAYER_HEALTH_URL = `${MULTIPLAYER_BASE_URL}/health`;
+const MULTIPLAYER_GAME_RESULT_URL = `${USERS_BASE_URL}/gameresult/multiplayer`;
 
 const PVB_MOVE_ROUTES = {
   random_bot:          `${GAMEY_BASE_URL}/v1/game/pvb/random_bot`,
@@ -422,6 +423,15 @@ app.post("/multiplayer/room/leave", async (req, res) => {
     return res.status(200).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Multiplayer service unavailable");
+  }
+});
+
+app.post("/gameresult/multiplayer", async (req, res) => {
+  try {
+    const response = await axios.post(MULTIPLAYER_GAME_RESULT_URL, req.body); // NOSONAR
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
   }
 });
 

@@ -223,6 +223,95 @@ app.post('/gameresult', async (req, res) => {
 });
 
 /**
+ * POST /gameresult/multiplayer
+ * Saves a PvP result for both players in a single request.
+ */
+app.post('/gameresult/multiplayer', async (req, res) => {
+    try {
+        const { player1, player2, winner, boardSize } = req.body;
+
+        if (!player1 || !player2 || !winner) {
+            return res.status(400).json({
+                success: false,
+                error: 'player1, player2 and winner are mandatory'
+            });
+        }
+
+        if (player1 === player2) {
+            return res.status(400).json({
+                success: false,
+                error: 'player1 and player2 must be different users'
+            });
+        }
+
+        if (winner !== player1 && winner !== player2) {
+            return res.status(400).json({
+                success: false,
+                error: 'winner must be one of the two players'
+            });
+        }
+
+        const [user1Exists, user2Exists] = await Promise.all([
+            User.findOne({ username: player1.toString() }),
+            User.findOne({ username: player2.toString() })
+        ]);
+
+        if (!user1Exists) {
+            return res.status(404).json({
+                success: false,
+                error: `The user ${player1} does not exist`
+            });
+        }
+
+        if (!user2Exists) {
+            return res.status(404).json({
+                success: false,
+                error: `The user ${player2} does not exist`
+            });
+        }
+
+        const normalizedBoardSize = Number.isInteger(boardSize) && boardSize > 0 ? boardSize : 7;
+
+        const player1Won = winner === player1;
+        const player2Won = winner === player2;
+
+        const results = await GameResult.insertMany([
+            {
+                username: player1,
+                opponent: player2,
+                result: player1Won ? 'win' : 'loss',
+                winner,
+                score: player1Won ? normalizedBoardSize : 0,
+                boardSize: normalizedBoardSize,
+                gameMode: 'pvp'
+            },
+            {
+                username: player2,
+                opponent: player1,
+                result: player2Won ? 'win' : 'loss',
+                winner,
+                score: player2Won ? normalizedBoardSize : 0,
+                boardSize: normalizedBoardSize,
+                gameMode: 'pvp'
+            }
+        ]);
+
+        return res.status(201).json({
+            success: true,
+            message: 'Multiplayer game result saved',
+            games: results
+        });
+
+    } catch (error) {
+        console.error('Error in POST /gameresult/multiplayer:', error);
+        return res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
  * GET /history/:username
  * Obtain the history of games from a user
  */
