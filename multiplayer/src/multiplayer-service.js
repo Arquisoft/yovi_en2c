@@ -54,7 +54,8 @@ app.get("/rooms/:code", (req, res) => {
 app.post("/rooms/create", async (req, res) => {
   try {
     const username = String(req.body?.username || "Player 1");
-    const size = Number(req.body?.size || 3);
+    const rawSize = req.body?.size;
+    const size = rawSize === undefined ? 3 : Number(rawSize);
 
     if (!Number.isInteger(size) || size < 1) {
       return res.status(400).json({ ok: false, error: "Invalid board size" });
@@ -271,7 +272,8 @@ io.on("connection", (socket) => {
   socket.on("create_room", async (payload = {}, callback = () => {}) => {
     try {
       const username = String(payload.username || "Player 1");
-      const size = Number(payload.size || 3);
+      const rawSize = payload.size;
+      const size = rawSize === undefined ? 3 : Number(rawSize);
 
       if (!Number.isInteger(size) || size < 1) {
         callback({ ok: false, error: "Invalid board size" });

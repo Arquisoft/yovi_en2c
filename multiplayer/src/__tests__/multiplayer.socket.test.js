@@ -9,6 +9,24 @@ const { io: Client } = require("socket.io-client");
 const { createNewGame, applyPvpMove } = require("../gamey-client");
 const { server, rooms } = require("../multiplayer-service");
 
+function connectClient(port) {
+  return new Promise((resolve, reject) => {
+    const client = new Client(`http://localhost:${port}`, {
+      transports: ["websocket"],
+      forceNew: true
+    });
+
+    client.on("connect", () => resolve(client));
+    client.on("connect_error", reject);
+  });
+}
+
+function emitWithAck(client, event, payload) {
+  return new Promise((resolve) => {
+    client.emit(event, payload, (response) => resolve(response));
+  });
+}
+
 describe("multiplayer-service sockets", () => {
   let httpServer;
   let port;
@@ -35,11 +53,11 @@ describe("multiplayer-service sockets", () => {
   });
 
   afterEach(() => {
-    if (clientA && clientA.connected) clientA.disconnect();
-    if (clientB && clientB.connected) clientB.disconnect();
+    if (clientA) clientA.disconnect();
+    if (clientB) clientB.disconnect();
   });
 
-  test("socket create_room creates room", (done) => {
+  test("socket create_room creates room", async () => {
     createNewGame.mockResolvedValue({
       size: 3,
       turn: 0,
@@ -47,23 +65,19 @@ describe("multiplayer-service sockets", () => {
       layout: "./../..."
     });
 
-    clientA = new Client(`http://localhost:${port}`);
+    clientA = await connectClient(port);
 
-    clientA.on("connect", () => {
-      clientA.emit("create_room", { username: "Alice", size: 3 }, (res) => {
-        try {
-          expect(res.ok).toBe(true);
-          expect(res.room.players.B.username).toBe("Alice");
-          expect(res.yourColor).toBe("B");
-          done();
-        } catch (err) {
-          done(err);
-        }
-      });
+    const res = await emitWithAck(clientA, "create_room", {
+      username: "Alice",
+      size: 3
     });
+
+    expect(res.ok).toBe(true);
+    expect(res.room.players.B.username).toBe("Alice");
+    expect(res.yourColor).toBe("B");
   });
 
-  test("socket join_room joins existing room", (done) => {
+  test("socket join_room joins existing room", async () => {
     createNewGame.mockResolvedValue({
       size: 3,
       turn: 0,
@@ -71,30 +85,26 @@ describe("multiplayer-service sockets", () => {
       layout: "./../..."
     });
 
-    clientA = new Client(`http://localhost:${port}`);
-    clientB = new Client(`http://localhost:${port}`);
-
-    clientA.on("connect", () => {
-      clientA.emit("create_room", { username: "Alice", size: 3 }, (createRes) => {
-        const code = createRes.room.code;
-
-        clientB.on("connect", () => {
-          clientB.emit("join_room", { code, username: "Bob" }, (joinRes) => {
-            try {
-              expect(joinRes.ok).toBe(true);
-              expect(joinRes.room.players.R.username).toBe("Bob");
-              expect(joinRes.yourColor).toBe("R");
-              done();
-            } catch (err) {
-              done(err);
-            }
-          });
-        });
-      });
+    clientA = await connectClient(port);
+    const createRes = await emitWithAck(clientA, "create_room", {
+      username: "Alice",
+      size: 3
     });
+
+    const code = createRes.room.code;
+
+    clientB = await connectClient(port);
+    const joinRes = await emitWithAck(clientB, "join_room", {
+      code,
+      username: "Bob"
+    });
+
+    expect(joinRes.ok).toBe(true);
+    expect(joinRes.room.players.R.username).toBe("Bob");
+    expect(joinRes.yourColor).toBe("R");
   });
 
-  test("socket make_move updates room state", (done) => {
+  test("socket make_move updates room state", async () => {
     createNewGame.mockResolvedValue({
       size: 3,
       turn: 0,
@@ -109,31 +119,31 @@ describe("multiplayer-service sockets", () => {
       winning_edges: []
     });
 
-    clientA = new Client(`http://localhost:${port}`);
-    clientB = new Client(`http://localhost:${port}`);
-
-    clientA.on("connect", () => {
-      clientA.emit("create_room", { username: "Alice", size: 3 }, (createRes) => {
-        const code = createRes.room.code;
-
-        clientB.on("connect", () => {
-          clientB.emit("join_room", { code, username: "Bob" }, () => {
-            clientA.emit("make_move", { code, row: 0, col: 0 }, (moveRes) => {
-              try {
-                expect(moveRes.ok).toBe(true);
-                expect(moveRes.room.yen.layout).toBe("B/../...");
-                done();
-              } catch (err) {
-                done(err);
-              }
-            });
-          });
-        });
-      });
+    clientA = await connectClient(port);
+    const createRes = await emitWithAck(clientA, "create_room", {
+      username: "Alice",
+      size: 3
     });
+
+    const code = createRes.room.code;
+
+    clientB = await connectClient(port);
+    await emitWithAck(clientB, "join_room", {
+      code,
+      username: "Bob"
+    });
+
+    const moveRes = await emitWithAck(clientA, "make_move", {
+      code,
+      row: 0,
+      col: 0
+    });
+
+    expect(moveRes.ok).toBe(true);
+    expect(moveRes.room.yen.layout).toBe("B/../...");
   });
 
-  test("socket leave_room succeeds", (done) => {
+  test("socket leave_room succeeds", async () => {
     createNewGame.mockResolvedValue({
       size: 3,
       turn: 0,
@@ -141,21 +151,16 @@ describe("multiplayer-service sockets", () => {
       layout: "./../..."
     });
 
-    clientA = new Client(`http://localhost:${port}`);
-
-    clientA.on("connect", () => {
-      clientA.emit("create_room", { username: "Alice", size: 3 }, (createRes) => {
-        const code = createRes.room.code;
-
-        clientA.emit("leave_room", { code }, (leaveRes) => {
-          try {
-            expect(leaveRes.ok).toBe(true);
-            done();
-          } catch (err) {
-            done(err);
-          }
-        });
-      });
+    clientA = await connectClient(port);
+    const createRes = await emitWithAck(clientA, "create_room", {
+      username: "Alice",
+      size: 3
     });
+
+    const code = createRes.room.code;
+
+    const leaveRes = await emitWithAck(clientA, "leave_room", { code });
+
+    expect(leaveRes.ok).toBe(true);
   });
 });
