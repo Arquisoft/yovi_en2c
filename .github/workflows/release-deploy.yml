@@ -211,14 +211,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Publish multiplayer
-        uses: elgohr/Publish-Docker-Github-Action@v5
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-multiplayer
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          registry: ghcr.io
-          workdir: multiplayer
+
+      - name: Build and push multiplayer
+        uses: docker/build-push-action@v6
+        with:
+          context: ./multiplayer
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-multiplayer:latest
 
   docker-push-gamey:
     name: Publish gamey image
