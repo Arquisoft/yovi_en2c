@@ -70,7 +70,9 @@ describe("Home — cobertura adicional", () => {
     const diffButton = screen.getByRole("button", { name: /Seleccionar dificultad|Select difficulty/i });
     await user.click(diffButton);
 
-    expect(mockNavigate).toHaveBeenCalledWith("/select-difficulty");
+    expect(mockNavigate).toHaveBeenCalledWith("/select-difficulty", {
+      state: { username: "Pablo" },
+    });
   });
 
   test("quick game navigates with boardSize 7 by default", async () => {

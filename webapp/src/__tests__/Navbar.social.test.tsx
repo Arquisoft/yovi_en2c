@@ -44,7 +44,9 @@ describe("Navbar — Social button", () => {
         const user = userEvent.setup();
         renderNavbar();
         await user.click(screen.getByRole("button", { name: /^Social$/i }));
-        expect(mockNavigate).toHaveBeenCalledWith("/social");
+        expect(mockNavigate).toHaveBeenCalledWith("/social", {
+            state: { username: "Pablo" },
+        });
     });
 
     test("marks Social button as current page when pathname is /social", () => {

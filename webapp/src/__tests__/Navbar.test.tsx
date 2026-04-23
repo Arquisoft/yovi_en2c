@@ -90,7 +90,9 @@ describe("Navbar", () => {
 
     await user.click(screen.getByRole("button", { name: /Go home/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith("/home");
+    expect(mockNavigate).toHaveBeenCalledWith("/home", {
+      state: { username: "Pablo" },
+    });
   });
 
   it("navigates to home when Home button is clicked", async () => {
@@ -99,7 +101,9 @@ describe("Navbar", () => {
 
     await user.click(screen.getByRole("button", { name: /^(Inicio|Home)$/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith("/home");
+    expect(mockNavigate).toHaveBeenCalledWith("/home", {
+      state: { username: "Pablo" },
+    });
   });
 
   it("navigates to select difficulty when New Game button is clicked", async () => {
@@ -138,7 +142,7 @@ describe("Navbar", () => {
     expect(screen.getByRole("button", { name: /^Home$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^New Game$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Logout$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Ver perfil de Pablo/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /View profile of Pablo/i })).toBeInTheDocument();
   });
 
   test("changes language from english back to spanish", async () => {
@@ -153,6 +157,6 @@ describe("Navbar", () => {
     expect(screen.getByRole("button", { name: /^Inicio$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Nuevo Juego$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Salir/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Ver perfil de Pablo/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /View profile of Pablo/i })).toBeInTheDocument();
   });
 });
