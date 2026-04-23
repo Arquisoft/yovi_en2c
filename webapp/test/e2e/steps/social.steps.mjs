@@ -278,13 +278,31 @@ When("I send a friend request to {string} from social", async function (username
 });
 
 When("I accept the friend request from {string}", async function (username) {
-  const row = this.page.locator("div").filter({ hasText: username }).first();
-  await row.getByRole("button").click();
+  const requestsCard = this.page.locator(".card").filter({
+    has: this.page.getByText(/friend requests|solicitudes/i),
+  }).first();
+
+  await requestsCard.waitFor({ state: "visible", timeout: 15000 });
+
+  const row = requestsCard.locator("div").filter({
+    has: this.page.getByText(username, { exact: true }),
+  }).first();
+
+  await row.getByRole("button", { name: /accept|aceptar/i }).click();
 });
 
 When("I open the profile of friend {string}", async function (username) {
-  const row = this.page.locator("div").filter({ hasText: username }).first();
-  await row.getByRole("button").click();
+  const friendsCard = this.page.locator(".card").filter({
+    has: this.page.getByText(/friends|amigos/i),
+  }).first();
+
+  await friendsCard.waitFor({ state: "visible", timeout: 15000 });
+
+  const row = friendsCard.locator("div").filter({
+    has: this.page.getByText(username, { exact: true }),
+  }).first();
+
+  await row.getByRole("button", { name: /view profile|ver perfil/i }).click();
 });
 
 Then("I should see {string} in the social results", async function (username) {
@@ -297,12 +315,24 @@ Then("I should see the friend request as sent for {string} in social", async fun
 });
 
 Then("{string} should appear in my friend list", async function (username) {
-  const visible = await this.page.getByText(username, { exact: true }).isVisible();
+  const friendsCard = this.page.locator(".card").filter({
+    has: this.page.getByText(/friends|amigos/i),
+  }).first();
+
+  await friendsCard.waitFor({ state: "visible", timeout: 15000 });
+
+  const visible = await friendsCard.getByText(username, { exact: true }).isVisible();
   assert.equal(visible, true);
 });
 
 Then("I should see {string} in my friend list", async function (username) {
-  const visible = await this.page.getByText(username, { exact: true }).isVisible();
+  const friendsCard = this.page.locator(".card").filter({
+    has: this.page.getByText(/friends|amigos/i),
+  }).first();
+
+  await friendsCard.waitFor({ state: "visible", timeout: 15000 });
+
+  const visible = await friendsCard.getByText(username, { exact: true }).isVisible();
   assert.equal(visible, true);
 });
 
