@@ -6,8 +6,9 @@ require('dotenv').config();
 require('./db');
 
 // IMPORT MODELS
-const User = require('./models/User');
-const GameResult = require('./models/GameResult');
+const User         = require('./models/User');
+const GameResult   = require('./models/GameResult');
+const Notification = require('./models/Notification');
 
 // CONFIGURATION
 const app = express();
@@ -19,11 +20,12 @@ const metricsMiddleware = promBundle({
     includePath: true,
     includeStatusCode: true,
     normalizePath: [
-        ['^/users/.*',   '/users/:username'],
-        ['^/history/.*', '/history/:username'],
-        ['^/stats/.*',   '/stats/:username'],
-        ['^/profile/.*', '/profile/:username'],
-        ['^/friends/.*', '/friends/:username'],
+        ['^/users/.*',         '/users/:username'],
+        ['^/history/.*',       '/history/:username'],
+        ['^/stats/.*',         '/stats/:username'],
+        ['^/profile/.*',       '/profile/:username'],
+        ['^/friends/.*',       '/friends/:username'],
+        ['^/notifications/.*', '/notifications/:id'],
     ],
 });
 app.use(metricsMiddleware);
@@ -33,16 +35,6 @@ const SALT_ROUNDS = 10;
 
 // ── JWT helper ────────────────────────────────────────────────────────────────
 
-/**
- * Extracts the username from the Authorization header by calling the auth
- * service. Since users-service does not hold the JWT secret, it trusts the
- * token value stored by the client and verified externally.
- *
- * For friend endpoints we simply read the username from the Bearer token
- * payload (base64 decode — no signature verification needed here because the
- * gateway already verified it before forwarding). This avoids adding a jwt
- * dependency to this service.
- */
 function getUsernameFromToken(authHeader) {
     if (!authHeader?.startsWith('Bearer ')) return null;
     try {
@@ -58,7 +50,7 @@ function getUsernameFromToken(authHeader) {
 
 /**
  * POST /createuser
- * Saves NEW USER in the db
+ * Saves NEW USER in the db and sends a welcome notification.
  */
 app.post('/createuser', async (req, res) => {
     try {
@@ -85,6 +77,14 @@ app.post('/createuser', async (req, res) => {
             password: hashedPassword
         });
         const savedUser = await newUser.save();
+
+        // ── Welcome notification (fire-and-forget, never blocks registration) ──
+        Notification.create({
+            recipient: savedUser.username,
+            type: 'welcome',
+            from: null,
+            read: false,
+        }).catch(err => console.error('Failed to create welcome notification:', err));
 
         res.status(201).json({
             success: true,
@@ -118,7 +118,6 @@ app.post('/createuser', async (req, res) => {
 
 /**
  * GET /users/:username
- * Gets one user by username
  */
 app.get('/users/:username', async (req, res) => {
     try {
@@ -147,7 +146,6 @@ app.get('/users/:username', async (req, res) => {
 
 /**
  * GET /users
- * Gets ALL users from the db
  */
 app.get('/users', async (req, res) => {
     try {
@@ -160,8 +158,6 @@ app.get('/users', async (req, res) => {
 
 /**
  * GET /search?q=<query>
- * Searches users by username or email (case-insensitive partial match).
- * Returns a limited set of public fields — password is never exposed.
  */
 app.get('/search', async (req, res) => {
     try {
@@ -171,10 +167,9 @@ app.get('/search', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Query parameter q is required' });
         }
 
-        const escaped = q.trim().replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+        const escaped = q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex   = new RegExp(escaped, 'i');
 
-        // Search by username OR email, exclude password hash
         const users = await User.find(
             { $or: [{ username: regex }, { email: regex }] },
             { password: 0, friendRequests: 0 }
@@ -198,9 +193,6 @@ app.get('/search', async (req, res) => {
 
 // =========================   GAME RESULTS ENDPOINTS   =====================
 
-/**
- * POST /gameresult
- */
 app.post('/gameresult', async (req, res) => {
     try {
         const { username, opponent, result, score, winner, boardSize, gameMode } = req.body;
@@ -218,9 +210,7 @@ app.post('/gameresult', async (req, res) => {
         }
 
         const game = new GameResult({
-            username,
-            opponent,
-            result,
+            username, opponent, result,
             winner: winner ?? null,
             score: score || 0,
             boardSize: boardSize || 7,
@@ -236,9 +226,6 @@ app.post('/gameresult', async (req, res) => {
     }
 });
 
-/**
- * GET /history/:username
- */
 app.get('/history/:username', async (req, res) => {
     try {
         const { username } = req.params;
@@ -260,9 +247,6 @@ app.get('/history/:username', async (req, res) => {
     }
 });
 
-/**
- * GET /ranking
- */
 app.get('/ranking', async (req, res) => {
     try {
         const ranking = await GameResult.aggregate([
@@ -279,9 +263,6 @@ app.get('/ranking', async (req, res) => {
     }
 });
 
-/**
- * GET /stats/:username
- */
 app.get('/stats/:username', async (req, res) => {
     try {
         const { username } = req.params;
@@ -293,29 +274,31 @@ app.get('/stats/:username', async (req, res) => {
             return res.status(404).json({ success: false, error: `User ${username} not found` });
         }
 
-        const games      = await GameResult.find({ username: username.toString() }).sort({ date: -1 });
-        const totalGames = games.length;
-        const wins       = games.filter(g => g.result === 'win').length;
-        const losses     = games.filter(g => g.result === 'loss').length;
+        const allGames   = await GameResult.find({ username: username.toString() }).sort({ date: -1 });
+        const totalGames = allGames.length;
+        const wins       = allGames.filter(g => g.result === 'win').length;
+        const losses     = allGames.filter(g => g.result === 'loss').length;
         const winRate    = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
-        const pvbGames   = games.filter(g => g.gameMode === 'pvb');
-        const pvpGames   = games.filter(g => g.gameMode === 'pvp');
 
         const start          = (page - 1) * pageSize;
-        const paginatedGames = games.slice(start, start + pageSize).map(g => ({
+        const paginatedGames = allGames.slice(start, start + pageSize).map(g => ({
             opponent: g.opponent, result: g.result,
             boardSize: g.boardSize, gameMode: g.gameMode, date: g.date,
         }));
 
-        const lastFive = games.slice(0, 5).map(g => ({
+        const lastFive = allGames.slice(0, 5).map(g => ({
             opponent: g.opponent, result: g.result,
             boardSize: g.boardSize, gameMode: g.gameMode, date: g.date,
         }));
 
         res.json({
             success: true, username,
-            stats: { totalGames, wins, losses, winRate,
-                pvbGames: pvbGames.length, pvpGames: pvpGames.length, lastFive },
+            stats: {
+                totalGames, wins, losses, winRate,
+                pvbGames: allGames.filter(g => g.gameMode === 'pvb').length,
+                pvpGames: allGames.filter(g => g.gameMode === 'pvp').length,
+                lastFive
+            },
             games: paginatedGames, page, pageSize,
         });
 
@@ -325,9 +308,6 @@ app.get('/stats/:username', async (req, res) => {
     }
 });
 
-/**
- * GET /profile/:username
- */
 app.get('/profile/:username', async (req, res) => {
     try {
         const { username } = req.params;
@@ -337,12 +317,12 @@ app.get('/profile/:username', async (req, res) => {
             return res.status(404).json({ success: false, error: `User ${username} not found` });
         }
 
-        const games        = await GameResult.find({ username: username.toString() }).sort({ date: -1 });
-        const totalGames   = games.length;
-        const wins         = games.filter(g => g.result === 'win').length;
-        const losses       = games.filter(g => g.result === 'loss').length;
-        const winRate      = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
-        const recentMatches = games.slice(0, 5).map(g => ({
+        const allGames      = await GameResult.find({ username: username.toString() }).sort({ date: -1 });
+        const totalGames    = allGames.length;
+        const wins          = allGames.filter(g => g.result === 'win').length;
+        const losses        = allGames.filter(g => g.result === 'loss').length;
+        const winRate       = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+        const recentMatches = allGames.slice(0, 5).map(g => ({
             opponent: g.opponent, result: g.result,
             boardSize: g.boardSize, gameMode: g.gameMode, date: g.date,
         }));
@@ -369,9 +349,6 @@ app.get('/profile/:username', async (req, res) => {
     }
 });
 
-/**
- * PATCH /profile/:username
- */
 app.patch('/profile/:username', async (req, res) => {
     try {
         const { username } = req.params;
@@ -414,16 +391,6 @@ app.patch('/profile/:username', async (req, res) => {
 
 // =========================   FRIENDS ENDPOINTS   ===========================
 
-/**
- * POST /friends/request/:username
- * Sends a friend request from the authenticated user to :username.
- * Requires JWT — the sender's username is read from the token payload.
- *
- * Rules:
- *  - Cannot send a request to yourself.
- *  - Cannot send if already friends.
- *  - Cannot send if a request is already pending.
- */
 app.post('/friends/request/:username', async (req, res) => {
     try {
         const targetUsername = req.params.username;
@@ -432,7 +399,6 @@ app.post('/friends/request/:username', async (req, res) => {
         if (!senderUsername) {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
-
         if (senderUsername === targetUsername) {
             return res.status(400).json({ success: false, error: 'You cannot send a friend request to yourself' });
         }
@@ -441,18 +407,23 @@ app.post('/friends/request/:username', async (req, res) => {
         if (!target) {
             return res.status(404).json({ success: false, error: `User ${targetUsername} not found` });
         }
-
         if (target.friends.includes(senderUsername)) {
             return res.status(409).json({ success: false, error: 'You are already friends' });
         }
-
         if (target.friendRequests.includes(senderUsername)) {
             return res.status(409).json({ success: false, error: 'Friend request already sent' });
         }
 
-        // Add sender to target's friendRequests array
         target.friendRequests.push(senderUsername);
         await target.save();
+
+        // ── Auto-create notification (fire-and-forget) ──
+        Notification.create({
+            recipient: targetUsername,
+            type: 'friend_request',
+            from: senderUsername,
+            read: false,
+        }).catch(err => console.error('Failed to create friend_request notification:', err));
 
         res.status(201).json({ success: true, message: `Friend request sent to ${targetUsername}` });
 
@@ -462,18 +433,9 @@ app.post('/friends/request/:username', async (req, res) => {
     }
 });
 
-/**
- * POST /friends/accept/:username
- * Accepts a pending friend request from :username.
- * Requires JWT — the accepting user's username is read from the token payload.
- *
- * On success:
- *  - Removes :username from acceptor's friendRequests array.
- *  - Adds each user to the other's friends array (bidirectional).
- */
 app.post('/friends/accept/:username', async (req, res) => {
     try {
-        const senderUsername   = req.params.username;   // who sent the request
+        const senderUsername   = req.params.username;
         const acceptorUsername = getUsernameFromToken(req.headers.authorization);
 
         if (!acceptorUsername) {
@@ -484,7 +446,6 @@ app.post('/friends/accept/:username', async (req, res) => {
         if (!acceptor) {
             return res.status(404).json({ success: false, error: 'Acceptor user not found' });
         }
-
         if (!acceptor.friendRequests.includes(senderUsername)) {
             return res.status(404).json({ success: false, error: 'No pending request from that user' });
         }
@@ -494,10 +455,8 @@ app.post('/friends/accept/:username', async (req, res) => {
             return res.status(404).json({ success: false, error: `User ${senderUsername} not found` });
         }
 
-        // Move: remove from requests → add to friends (both sides)
         acceptor.friendRequests = acceptor.friendRequests.filter(u => u !== senderUsername);
         if (!acceptor.friends.includes(senderUsername)) acceptor.friends.push(senderUsername);
-
         if (!sender.friends.includes(acceptorUsername)) sender.friends.push(acceptorUsername);
 
         await acceptor.save();
@@ -511,11 +470,6 @@ app.post('/friends/accept/:username', async (req, res) => {
     }
 });
 
-/**
- * DELETE /friends/:username
- * Removes :username from the authenticated user's friends list (bidirectional).
- * Requires JWT.
- */
 app.delete('/friends/:username', async (req, res) => {
     try {
         const targetUsername  = req.params.username;
@@ -546,11 +500,6 @@ app.delete('/friends/:username', async (req, res) => {
     }
 });
 
-/**
- * GET /friends
- * Returns the authenticated user's friends list.
- * Requires JWT.
- */
 app.get('/friends', async (req, res) => {
     try {
         const currentUsername = getUsernameFromToken(req.headers.authorization);
@@ -571,6 +520,93 @@ app.get('/friends', async (req, res) => {
     }
 });
 
+// =========================   NOTIFICATIONS ENDPOINTS   =====================
+
+/**
+ * GET /notifications
+ * Returns all notifications for the authenticated user, newest first.
+ * Includes unreadCount for the badge.
+ * Requires JWT.
+ */
+app.get('/notifications', async (req, res) => {
+    try {
+        const username = getUsernameFromToken(req.headers.authorization);
+        if (!username) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const notifications = await Notification.find({ recipient: username })
+            .sort({ createdAt: -1 })
+            .limit(50);
+
+        const unreadCount = notifications.filter(n => !n.read).length;
+
+        res.json({
+            success: true,
+            notifications: notifications.map(n => ({
+                id:        n._id,
+                type:      n.type,
+                from:      n.from,
+                read:      n.read,
+                createdAt: n.createdAt,
+            })),
+            unreadCount,
+        });
+
+    } catch (error) {
+        console.error('Error in GET /notifications:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+/**
+ * PATCH /notifications/:id/read
+ * Marks a single notification as read.
+ * Requires JWT. Only the recipient can mark their own notification.
+ */
+app.patch('/notifications/:id/read', async (req, res) => {
+    try {
+        const username = getUsernameFromToken(req.headers.authorization);
+        if (!username) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, error: 'Invalid notification id' });
+        }
+
+        const notification = await Notification.findById(id);
+
+        if (!notification) {
+            return res.status(404).json({ success: false, error: 'Notification not found' });
+        }
+
+        if (notification.recipient !== username) {
+            return res.status(403).json({ success: false, error: 'Forbidden' });
+        }
+
+        notification.read = true;
+        await notification.save();
+
+        res.json({
+            success: true,
+            notification: {
+                id:        notification._id,
+                type:      notification.type,
+                from:      notification.from,
+                read:      notification.read,
+                createdAt: notification.createdAt,
+            }
+        });
+
+    } catch (error) {
+        console.error('Error in PATCH /notifications/:id/read:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
 // ── Health ────────────────────────────────────────────────────────────────────
 
 app.get('/health', async (req, res) => {
@@ -583,7 +619,7 @@ module.exports = app;
 
 // =============================== START THE SERVER ================================
 
-if (require.main == module) {
+if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
