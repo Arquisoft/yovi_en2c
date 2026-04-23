@@ -1,4 +1,4 @@
-jest.mock("../src/gamey-client", () => ({
+jest.mock("../gamey-client", () => ({
   createNewGame: jest.fn(),
   applyPvpMove: jest.fn()
 }));
@@ -6,8 +6,8 @@ jest.mock("../src/gamey-client", () => ({
 process.env.NODE_ENV = "test";
 
 const { io: Client } = require("socket.io-client");
-const { createNewGame, applyPvpMove } = require("../src/gamey-client");
-const { server, rooms } = require("../src/multiplayer-service");
+const { createNewGame, applyPvpMove } = require("../gamey-client");
+const { server, rooms } = require("../multiplayer-service");
 
 describe("multiplayer-service sockets", () => {
   let httpServer;

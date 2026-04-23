@@ -1,7 +1,7 @@
 jest.mock("axios");
 
 const axios = require("axios");
-const { createNewGame, applyPvpMove } = require("../src/gamey-client");
+const { createNewGame, applyPvpMove } = require("../gamey-client");
 
 describe("gamey-client", () => {
   beforeEach(() => {

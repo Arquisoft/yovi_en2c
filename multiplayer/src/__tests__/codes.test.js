@@ -1,4 +1,4 @@
-const { generateRoomCode, generateUniqueRoomCode } = require("../src/codes");
+const { generateRoomCode, generateUniqueRoomCode } = require("../codes");
 
 describe("codes", () => {
   test("generateRoomCode returns string of requested length", () => {

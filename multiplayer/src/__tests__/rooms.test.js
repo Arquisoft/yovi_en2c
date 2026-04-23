@@ -1,4 +1,4 @@
-const { RoomManager } = require("../src/rooms");
+const { RoomManager } = require("../rooms");
 
 describe("RoomManager", () => {
   let manager;
