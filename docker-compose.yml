@@ -84,6 +84,7 @@ services:
     depends_on:
       - authentication
       - gamey
+      - users
       - multiplayer
     expose:
       - "8080"
