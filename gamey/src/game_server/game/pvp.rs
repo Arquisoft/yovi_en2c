@@ -53,8 +53,8 @@ fn row_col_to_coords(
     }
 
     let mut index: usize = 0;
-    for r in 0..row {
-        index += rows[r].chars().count();
+    for row_str in rows.iter().take(row) {
+        index += row_str.chars().count();
     }
     index += col;
 
@@ -170,7 +170,7 @@ fn build_edges(
     let mut edges: Vec<[[usize; 2]; 2]> = vec![];
     let mut seen: HashSet<((usize, usize), (usize, usize))> = HashSet::new();
 
-    for &(r, c) in component.iter() {
+    for &(r, c) in component {
         for (nr, nc) in neighbors(layout, r as isize, c as isize) {
             if !component.contains(&(nr, nc)) {
                 continue;
@@ -225,18 +225,15 @@ pub async fn pvp_move(
     Path(params): Path<PvpParams>,
     Json(req): Json<PvpMoveRequest>,
 ) -> Result<Json<PvpMoveResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // 1) API version is checked
     if let Err(err) = check_api_version(&params.api_version) {
         return Err((StatusCode::BAD_REQUEST, Json(err)));
     }
 
-    // 2) Save size/layout before moving req.yen
     let layout_str = req.yen.layout().to_string();
     let size = req.yen.size();
 
-    // 3) Parse YEN -> Game
     let mut game = match GameY::try_from(req.yen) {
-        Ok(g) => g,
+        Ok(game) => game,
         Err(err) => {
             return Err((
                 StatusCode::BAD_REQUEST,
@@ -249,7 +246,6 @@ pub async fn pvp_move(
         }
     };
 
-    // 4) Reject finished game
     if game.check_game_over() {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -261,9 +257,8 @@ pub async fn pvp_move(
         ));
     }
 
-    // 5) Convert frontend row/col to barycentric coords
     let coords = match row_col_to_coords(&layout_str, size, req.row, req.col) {
-        Ok(c) => c,
+        Ok(coords) => coords,
         Err(msg) => {
             return Err((
                 StatusCode::BAD_REQUEST,
@@ -276,9 +271,8 @@ pub async fn pvp_move(
         }
     };
 
-    // 6) Apply move for the player whose turn is encoded in YEN/GameY
     let current_player = match game.next_player() {
-        Some(p) => p,
+        Some(player) => player,
         None => {
             return Err((
                 StatusCode::BAD_REQUEST,
@@ -296,18 +290,17 @@ pub async fn pvp_move(
         coords,
     };
 
-    if let Err(e) = game.add_move(movement) {
+    if let Err(err) = game.add_move(movement) {
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::error(
-                &format!("Invalid move: {}", e),
+                &format!("Invalid move: {}", err),
                 Some(params.api_version),
                 None,
             )),
         ));
     }
 
-    // 7) Return new YEN + derived result metadata
     let new_yen: YEN = (&game).into();
     let (finished, winner, winning_edges) = compute_result_from_yen(&new_yen);
 
@@ -329,25 +322,42 @@ mod tests {
     use crate::game_server::{create_router, state::AppState};
     use crate::YBotRegistry;
 
+    fn test_app() -> axum::Router {
+        let state = AppState::new(YBotRegistry::new());
+        create_router(state)
+    }
+
+    fn post_pvp(body: &PvpMoveRequest, version: &str) -> Request<Body> {
+        Request::post(format!("/{version}/game/pvp/move"))
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_string(body).unwrap()))
+            .unwrap()
+    }
+
+    fn new_yen(size: u32) -> crate::YEN {
+        let game = crate::GameY::new(size);
+        (&game).into()
+    }
+
+    async fn send_pvp(
+        app: axum::Router,
+        body: &PvpMoveRequest,
+        version: &str,
+    ) -> axum::response::Response {
+        app.oneshot(post_pvp(body, version)).await.unwrap()
+    }
+
     #[tokio::test]
     async fn test_pvp_valid_request() {
-        let state = AppState::new(YBotRegistry::new());
-        let app = create_router(state);
+        let app = test_app();
 
-        let game = crate::GameY::new(3);
-        let yen: crate::YEN = (&game).into();
+        let body = PvpMoveRequest {
+            yen: new_yen(3),
+            row: 0,
+            col: 0,
+        };
 
-        let body = PvpMoveRequest { yen, row: 0, col: 0 };
-
-        let response = app
-            .oneshot(
-                Request::post("/v1/game/pvp/move")
-                    .header("content-type", "application/json")
-                    .body(Body::from(serde_json::to_string(&body).unwrap()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = send_pvp(app, &body, "v1").await;
 
         assert_eq!(response.status(), StatusCode::OK);
 
@@ -362,85 +372,52 @@ mod tests {
 
     #[tokio::test]
     async fn test_pvp_invalid_api_version() {
-        let state = AppState::new(YBotRegistry::new());
-        let app = create_router(state);
+        let app = test_app();
 
-        let game = crate::GameY::new(3);
-        let yen: crate::YEN = (&game).into();
+        let body = PvpMoveRequest {
+            yen: new_yen(3),
+            row: 0,
+            col: 0,
+        };
 
-        let body = PvpMoveRequest { yen, row: 0, col: 0 };
-
-        let response = app
-            .oneshot(
-                Request::post("/v2/game/pvp/move")
-                    .header("content-type", "application/json")
-                    .body(Body::from(serde_json::to_string(&body).unwrap()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = send_pvp(app, &body, "v2").await;
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]
     async fn test_pvp_row_out_of_bounds() {
-        let state = AppState::new(YBotRegistry::new());
-        let app = create_router(state);
-
-        let game = crate::GameY::new(3);
-        let yen: crate::YEN = (&game).into();
+        let app = test_app();
 
         let body = PvpMoveRequest {
-            yen,
+            yen: new_yen(3),
             row: 99,
             col: 0,
         };
 
-        let response = app
-            .oneshot(
-                Request::post("/v1/game/pvp/move")
-                    .header("content-type", "application/json")
-                    .body(Body::from(serde_json::to_string(&body).unwrap()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = send_pvp(app, &body, "v1").await;
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]
     async fn test_pvp_col_out_of_bounds() {
-        let state = AppState::new(YBotRegistry::new());
-        let app = create_router(state);
-
-        let game = crate::GameY::new(3);
-        let yen: crate::YEN = (&game).into();
+        let app = test_app();
 
         let body = PvpMoveRequest {
-            yen,
+            yen: new_yen(3),
             row: 0,
             col: 99,
         };
 
-        let response = app
-            .oneshot(
-                Request::post("/v1/game/pvp/move")
-                    .header("content-type", "application/json")
-                    .body(Body::from(serde_json::to_string(&body).unwrap()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = send_pvp(app, &body, "v1").await;
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]
     async fn test_pvp_rejects_finished_game() {
-        let state = AppState::new(YBotRegistry::new());
-        let app = create_router(state);
+        let app = test_app();
 
         let mut game = crate::GameY::new(1);
         game.add_move(crate::Movement::Placement {
@@ -452,50 +429,26 @@ mod tests {
         let yen: crate::YEN = (&game).into();
         let body = PvpMoveRequest { yen, row: 0, col: 0 };
 
-        let response = app
-            .oneshot(
-                Request::post("/v1/game/pvp/move")
-                    .header("content-type", "application/json")
-                    .body(Body::from(serde_json::to_string(&body).unwrap()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = send_pvp(app, &body, "v1").await;
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]
     async fn test_pvp_rejects_invalid_yen_format() {
-        let state = AppState::new(YBotRegistry::new());
-        let app = create_router(state);
+        let app = test_app();
 
-        let yen = crate::YEN::new(
-            3,
-            0,
-            vec!['B', 'R'],
-            "X/../...".to_string(),
-        );
-
+        let yen = crate::YEN::new(3, 0, vec!['B', 'R'], "X/../...".to_string());
         let body = PvpMoveRequest { yen, row: 0, col: 0 };
 
-        let response = app
-            .oneshot(
-                Request::post("/v1/game/pvp/move")
-                    .header("content-type", "application/json")
-                    .body(Body::from(serde_json::to_string(&body).unwrap()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = send_pvp(app, &body, "v1").await;
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]
     async fn test_pvp_rejects_occupied_cell() {
-        let state = AppState::new(YBotRegistry::new());
-        let app = create_router(state);
+        let app = test_app();
 
         let mut game = crate::GameY::new(3);
         game.add_move(crate::Movement::Placement {
@@ -507,27 +460,20 @@ mod tests {
         let yen: crate::YEN = (&game).into();
         let body = PvpMoveRequest { yen, row: 0, col: 0 };
 
-        let response = app
-            .oneshot(
-                Request::post("/v1/game/pvp/move")
-                    .header("content-type", "application/json")
-                    .body(Body::from(serde_json::to_string(&body).unwrap()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = send_pvp(app, &body, "v1").await;
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
     #[test]
+    fn test_parse_layout_empty() {
+        let parsed = parse_layout("");
+        assert!(parsed.is_empty());
+    }
+
+    #[test]
     fn test_compute_result_from_yen_ongoing_game() {
-        let yen = crate::YEN::new(
-            3,
-            0,
-            vec!['B', 'R'],
-            "./../...".to_string(),
-        );
+        let yen = crate::YEN::new(3, 0, vec!['B', 'R'], "./../...".to_string());
 
         let (finished, winner, winning_edges) = compute_result_from_yen(&yen);
 
@@ -538,12 +484,7 @@ mod tests {
 
     #[test]
     fn test_compute_result_from_yen_finished_with_winner() {
-        let yen = crate::YEN::new(
-            3,
-            1,
-            vec!['B', 'R'],
-            "B/BB/BBR".to_string(),
-        );
+        let yen = crate::YEN::new(3, 1, vec!['B', 'R'], "B/BB/BBR".to_string());
 
         let (finished, winner, winning_edges) = compute_result_from_yen(&yen);
 
