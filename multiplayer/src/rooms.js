@@ -7,7 +7,7 @@ class RoomManager {
     this.roomCodeLength = Number(process.env.ROOM_CODE_LENGTH || options.roomCodeLength || 6);
   }
 
-  createRoom({ hostSocketId, username, size, yen }) {
+  createRoom({ username, size, yen, socketId = null }) {
     const code = generateUniqueRoomCode(new Set(this.rooms.keys()), this.roomCodeLength);
 
     const room = {
@@ -18,15 +18,18 @@ class RoomManager {
       createdAt: Date.now(),
       players: {
         B: {
-          socketId: hostSocketId,
-          username: username || "Player 1"
+          username: username || "Player 1",
+          socketId
         },
         R: null
       }
     };
 
     this.rooms.set(code, room);
-    this.socketToRoom.set(hostSocketId, code);
+
+    if (socketId) {
+      this.socketToRoom.set(socketId, code);
+    }
 
     return room;
   }
@@ -41,7 +44,21 @@ class RoomManager {
     return this.getRoom(code);
   }
 
-  joinRoom({ code, socketId, username }) {
+  getPlayerColorByUsername(room, username) {
+    if (!room || !username) return null;
+    if (room.players.B && room.players.B.username === username) return "B";
+    if (room.players.R && room.players.R.username === username) return "R";
+    return null;
+  }
+
+  getPlayerColor(room, socketId) {
+    if (!room || !socketId) return null;
+    if (room.players.B && room.players.B.socketId === socketId) return "B";
+    if (room.players.R && room.players.R.socketId === socketId) return "R";
+    return null;
+  }
+
+  joinRoom({ code, username, socketId = null }) {
     const room = this.getRoom(code);
 
     if (!room) {
@@ -57,24 +74,144 @@ class RoomManager {
     }
 
     room.players.R = {
-      socketId,
-      username: username || "Player 2"
+      username: username || "Player 2",
+      socketId
     };
+
     room.status = "active";
 
+    if (socketId) {
+      this.socketToRoom.set(socketId, code);
+    }
+
+    return room;
+  }
+
+  attachSocketToPlayer(code, username, socketId) {
+    const room = this.getRoom(code);
+
+    if (!room) {
+      throw new Error("Room not found");
+    }
+
+    const color = this.getPlayerColorByUsername(room, username);
+    if (!color) {
+      throw new Error("Player not found in room");
+    }
+
+    room.players[color].socketId = socketId;
     this.socketToRoom.set(socketId, code);
 
     return room;
   }
 
-  getPlayerColor(room, socketId) {
-    if (room.players.B && room.players.B.socketId === socketId) return "B";
-    if (room.players.R && room.players.R.socketId === socketId) return "R";
-    return null;
+  detachSocket(socketId) {
+    const code = this.socketToRoom.get(socketId);
+    if (!code) {
+      return { room: null, removedColor: null };
+    }
+
+    const room = this.getRoom(code);
+    this.socketToRoom.delete(socketId);
+
+    if (!room) {
+      return { room: null, removedColor: null };
+    }
+
+    let removedColor = null;
+
+    if (room.players.B && room.players.B.socketId === socketId) {
+      room.players.B.socketId = null;
+      removedColor = "B";
+    } else if (room.players.R && room.players.R.socketId === socketId) {
+      room.players.R.socketId = null;
+      removedColor = "R";
+    }
+
+    return { room, removedColor };
+  }
+
+  removePlayerByUsername(code, username) {
+    const room = this.getRoom(code);
+    if (!room) {
+      return { room: null, removedColor: null };
+    }
+
+    let removedColor = null;
+    let removedSocketId = null;
+
+    if (room.players.B && room.players.B.username === username) {
+      removedColor = "B";
+      removedSocketId = room.players.B.socketId;
+      room.players.B = null;
+    } else if (room.players.R && room.players.R.username === username) {
+      removedColor = "R";
+      removedSocketId = room.players.R.socketId;
+      room.players.R = null;
+    }
+
+    if (removedSocketId) {
+      this.socketToRoom.delete(removedSocketId);
+    }
+
+    if (!removedColor) {
+      return { room, removedColor: null };
+    }
+
+    if (!room.players.B && !room.players.R) {
+      this.rooms.delete(code);
+      return { room: null, removedColor };
+    }
+
+    if (room.status === "active") {
+      room.status = "finished";
+    }
+
+    return { room, removedColor };
+  }
+
+  removeSocket(socketId) {
+    const code = this.socketToRoom.get(socketId);
+    if (!code) {
+      return { room: null, removedColor: null };
+    }
+
+    const room = this.getRoom(code);
+    this.socketToRoom.delete(socketId);
+
+    if (!room) {
+      return { room: null, removedColor: null };
+    }
+
+    let removedColor = null;
+
+    if (room.players.B && room.players.B.socketId === socketId) {
+      removedColor = "B";
+      room.players.B.socketId = null;
+    } else if (room.players.R && room.players.R.socketId === socketId) {
+      removedColor = "R";
+      room.players.R.socketId = null;
+    }
+
+    if (room.status === "active") {
+      room.status = "finished";
+    }
+
+    return { room, removedColor };
   }
 
   isPlayersTurn(room, socketId) {
     const playerColor = this.getPlayerColor(room, socketId);
+    if (!playerColor) return false;
+
+    const currentTurnIndex = room.yen.turn;
+    const currentTurnColor = room.yen.players[currentTurnIndex];
+
+    return currentTurnColor === playerColor;
+  }
+
+  isPlayersTurnByUsername(room, username) {
+    const playerColor = this.getPlayerColorByUsername(room, username);
     if (!playerColor) return false;
 
     const currentTurnIndex = room.yen.turn;
@@ -95,41 +232,6 @@ class RoomManager {
     if (!room) return null;
     room.status = "finished";
     return room;
-  }
-
-  removeSocket(socketId) {
-    const code = this.socketToRoom.get(socketId);
-    if (!code) {
-      return { room: null, removedColor: null };
-    }
-
-    const room = this.getRoom(code);
-    this.socketToRoom.delete(socketId);
-
-    if (!room) {
-      return { room: null, removedColor: null };
-    }
-
-    let removedColor = null;
-
-    if (room.players.B && room.players.B.socketId === socketId) {
-      removedColor = "B";
-      room.players.B = null;
-    } else if (room.players.R && room.players.R.socketId === socketId) {
-      removedColor = "R";
-      room.players.R = null;
-    }
-
-    if (!room.players.B && !room.players.R) {
-      this.rooms.delete(code);
-      return { room: null, removedColor };
-    }
-
-    if (room.status === "active") {
-      room.status = "finished";
-    }
-
-    return { room, removedColor };
   }
 
   serializeRoom(room) {
