@@ -55,6 +55,26 @@ function renderNavbar(
     );
 }
 
+// JSDOM no expone <dialog> como role="dialog" de forma fiable.
+// Este helper busca por ambos: el atributo explícito y el elemento nativo.
+function queryPanel(): Element | null {
+    return document.querySelector('[role="dialog"], dialog[open]');
+}
+function getPanel(): Element {
+    const el = queryPanel();
+    if (!el) throw new Error("Notification panel not found in DOM");
+    return el;
+}
+
+// aria-label del botón mark-as-read viene de i18n ("Marcar como leído" / "Mark as read").
+// Buscar por texto visible "✓" es más robusto que depender del label i18n con acentos.
+const MARK_READ_MATCHER = (content: string, el: Element | null) =>
+    el?.tagName === "BUTTON" && (
+        content === "✓" ||
+        /mark.{0,10}read/i.test(el.getAttribute("aria-label") ?? "") ||
+        /marcar/i.test(el.getAttribute("aria-label") ?? "")
+    );
+
 // ── Suite ─────────────────────────────────────────────────────────────────────
 
 describe("Navbar — notification bell", () => {
@@ -74,9 +94,7 @@ describe("Navbar — notification bell", () => {
 
     test("does not show badge when there are no unread notifications", () => {
         renderNavbar([makeNotification({ read: true })]);
-        // Badge aria-label contains the count
         expect(screen.queryByText("1")).not.toBeInTheDocument();
-        // data-unread should be false
         const bell = screen.getByRole("button", { name: /notif|campana|bell|inbox/i });
         expect(bell).toHaveAttribute("data-unread", "false");
     });
@@ -112,7 +130,7 @@ describe("Navbar — notification bell", () => {
 
     test("panel is not visible initially", () => {
         renderNavbar([makeNotification()]);
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(queryPanel()).not.toBeInTheDocument();
     });
 
     test("clicking the bell opens the notification panel", async () => {
@@ -121,7 +139,7 @@ describe("Navbar — notification bell", () => {
 
         await user.click(screen.getByRole("button", { name: /notif|campana|bell|inbox/i }));
 
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        expect(getPanel()).toBeInTheDocument();
     });
 
     test("clicking the bell again closes the panel", async () => {
@@ -132,7 +150,7 @@ describe("Navbar — notification bell", () => {
         await user.click(bell);
         await user.click(bell);
 
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(queryPanel()).not.toBeInTheDocument();
     });
 
     test("clicking the ✕ button closes the panel", async () => {
@@ -142,7 +160,7 @@ describe("Navbar — notification bell", () => {
         await user.click(screen.getByRole("button", { name: /notif|campana|bell|inbox/i }));
         await user.click(screen.getByRole("button", { name: /close|cerrar/i }));
 
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(queryPanel()).not.toBeInTheDocument();
     });
 
     test("bell aria-expanded reflects open state", async () => {
@@ -191,8 +209,7 @@ describe("Navbar — notification bell", () => {
 
         await user.click(screen.getByRole("button", { name: /notif|campana|bell|inbox/i }));
 
-        // Date is formatted via toLocaleDateString — just check something appears
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        expect(getPanel()).toBeInTheDocument();
     });
 
     test("read notifications are rendered with lower opacity style", async () => {
@@ -201,9 +218,8 @@ describe("Navbar — notification bell", () => {
 
         await user.click(screen.getByRole("button", { name: /notif|campana|bell|inbox/i }));
 
-        const panel = screen.getByRole("dialog");
+        const panel = getPanel();
         expect(panel).toBeInTheDocument();
-        // Read items have opacity: 0.7 — assert the list item exists
         const items = panel.querySelectorAll("li");
         expect(items.length).toBe(1);
     });
@@ -216,9 +232,7 @@ describe("Navbar — notification bell", () => {
 
         await user.click(screen.getByRole("button", { name: /notif|campana|bell|inbox/i }));
 
-        expect(
-            screen.getByRole("button", { name: /mark.*read|marcar.*le[íi]do|✓/i })
-        ).toBeInTheDocument();
+        expect(screen.getByText(MARK_READ_MATCHER)).toBeInTheDocument();
     });
 
     test("mark-as-read button is NOT visible for already-read notifications", async () => {
@@ -227,9 +241,7 @@ describe("Navbar — notification bell", () => {
 
         await user.click(screen.getByRole("button", { name: /notif|campana|bell|inbox/i }));
 
-        expect(
-            screen.queryByRole("button", { name: /mark.*read|marcar.*le[íi]do|✓/i })
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText(MARK_READ_MATCHER)).not.toBeInTheDocument();
     });
 
     test("clicking mark-as-read calls onMarkRead with the notification id", async () => {
@@ -238,7 +250,7 @@ describe("Navbar — notification bell", () => {
         renderNavbar([makeNotification({ id: "abc123", read: false })], onMarkRead);
 
         await user.click(screen.getByRole("button", { name: /notif|campana|bell|inbox/i }));
-        await user.click(screen.getByRole("button", { name: /mark.*read|marcar.*le[íi]do|✓/i }));
+        await user.click(screen.getByText(MARK_READ_MATCHER));
 
         expect(onMarkRead).toHaveBeenCalledWith("abc123");
     });
@@ -248,9 +260,9 @@ describe("Navbar — notification bell", () => {
         renderNavbar([makeNotification({ read: false })]);
 
         await user.click(screen.getByRole("button", { name: /notif|campana|bell|inbox/i }));
-        await user.click(screen.getByRole("button", { name: /mark.*read|marcar.*le[íi]do|✓/i }));
+        await user.click(screen.getByText(MARK_READ_MATCHER));
 
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        expect(getPanel()).toBeInTheDocument();
     });
 
 });

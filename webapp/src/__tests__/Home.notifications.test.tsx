@@ -52,15 +52,12 @@ const MOCK_NOTIFICATIONS = [
     },
 ];
 
-// Helper to set up fetch mock for both verify + notifications calls
 function mockFetchSequence(
     notificationsPayload = MOCK_NOTIFICATIONS,
     notificationsSuccess = true
 ) {
     global.fetch = vi.fn()
-        // 1st call: /api/verify
         .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) } as Response)
-        // 2nd call: /api/notifications
         .mockResolvedValueOnce({
             ok: notificationsSuccess,
             json: async () => notificationsSuccess
@@ -68,6 +65,14 @@ function mockFetchSequence(
                 : { success: false, error: "Unauthorized" },
         } as Response);
 }
+
+// Matcher robusto para el botón mark-as-read: no depende de acentos i18n.
+const MARK_READ_MATCHER = (content: string, el: Element | null) =>
+    el?.tagName === "BUTTON" && (
+        content === "✓" ||
+        /mark.{0,10}read/i.test(el.getAttribute("aria-label") ?? "") ||
+        /marcar/i.test(el.getAttribute("aria-label") ?? "")
+    );
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
 
@@ -107,7 +112,6 @@ describe("Home — notifications", () => {
             expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
         });
 
-        // fetch should only have been called once (the verify call)
         expect(global.fetch).toHaveBeenCalledTimes(1);
     });
 
@@ -115,7 +119,6 @@ describe("Home — notifications", () => {
         mockFetchSequence(MOCK_NOTIFICATIONS);
         renderHome();
 
-        // Bell badge should appear with count 2 (both unread)
         await waitFor(() => {
             expect(screen.getByText("2")).toBeInTheDocument();
         });
@@ -125,10 +128,8 @@ describe("Home — notifications", () => {
         mockFetchSequence(MOCK_NOTIFICATIONS.map(n => ({ ...n, read: true })));
         renderHome();
 
-        // Wait for home to render
         await screen.findByText(/Hola pablo|Hello pablo/i);
 
-        // Badge should not be present
         expect(screen.queryByText("2")).not.toBeInTheDocument();
         expect(screen.queryByText("1")).not.toBeInTheDocument();
     });
@@ -140,7 +141,6 @@ describe("Home — notifications", () => {
 
         renderHome();
 
-        // Home should still render normally
         await screen.findByText(/Hola pablo|Hello pablo/i);
         expect(screen.getByText(/Hola pablo|Hello pablo/i)).toBeInTheDocument();
     });
@@ -150,7 +150,6 @@ describe("Home — notifications", () => {
         renderHome();
 
         await screen.findByText(/Hola pablo|Hello pablo/i);
-        // No badge
         expect(screen.queryByText("1")).not.toBeInTheDocument();
     });
 
@@ -159,7 +158,6 @@ describe("Home — notifications", () => {
     test("clicking mark-as-read calls PATCH /api/notifications/:id/read", async () => {
         const user = userEvent.setup();
 
-        // fetch: verify, notifications, then PATCH
         global.fetch = vi.fn()
             .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) } as Response)
             .mockResolvedValueOnce({
@@ -173,14 +171,11 @@ describe("Home — notifications", () => {
 
         renderHome();
 
-        // Wait for badge to appear
         await waitFor(() => expect(screen.getByText("2")).toBeInTheDocument());
 
-        // Open the panel
         await user.click(screen.getByRole("button", { name: /notif|campana|bell|inbox/i }));
 
-        // Click first mark-as-read button
-        const markBtns = screen.getAllByRole("button", { name: /mark.*read|marcar.*le[íi]do|✓/i });
+        const markBtns = screen.getAllByText(MARK_READ_MATCHER);
         await user.click(markBtns[0]);
 
         await waitFor(() => {
@@ -208,10 +203,9 @@ describe("Home — notifications", () => {
 
         await user.click(screen.getByRole("button", { name: /notif|campana|bell|inbox/i }));
 
-        const markBtns = screen.getAllByRole("button", { name: /mark.*read|marcar.*le[íi]do|✓/i });
+        const markBtns = screen.getAllByText(MARK_READ_MATCHER);
         await user.click(markBtns[0]);
 
-        // Badge should update to 1 optimistically
         await waitFor(() => {
             expect(screen.getByText("1")).toBeInTheDocument();
         });
@@ -226,7 +220,6 @@ describe("Home — notifications", () => {
                 ok: true,
                 json: async () => ({ success: true, notifications: [MOCK_NOTIFICATIONS[0]], unreadCount: 1 }),
             } as Response)
-            // PATCH fails
             .mockRejectedValueOnce(new Error("Network error"));
 
         renderHome();
@@ -234,11 +227,13 @@ describe("Home — notifications", () => {
         await waitFor(() => expect(screen.getByText("1")).toBeInTheDocument());
 
         await user.click(screen.getByRole("button", { name: /notif|campana|bell|inbox/i }));
-        await user.click(screen.getByRole("button", { name: /mark.*read|marcar.*le[íi]do|✓/i }));
 
-        // After revert, badge should return to 1
+        // Click optimistically marks as read (badge desaparece) — luego revierte
+        await user.click(screen.getByText(MARK_READ_MATCHER));
+
+        // Tras el revert el botón mark-as-read debe volver a aparecer
         await waitFor(() => {
-            expect(screen.getByText("1")).toBeInTheDocument();
+            expect(screen.getByText(MARK_READ_MATCHER)).toBeInTheDocument();
         });
     });
 });
