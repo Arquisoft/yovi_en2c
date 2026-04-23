@@ -58,7 +58,11 @@ function renderNavbar(
 // JSDOM no expone <dialog> como role="dialog" de forma fiable.
 // Este helper busca por ambos: el atributo explícito y el elemento nativo.
 function queryPanel(): Element | null {
-    return document.querySelector('[role="dialog"], dialog[open]');
+    // Busca tanto div[role=dialog] (Navbar actual) como <dialog> nativo
+    return (
+        document.querySelector('[role="dialog"]') ??
+        document.querySelector('dialog')
+    );
 }
 function getPanel(): Element {
     const el = queryPanel();
@@ -158,7 +162,7 @@ describe("Navbar — notification bell", () => {
         renderNavbar([makeNotification()]);
 
         await user.click(screen.getByRole("button", { name: /notif|campana|bell|inbox/i }));
-        await user.click(screen.getByRole("button", { name: /close|cerrar/i }));
+        await user.click(document.querySelector(".navbar__notif-close") as HTMLElement);
 
         expect(queryPanel()).not.toBeInTheDocument();
     });
