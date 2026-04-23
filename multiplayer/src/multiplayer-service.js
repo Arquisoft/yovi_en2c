@@ -497,7 +497,11 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Realtime multiplayer service running on http://localhost:${PORT}`);
-  console.log(`Health endpoint: http://localhost:${PORT}/health`);
-});
+if (process.env.NODE_ENV !== "test") {
+  server.listen(PORT, () => {
+    console.log(`Realtime multiplayer service running on http://localhost:${PORT}`);
+    console.log(`Health endpoint: http://localhost:${PORT}/health`);
+  });
+}
+
+module.exports = { app, server, io, rooms };
