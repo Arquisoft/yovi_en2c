@@ -8,3 +8,6 @@ webapp/.env
 .vscode/
 nginx/certs/*
 !nginx/certs/.gitkeep
+multiplayer/node_modules/
+multiplayer/coverage/
+multiplayer/.env

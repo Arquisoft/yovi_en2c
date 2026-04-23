@@ -63,10 +63,12 @@ services:
     environment:
       - AUTH_BASE_URL=http://authentication:5000
       - GAMEY_BASE_URL=http://gamey:4000
+      - MULTIPLAYER_BASE_URL=http://multiplayer:7000
       - PORT=8080
     depends_on:
       - authentication
       - gamey
+      - multiplayer
     expose:
       - "8080"
     networks:

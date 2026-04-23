@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [webapp, users, gateway, authentication, botapi]
+        service: [webapp, users, gateway, authentication, botapi, multiplayer]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -158,6 +158,23 @@ jobs:
           registry: ghcr.io
           workdir: gamey
 
+  docker-push-multiplayer:
+    name: Publish multiplayer image
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish multiplayer
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-multiplayer
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: multiplayer
+
   deploy:
     name: Deploy on VM
     runs-on: ubuntu-latest
@@ -168,6 +185,7 @@ jobs:
       - docker-push-webapp
       - docker-push-gamey
       - docker-push-botapi
+      - docker-push-multiplayer
     steps:
       - name: Checkout
         uses: actions/checkout@v4
