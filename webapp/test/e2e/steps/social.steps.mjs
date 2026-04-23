@@ -288,7 +288,19 @@ When("I accept the friend request from {string}", async function (username) {
     has: this.page.getByText(username, { exact: true }),
   }).first();
 
-  await row.getByRole("button", { name: /accept|aceptar/i }).click();
+  const currentUser = this.socialState.currentUser;
+
+  await Promise.all([
+    this.page.waitForResponse((r) =>
+      r.url().includes(`/api/friends/accept/${encodeURIComponent(username)}`) &&
+      r.request().method() === "POST"
+    ),
+    this.page.waitForResponse((r) =>
+      r.url().includes(`/api/profile/${encodeURIComponent(currentUser)}`) &&
+      r.request().method() === "GET"
+    ),
+    row.getByRole("button", { name: /accept|aceptar/i }).click(),
+  ]);
 });
 
 When("I open the profile of friend {string}", async function (username) {
