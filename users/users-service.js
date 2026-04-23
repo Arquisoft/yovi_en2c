@@ -58,6 +58,13 @@ function normalizeUsername(value) {
     return username;
 }
 
+function normalizeLooseUsername(value) {
+    if (typeof value !== 'string') return null;
+
+    const username = value.trim();
+    return username || null;
+}
+
 function normalizeEmail(value) {
     if (value === undefined || value === null) return undefined;
     if (typeof value !== 'string') return undefined;
@@ -111,6 +118,25 @@ function buildWinLossStats(games) {
     };
 }
 
+function formatCreateUserValidationErrors(error) {
+    const messages = Object.values(error.errors || {})
+        .map(e => e?.message)
+        .filter(Boolean);
+
+    const customOrder = [
+        'Email is invalid',
+        'Username is invalid',
+        'Username is a mandatory field'
+    ];
+
+    const ordered = [
+        ...customOrder.filter(msg => messages.includes(msg)),
+        ...messages.filter(msg => !customOrder.includes(msg))
+    ];
+
+    return ordered.join(', ');
+}
+
 // =============================   USERS ENDPOINTS    ============================================
 
 app.post('/createuser', async (req, res) => {
@@ -119,7 +145,10 @@ app.post('/createuser', async (req, res) => {
         const { password } = req.body;
         const processedEmail = normalizeEmail(req.body?.email);
 
-        const username = normalizeUsername(rawUsername);
+        const username =
+            typeof rawUsername === 'string'
+                ? rawUsername.trim()
+                : '';
 
         if (!username) {
             return res.status(400).json({ success: false, error: 'Username is a mandatory field' });
@@ -160,7 +189,7 @@ app.post('/createuser', async (req, res) => {
         }
 
         if (error.name === 'ValidationError') {
-            const errors = Object.values(error.errors).map(e => e.message);
+            const errors = Object.values(error.errors || {}).map(e => e.message);
             return res.status(400).json({ success: false, error: errors.join(', ') });
         }
 
@@ -244,8 +273,8 @@ app.get('/search', async (req, res) => {
 
 app.post('/gameresult', async (req, res) => {
     try {
-        const username = normalizeUsername(req.body?.username);
-        const opponent = normalizeUsername(req.body?.opponent);
+        const username = normalizeLooseUsername(req.body?.username);
+        const opponent = normalizeLooseUsername(req.body?.opponent);
         const { result, score, winner, boardSize, gameMode } = req.body;
 
         if (!username || !opponent || !result) {
@@ -260,7 +289,7 @@ app.post('/gameresult', async (req, res) => {
             return res.status(404).json({ success: false, error: `The user ${username} does not exist` });
         }
 
-        const normalizedWinner = winner ? normalizeUsername(winner) : null;
+        const normalizedWinner = winner ? normalizeLooseUsername(winner) : null;
 
         const game = new GameResult({
             username,
@@ -371,7 +400,7 @@ app.post('/gameresult/multiplayer', async (req, res) => {
 
 app.get('/history/:username', async (req, res) => {
     try {
-        const username = normalizeUsername(req.params.username);
+        const username = normalizeLooseUsername(req.params.username);
         const limit = parsePositiveInt(req.query.limit, 20);
 
         if (!username) {
