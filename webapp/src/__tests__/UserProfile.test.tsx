@@ -41,6 +41,8 @@ const FULL_PROFILE: {
     joinDate: string;
     stats: { totalGames: number; wins: number; losses: number; winRate: number };
     recentMatches: { opponent: string; result: "win" | "loss"; boardSize: number; gameMode: "pvb" | "pvp"; date: string }[];
+    friends: string[];
+    friendRequests: string[];
 } = {
     username: "testuser",
     realName: "Test User",
@@ -53,6 +55,8 @@ const FULL_PROFILE: {
         { opponent: "minimax_bot", result: "win",  boardSize: 7,  gameMode: "pvb", date: "2026-04-01T10:00:00Z" },
         { opponent: "carlos",      result: "loss", boardSize: 11, gameMode: "pvp", date: "2026-04-02T10:00:00Z" },
     ],
+    friends: [],
+    friendRequests: [],
 };
 
 const MINIMAL_PROFILE: typeof FULL_PROFILE = {
@@ -64,6 +68,8 @@ const MINIMAL_PROFILE: typeof FULL_PROFILE = {
     joinDate: "2024-06-01T00:00:00.000Z",
     stats: { totalGames: 0, wins: 0, losses: 0, winRate: 0 },
     recentMatches: [],
+    friends: [],
+    friendRequests: [],
 };
 
 function mockFetch(profile = FULL_PROFILE, success = true) {
@@ -217,13 +223,9 @@ describe("UserProfile", () => {
     });
 
     // ── Friends placeholder ───────────────────────────────────────────────────
-
-    test("renders friends placeholder", async () => {
-        mockFetch();
-        renderProfile();
-        await screen.findByRole("heading", { name: /testuser/i });
-        expect(screen.getByText(/próximamente|coming soon/i)).toBeInTheDocument();
-    });
+    // NOTE: This test is removed because the friends list is now a real component,
+    // not a placeholder. The friends list functionality is tested in
+    // UserProfile.friends.test.tsx.
 
     // ── Recent matches ────────────────────────────────────────────────────────
 
