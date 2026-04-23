@@ -12,6 +12,7 @@ services:
       - webapp
       - gateway
       - botapi
+      - multiplayer
     networks:
       - monitor-net
 
