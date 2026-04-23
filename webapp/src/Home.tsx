@@ -81,10 +81,11 @@ const Home: React.FC = () => {
 
           {/* Play Options (Bot / Player) */}
           <div style={{ display: "flex", gap: 32, flexWrap: "wrap", justifyContent: "center", width: "100%" }}>
-            <button
-                type="button"
-                className={`play-card${mode === "bot" ? " is-selected" : ""}`}
-                onClick={() => selectMode("bot")}
+              <button
+                  type="button"
+                  data-testid="bot-card"
+                  className={`play-card${mode === "bot" ? " is-selected" : ""}`}
+                  onClick={() => selectMode("bot")}
                 style={{
                   flex: "1 1 250px",
                   padding: "36px 24px",
@@ -103,6 +104,7 @@ const Home: React.FC = () => {
 
             <button
                 type="button"
+                data-testid="player-card"
                 className={`play-card${mode === "player" ? " is-selected" : ""}`}
                 onClick={() => selectMode("player")}
                 style={{

@@ -1,4 +1,5 @@
 import { Given, When, Then } from "@cucumber/cucumber";
+import {loginAs} from "./shared.steps.mjs";
 
 const BASE_URL = process.env.BASE_URL || "https://gameofy.publicvm.com";
 async function goToGamePage(page, username, botId, boardSize) {
@@ -7,11 +8,12 @@ async function goToGamePage(page, username, botId, boardSize) {
     console.log("👤 USERNAME:", username);
     console.log("🤖 BOT:", botId);
     console.log("📏 BOARD SIZE:", boardSize);
+    await loginAs(page, "prueba1", "prueba1")
 
-    console.log("🌐 Navigating to /home...");
-    await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
+    await loginAs(page, "prueba1", "prueba1");
 
-    console.log("📍 Current URL after goto:", page.url());
+// wait for login to complete UI transition
+    await page.waitForURL("**/home", { timeout: 10000 });
 
     console.log("⏳ Waiting for <body>...");
     await page.waitForSelector("body", { timeout: 10000 });
@@ -19,7 +21,7 @@ async function goToGamePage(page, username, botId, boardSize) {
     // DOM snapshot for debugging (very useful for your 404 issue)
     const html = await page.content();
     console.log("🧾 DOM SNAPSHOT (first 300 chars):");
-    console.log(html.slice(0, 300));
+    console.log(html.slice(0, 1000));
 
     console.log("🔍 Looking for bot card...");
     const botCard = page.locator('[data-testid="bot-card"]');
