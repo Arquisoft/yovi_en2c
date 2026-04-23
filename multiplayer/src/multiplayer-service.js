@@ -33,14 +33,34 @@ const io = new Server(server, {
 
 const rooms = new RoomManager();
 
-//HELPERS -----------------------------------------------------------------------
+// HELPERS ----------------------------------------------------------------------
 
 function parseRoomCode(value) {
   return String(value || "").trim().toUpperCase();
 }
 
 function parseUsername(value, fallback = "") {
-  return String(value || fallback);
+  return String(value || fallback).trim();
+}
+
+function parseBoardSize(value, fallback = 3) {
+  const size = value === undefined ? fallback : Number(value);
+  return Number.isInteger(size) && size > 0 ? size : null;
+}
+
+function parseMoveCoordinates(rowValue, colValue) {
+  const row = Number(rowValue);
+  const col = Number(colValue);
+
+  if (!Number.isInteger(row) || !Number.isInteger(col)) {
+    return null;
+  }
+
+  return { row, col };
+}
+
+function serializeRoom(room) {
+  return rooms.serializeRoom(room);
 }
 
 function badRequest(res, error) {
@@ -64,14 +84,14 @@ function socketError(callback, error) {
 
 function emitRoomUpdated(room) {
   io.to(room.code).emit("room_updated", {
-    room: rooms.serializeRoom(room)
+    room: serializeRoom(room)
   });
 }
 
 function emitGameStartedIfReady(room) {
   if (room.players.B && room.players.R) {
     io.to(room.code).emit("game_started", {
-      room: rooms.serializeRoom(room),
+      room: serializeRoom(room),
       message: "Both players connected"
     });
   }
@@ -79,7 +99,7 @@ function emitGameStartedIfReady(room) {
 
 function emitGameState(code, room, result) {
   const payload = {
-    room: rooms.serializeRoom(room),
+    room: serializeRoom(room),
     finished: result.finished,
     winner: result.winner,
     winningEdges: result.winning_edges
@@ -94,11 +114,54 @@ function emitGameState(code, room, result) {
 
 function emitOpponentLeft(code, room, removedColor) {
   io.to(code).emit("opponent_left", {
-    room: rooms.serializeRoom(room),
+    room: serializeRoom(room),
     removedColor
   });
 }
-// ---------------------------------------------------------------------------------
+
+function updateRoomAfterMove(code, result) {
+  rooms.updateRoomYen(code, result.yen);
+
+  if (result.finished) {
+    rooms.finishRoom(code);
+  }
+
+  return rooms.getRoom(code);
+}
+
+async function buildNewRoom(username, size, socketId = null) {
+  const yen = await createNewGame(size);
+
+  return rooms.createRoom({
+    username,
+    size,
+    yen,
+    socketId
+  });
+}
+
+function getRoomOrThrow(code) {
+  const room = rooms.getRoom(code);
+  if (!room) {
+    throw new Error("Room not found");
+  }
+  return room;
+}
+
+function validateMoveAccess(room, playerColor, isPlayersTurn) {
+  if (room.status !== "active") {
+    throw new Error("Room is not active");
+  }
+
+  if (!playerColor) {
+    throw new Error("You are not a player in this room");
+  }
+
+  if (!isPlayersTurn) {
+    throw new Error("It is not your turn");
+  }
+}
+// --------------------------------------------------------------------------------
 
 app.get("/health", (_req, res) => {
   res.json({
@@ -108,44 +171,34 @@ app.get("/health", (_req, res) => {
 });
 
 app.get("/rooms/:code", (req, res) => {
-  const code = String(req.params.code || "").trim().toUpperCase();
+  const code = parseRoomCode(req.params.code);
   const room = rooms.getRoom(code);
 
   if (!room) {
     return res.status(404).json({ ok: false, error: "Room not found" });
   }
 
-  return res.json(rooms.serializeRoom(room));
+  return res.json(serializeRoom(room));
 });
 
 app.post("/rooms/create", async (req, res) => {
   try {
-    const username = String(req.body?.username || "Player 1");
-    const rawSize = req.body?.size;
-    const size = rawSize === undefined ? 3 : Number(rawSize);
+    const username = parseUsername(req.body?.username, "Player 1");
+    const size = parseBoardSize(req.body?.size);
 
-    if (!Number.isInteger(size) || size < 1) {
-      return res.status(400).json({ ok: false, error: "Invalid board size" });
+    if (size === null) {
+      return badRequest(res, "Invalid board size");
     }
 
-    const yen = await createNewGame(size);
-
-    const room = rooms.createRoom({
-      username,
-      size,
-      yen
-    });
+    const room = await buildNewRoom(username, size);
 
     return res.status(200).json({
       ok: true,
-      room: rooms.serializeRoom(room),
+      room: serializeRoom(room),
       yourColor: "B"
     });
   } catch (error) {
-    return res.status(502).json({
-      ok: false,
-      error: error.response?.data?.error || error.message || "Could not create room"
-    });
+    return gatewayError(res, error, "Could not create room");
   }
 });
 
@@ -163,7 +216,7 @@ app.post("/rooms/join", (req, res) => {
 
     return res.status(200).json({
       ok: true,
-      room: rooms.serializeRoom(room),
+      room: serializeRoom(room),
       yourColor: "R"
     });
   } catch (error) {
@@ -173,29 +226,26 @@ app.post("/rooms/join", (req, res) => {
 
 app.post("/rooms/state", (req, res) => {
   try {
-    const code = String(req.body?.code || "").trim().toUpperCase();
-    const username = req.body?.username ? String(req.body.username) : null;
+    const code = parseRoomCode(req.body?.code);
+    const username = req.body?.username ? parseUsername(req.body.username) : null;
 
     if (!code) {
-      return res.status(400).json({ ok: false, error: "Room code is required" });
+      return badRequest(res, "Room code is required");
     }
 
     const room = rooms.getRoom(code);
 
     if (!room) {
-      return res.status(404).json({ ok: false, error: "Room not found" });
+      return notFound(res, "Room not found");
     }
 
     return res.status(200).json({
       ok: true,
-      room: rooms.serializeRoom(room),
+      room: serializeRoom(room),
       yourColor: username ? rooms.getPlayerColorByUsername(room, username) : null
     });
   } catch (error) {
-    return res.status(400).json({
-      ok: false,
-      error: error.message || "Could not get room state"
-    });
+    return badRequest(res, error.message || "Could not get room state");
   }
 });
 
@@ -203,42 +253,45 @@ app.post("/rooms/move", async (req, res) => {
   try {
     const code = parseRoomCode(req.body?.code);
     const username = parseUsername(req.body?.username);
-    const row = Number(req.body?.row);
-    const col = Number(req.body?.col);
+    const move = parseMoveCoordinates(req.body?.row, req.body?.col);
 
     if (!code) return badRequest(res, "Room code is required");
     if (!username) return badRequest(res, "Username is required");
-    if (!Number.isInteger(row) || !Number.isInteger(col)) {
-      return badRequest(res, "Invalid row/col");
-    }
+    if (!move) return badRequest(res, "Invalid row/col");
 
     const room = rooms.getRoom(code);
     if (!room) return notFound(res, "Room not found");
-    if (room.status !== "active") return badRequest(res, "Room is not active");
 
     const playerColor = rooms.getPlayerColorByUsername(room, username);
-    if (!playerColor) return res.status(403).json({ ok: false, error: "You are not a player in this room" });
+    const isPlayersTurn = rooms.isPlayersTurnByUsername(room, username);
 
-    if (!rooms.isPlayersTurnByUsername(room, username)) {
-      return badRequest(res, "It is not your turn");
-    }
+    validateMoveAccess(room, playerColor, isPlayersTurn);
 
-    const result = await applyPvpMove(room.yen, row, col);
+    const result = await applyPvpMove(room.yen, move.row, move.col);
+    const updatedRoom = updateRoomAfterMove(code, result);
 
-    rooms.updateRoomYen(code, result.yen);
-    if (result.finished) rooms.finishRoom(code);
-
-    const updatedRoom = rooms.getRoom(code);
     emitGameState(code, updatedRoom, result);
 
     return res.status(200).json({
       ok: true,
-      room: rooms.serializeRoom(updatedRoom),
+      room: serializeRoom(updatedRoom),
       finished: result.finished,
       winner: result.winner,
       winningEdges: result.winning_edges
     });
   } catch (error) {
+    if (
+      error.message === "Room is not active" ||
+      error.message === "You are not a player in this room" ||
+      error.message === "It is not your turn"
+    ) {
+      return badRequest(res, error.message);
+    }
+
+    if (error.message === "Room not found") {
+      return notFound(res, error.message);
+    }
+
     return gatewayError(res, error, "Invalid move");
   }
 });
@@ -274,35 +327,24 @@ io.on("connection", (socket) => {
 
   socket.on("create_room", async (payload = {}, callback = () => {}) => {
     try {
-      const username = String(payload.username || "Player 1");
-      const rawSize = payload.size;
-      const size = rawSize === undefined ? 3 : Number(rawSize);
+      const username = parseUsername(payload.username, "Player 1");
+      const size = parseBoardSize(payload.size);
 
-      if (!Number.isInteger(size) || size < 1) {
-        callback({ ok: false, error: "Invalid board size" });
-        return;
+      if (size === null) {
+        return socketError(callback, "Invalid board size");
       }
 
-      const yen = await createNewGame(size);
-
-      const room = rooms.createRoom({
-        username,
-        size,
-        yen,
-        socketId: socket.id
-      });
+      const room = await buildNewRoom(username, size, socket.id);
 
       socket.join(room.code);
 
       callback({
         ok: true,
-        room: rooms.serializeRoom(room),
+        room: serializeRoom(room),
         yourColor: "B"
       });
 
-      io.to(room.code).emit("room_updated", {
-        room: rooms.serializeRoom(room)
-      });
+      emitRoomUpdated(room);
     } catch (error) {
       callback({
         ok: false,
@@ -318,9 +360,7 @@ io.on("connection", (socket) => {
 
       if (!code) return socketError(callback, "Room code is required");
 
-      const existingRoom = rooms.getRoom(code);
-      if (!existingRoom) return socketError(callback, "Room not found");
-
+      const existingRoom = getRoomOrThrow(code);
       const existingColor = rooms.getPlayerColorByUsername(existingRoom, username);
 
       const room = existingColor
@@ -331,7 +371,7 @@ io.on("connection", (socket) => {
 
       callback({
         ok: true,
-        room: rooms.serializeRoom(room),
+        room: serializeRoom(room),
         yourColor: rooms.getPlayerColor(room, socket.id)
       });
 
@@ -344,17 +384,12 @@ io.on("connection", (socket) => {
 
   socket.on("get_room_state", (payload = {}, callback = () => {}) => {
     try {
-      const code = String(payload.code || "").trim().toUpperCase();
-      const room = rooms.getRoom(code);
-
-      if (!room) {
-        callback({ ok: false, error: "Room not found" });
-        return;
-      }
+      const code = parseRoomCode(payload.code);
+      const room = getRoomOrThrow(code);
 
       callback({
         ok: true,
-        room: rooms.serializeRoom(room),
+        room: serializeRoom(room),
         yourColor: rooms.getPlayerColor(room, socket.id)
       });
     } catch (error) {
@@ -368,28 +403,26 @@ io.on("connection", (socket) => {
   socket.on("make_move", async (payload = {}, callback = () => {}) => {
     try {
       const code = parseRoomCode(payload.code);
-      const row = Number(payload.row);
-      const col = Number(payload.col);
+      const move = parseMoveCoordinates(payload.row, payload.col);
 
-      const room = rooms.getRoom(code);
-      if (!room) return socketError(callback, "Room not found");
-      if (room.status !== "active") return socketError(callback, "Room is not active");
+      if (!move) {
+        return socketError(callback, "Invalid row/col");
+      }
 
+      const room = getRoomOrThrow(code);
       const playerColor = rooms.getPlayerColor(room, socket.id);
-      if (!playerColor) return socketError(callback, "You are not a player in this room");
-      if (!rooms.isPlayersTurn(room, socket.id)) return socketError(callback, "It is not your turn");
+      const isPlayersTurn = rooms.isPlayersTurn(room, socket.id);
 
-      const result = await applyPvpMove(room.yen, row, col);
+      validateMoveAccess(room, playerColor, isPlayersTurn);
 
-      rooms.updateRoomYen(code, result.yen);
-      if (result.finished) rooms.finishRoom(code);
+      const result = await applyPvpMove(room.yen, move.row, move.col);
+      const updatedRoom = updateRoomAfterMove(code, result);
 
-      const updatedRoom = rooms.getRoom(code);
       emitGameState(code, updatedRoom, result);
 
       callback({
         ok: true,
-        room: rooms.serializeRoom(updatedRoom),
+        room: serializeRoom(updatedRoom),
         finished: result.finished,
         winner: result.winner,
         winningEdges: result.winning_edges
@@ -405,9 +438,7 @@ io.on("connection", (socket) => {
   socket.on("leave_room", (payload = {}, callback = () => {}) => {
     try {
       const code = parseRoomCode(payload.code);
-      const room = rooms.getRoom(code);
-
-      if (!room) return socketError(callback, "Room not found");
+      const room = getRoomOrThrow(code);
 
       socket.leave(code);
 
@@ -417,7 +448,7 @@ io.on("connection", (socket) => {
         emitOpponentLeft(code, result.room, result.removedColor);
       }
 
-      callback({ ok: true });
+      callback({ ok: true, room: serializeRoom(room) });
     } catch (error) {
       socketError(callback, error.message || "Could not leave room");
     }

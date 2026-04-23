@@ -200,29 +200,30 @@ class RoomManager {
     return { room, removedColor };
   }
 
+  getCurrentTurnColor(room) {
+    if (!room?.yen?.players) return null;
+    const currentTurnIndex = room.yen.turn;
+    return room.yen.players[currentTurnIndex] || null;
+  }
+
   isPlayersTurn(room, socketId) {
     const playerColor = this.getPlayerColor(room, socketId);
     if (!playerColor) return false;
 
-    const currentTurnIndex = room.yen.turn;
-    const currentTurnColor = room.yen.players[currentTurnIndex];
-
-    return currentTurnColor === playerColor;
+    return this.getCurrentTurnColor(room) === playerColor;
   }
 
   isPlayersTurnByUsername(room, username) {
     const playerColor = this.getPlayerColorByUsername(room, username);
     if (!playerColor) return false;
 
-    const currentTurnIndex = room.yen.turn;
-    const currentTurnColor = room.yen.players[currentTurnIndex];
-
-    return currentTurnColor === playerColor;
+    return this.getCurrentTurnColor(room) === playerColor;
   }
 
   updateRoomYen(code, newYen) {
     const room = this.getRoom(code);
     if (!room) return null;
+
     room.yen = newYen;
     return room;
   }
@@ -230,6 +231,7 @@ class RoomManager {
   finishRoom(code) {
     const room = this.getRoom(code);
     if (!room) return null;
+
     room.status = "finished";
     return room;
   }

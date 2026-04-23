@@ -19,9 +19,9 @@ const metricsMiddleware = promBundle({
     includePath: true,
     includeStatusCode: true,
     normalizePath: [
-        ['^/users/.*',   '/users/:username'],
+        ['^/users/.*', '/users/:username'],
         ['^/history/.*', '/history/:username'],
-        ['^/stats/.*',   '/stats/:username'],
+        ['^/stats/.*', '/stats/:username'],
         ['^/profile/.*', '/profile/:username'],
         ['^/friends/.*', '/friends/:username'],
     ],
@@ -33,16 +33,6 @@ const SALT_ROUNDS = 10;
 
 // ── JWT helper ────────────────────────────────────────────────────────────────
 
-/**
- * Extracts the username from the Authorization header by calling the auth
- * service. Since users-service does not hold the JWT secret, it trusts the
- * token value stored by the client and verified externally.
- *
- * For friend endpoints we simply read the username from the Bearer token
- * payload (base64 decode — no signature verification needed here because the
- * gateway already verified it before forwarding). This avoids adding a jwt
- * dependency to this service.
- */
 function getUsernameFromToken(authHeader) {
     if (!authHeader?.startsWith('Bearer ')) return null;
     try {
@@ -54,15 +44,82 @@ function getUsernameFromToken(authHeader) {
     }
 }
 
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+
+function normalizeUsername(value) {
+    if (typeof value !== 'string') return null;
+
+    const username = value.trim();
+    if (!username) return null;
+
+    const usernameRegex = /^[A-Za-z0-9_]{1,30}$/;
+    if (!usernameRegex.test(username)) return null;
+
+    return username;
+}
+
+function normalizeEmail(value) {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value !== 'string') return undefined;
+
+    const email = value.trim();
+    return email === '' ? undefined : email;
+}
+
+function normalizeSearchText(value, maxLength = 50) {
+    if (typeof value !== 'string') return null;
+
+    const text = value.trim();
+    if (!text) return null;
+    if (text.length > maxLength) return null;
+
+    return text;
+}
+
+function escapeRegex(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function parsePositiveInt(value, fallback) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+async function findUserByUsername(username) {
+    return User.findOne({ username });
+}
+
+async function ensureExistingUser(username) {
+    const user = await findUserByUsername(username);
+    return user || null;
+}
+
+function publicGameView(game) {
+    return {
+        opponent: game.opponent,
+        result: game.result,
+        boardSize: game.boardSize,
+        gameMode: game.gameMode,
+        date: game.date,
+    };
+}
+
+function buildWinLossStats(games) {
+    return {
+        wins: games.filter(g => g.result === 'win').length,
+        losses: games.filter(g => g.result === 'loss').length,
+    };
+}
+
 // =============================   USERS ENDPOINTS    ============================================
 
-/**
- * POST /createuser
- * Saves NEW USER in the db
- */
 app.post('/createuser', async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        const rawUsername = req.body?.username;
+        const { password } = req.body;
+        const processedEmail = normalizeEmail(req.body?.email);
+
+        const username = normalizeUsername(rawUsername);
 
         if (!username) {
             return res.status(400).json({ success: false, error: 'Username is a mandatory field' });
@@ -72,18 +129,14 @@ app.post('/createuser', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Password is a mandatory field' });
         }
 
-        let processedEmail = undefined;
-        if (email && typeof email === 'string' && email.trim() !== '') {
-            processedEmail = email.trim();
-        }
-
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
         const newUser = new User({
-            username: username.toString().trim(),
+            username,
             email: processedEmail,
             password: hashedPassword
         });
+
         const savedUser = await newUser.save();
 
         res.status(201).json({
@@ -99,7 +152,7 @@ app.post('/createuser', async (req, res) => {
 
     } catch (error) {
         if (error.code === 11000) {
-            const field = Object.keys(error.keyPattern)[0];
+            const field = Object.keys(error.keyPattern || {})[0] || 'field';
             return res.status(400).json({
                 success: false,
                 error: `The ${field} field is already in the data base`
@@ -116,14 +169,15 @@ app.post('/createuser', async (req, res) => {
     }
 });
 
-/**
- * GET /users/:username
- * Gets one user by username
- */
 app.get('/users/:username', async (req, res) => {
     try {
-        const { username } = req.params;
-        const user = await User.findOne({ username: username.toString() });
+        const username = normalizeUsername(req.params.username);
+
+        if (!username) {
+            return res.status(400).json({ success: false, error: 'Invalid username' });
+        }
+
+        const user = await findUserByUsername(username);
 
         if (!user) {
             return res.status(404).json({ success: false, error: 'User not found' });
@@ -145,11 +199,7 @@ app.get('/users/:username', async (req, res) => {
     }
 });
 
-/**
- * GET /users
- * Gets ALL users from the db
- */
-app.get('/users', async (req, res) => {
+app.get('/users', async (_req, res) => {
     try {
         const users = await User.find({}, { password: 0 }).sort({ createdAt: -1 });
         res.json({ success: true, count: users.length, users });
@@ -158,23 +208,17 @@ app.get('/users', async (req, res) => {
     }
 });
 
-/**
- * GET /search?q=<query>
- * Searches users by username or email (case-insensitive partial match).
- * Returns a limited set of public fields — password is never exposed.
- */
 app.get('/search', async (req, res) => {
     try {
-        const { q } = req.query;
+        const safeQuery = normalizeSearchText(req.query.q);
 
-        if (!q || typeof q !== 'string' || q.trim().length < 1) {
+        if (!safeQuery) {
             return res.status(400).json({ success: false, error: 'Query parameter q is required' });
         }
 
-        const escaped = q.trim().replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
-        const regex   = new RegExp(escaped, 'i');
+        const escaped = escapeRegex(safeQuery);
+        const regex = new RegExp(escaped, 'i');
 
-        // Search by username OR email, exclude password hash
         const users = await User.find(
             { $or: [{ username: regex }, { email: regex }] },
             { password: 0, friendRequests: 0 }
@@ -185,7 +229,7 @@ app.get('/search', async (req, res) => {
             count: users.length,
             users: users.map(u => ({
                 username: u.username,
-                email:    u.email ?? null,
+                email: u.email ?? null,
                 realName: u.realName ?? null,
             }))
         });
@@ -198,12 +242,11 @@ app.get('/search', async (req, res) => {
 
 // =========================   GAME RESULTS ENDPOINTS   =====================
 
-/**
- * POST /gameresult
- */
 app.post('/gameresult', async (req, res) => {
     try {
-        const { username, opponent, result, score, winner, boardSize, gameMode } = req.body;
+        const username = normalizeUsername(req.body?.username);
+        const opponent = normalizeUsername(req.body?.opponent);
+        const { result, score, winner, boardSize, gameMode } = req.body;
 
         if (!username || !opponent || !result) {
             return res.status(400).json({
@@ -212,16 +255,18 @@ app.post('/gameresult', async (req, res) => {
             });
         }
 
-        const userExists = await User.findOne({ username: username.toString() });
+        const userExists = await ensureExistingUser(username);
         if (!userExists) {
             return res.status(404).json({ success: false, error: `The user ${username} does not exist` });
         }
+
+        const normalizedWinner = winner ? normalizeUsername(winner) : null;
 
         const game = new GameResult({
             username,
             opponent,
             result,
-            winner: winner ?? null,
+            winner: normalizedWinner,
             score: score || 0,
             boardSize: boardSize || 7,
             gameMode: gameMode || 'pvb'
@@ -236,13 +281,12 @@ app.post('/gameresult', async (req, res) => {
     }
 });
 
-/**
- * POST /gameresult/multiplayer
- * Saves a PvP result for both players in a single request.
- */
 app.post('/gameresult/multiplayer', async (req, res) => {
     try {
-        const { player1, player2, winner, boardSize } = req.body;
+        const player1 = normalizeUsername(req.body?.player1);
+        const player2 = normalizeUsername(req.body?.player2);
+        const winner = normalizeUsername(req.body?.winner);
+        const { boardSize } = req.body;
 
         if (!player1 || !player2 || !winner) {
             return res.status(400).json({
@@ -266,8 +310,8 @@ app.post('/gameresult/multiplayer', async (req, res) => {
         }
 
         const [user1Exists, user2Exists] = await Promise.all([
-            User.findOne({ username: player1.toString() }),
-            User.findOne({ username: player2.toString() })
+            ensureExistingUser(player1),
+            ensureExistingUser(player2)
         ]);
 
         if (!user1Exists) {
@@ -325,22 +369,20 @@ app.post('/gameresult/multiplayer', async (req, res) => {
     }
 });
 
-/**
- * GET /history/:username
- */
 app.get('/history/:username', async (req, res) => {
     try {
-        const { username } = req.params;
-        const { limit = 20 } = req.query;
+        const username = normalizeUsername(req.params.username);
+        const limit = parsePositiveInt(req.query.limit, 20);
 
-        const games = await GameResult.find({ username: username.toString() })
+        if (!username) {
+            return res.status(400).json({ success: false, error: 'Invalid username' });
+        }
+
+        const games = await GameResult.find({ username })
             .sort({ date: -1 })
-            .limit(Number.parseInt(limit, 10));
+            .limit(limit);
 
-        const stats = {
-            wins:   games.filter(g => g.result === 'win').length,
-            losses: games.filter(g => g.result === 'loss').length,
-        };
+        const stats = buildWinLossStats(games);
 
         res.json({ success: true, username, stats, total: games.length, games });
     } catch (error) {
@@ -349,10 +391,7 @@ app.get('/history/:username', async (req, res) => {
     }
 });
 
-/**
- * GET /ranking
- */
-app.get('/ranking', async (req, res) => {
+app.get('/ranking', async (_req, res) => {
     try {
         const ranking = await GameResult.aggregate([
             { $match: { result: 'win' } },
@@ -368,44 +407,48 @@ app.get('/ranking', async (req, res) => {
     }
 });
 
-/**
- * GET /stats/:username
- */
 app.get('/stats/:username', async (req, res) => {
     try {
-        const { username } = req.params;
-        const page     = Math.max(1, Number.parseInt(req.query.page, 10)     || 1);
-        const pageSize = Math.max(1, Number.parseInt(req.query.pageSize, 10) || 10);
+        const username = normalizeUsername(req.params.username);
+        const page = Math.max(1, parsePositiveInt(req.query.page, 1));
+        const pageSize = Math.max(1, parsePositiveInt(req.query.pageSize, 10));
 
-        const userExists = await User.findOne({ username: username.toString() });
+        if (!username) {
+            return res.status(400).json({ success: false, error: 'Invalid username' });
+        }
+
+        const userExists = await ensureExistingUser(username);
         if (!userExists) {
             return res.status(404).json({ success: false, error: `User ${username} not found` });
         }
 
-        const games      = await GameResult.find({ username: username.toString() }).sort({ date: -1 });
+        const games = await GameResult.find({ username }).sort({ date: -1 });
         const totalGames = games.length;
-        const wins       = games.filter(g => g.result === 'win').length;
-        const losses     = games.filter(g => g.result === 'loss').length;
-        const winRate    = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
-        const pvbGames   = games.filter(g => g.gameMode === 'pvb');
-        const pvpGames   = games.filter(g => g.gameMode === 'pvp');
+        const wins = games.filter(g => g.result === 'win').length;
+        const losses = games.filter(g => g.result === 'loss').length;
+        const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+        const pvbGames = games.filter(g => g.gameMode === 'pvb');
+        const pvpGames = games.filter(g => g.gameMode === 'pvp');
 
-        const start          = (page - 1) * pageSize;
-        const paginatedGames = games.slice(start, start + pageSize).map(g => ({
-            opponent: g.opponent, result: g.result,
-            boardSize: g.boardSize, gameMode: g.gameMode, date: g.date,
-        }));
-
-        const lastFive = games.slice(0, 5).map(g => ({
-            opponent: g.opponent, result: g.result,
-            boardSize: g.boardSize, gameMode: g.gameMode, date: g.date,
-        }));
+        const start = (page - 1) * pageSize;
+        const paginatedGames = games.slice(start, start + pageSize).map(publicGameView);
+        const lastFive = games.slice(0, 5).map(publicGameView);
 
         res.json({
-            success: true, username,
-            stats: { totalGames, wins, losses, winRate,
-                pvbGames: pvbGames.length, pvpGames: pvpGames.length, lastFive },
-            games: paginatedGames, page, pageSize,
+            success: true,
+            username,
+            stats: {
+                totalGames,
+                wins,
+                losses,
+                winRate,
+                pvbGames: pvbGames.length,
+                pvpGames: pvpGames.length,
+                lastFive
+            },
+            games: paginatedGames,
+            page,
+            pageSize,
         });
 
     } catch (error) {
@@ -414,41 +457,39 @@ app.get('/stats/:username', async (req, res) => {
     }
 });
 
-/**
- * GET /profile/:username
- */
 app.get('/profile/:username', async (req, res) => {
     try {
-        const { username } = req.params;
+        const username = normalizeUsername(req.params.username);
 
-        const user = await User.findOne({ username: username.toString() }, { password: 0 });
+        if (!username) {
+            return res.status(400).json({ success: false, error: 'Invalid username' });
+        }
+
+        const user = await User.findOne({ username }, { password: 0 });
         if (!user) {
             return res.status(404).json({ success: false, error: `User ${username} not found` });
         }
 
-        const games        = await GameResult.find({ username: username.toString() }).sort({ date: -1 });
-        const totalGames   = games.length;
-        const wins         = games.filter(g => g.result === 'win').length;
-        const losses       = games.filter(g => g.result === 'loss').length;
-        const winRate      = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
-        const recentMatches = games.slice(0, 5).map(g => ({
-            opponent: g.opponent, result: g.result,
-            boardSize: g.boardSize, gameMode: g.gameMode, date: g.date,
-        }));
+        const games = await GameResult.find({ username }).sort({ date: -1 });
+        const totalGames = games.length;
+        const wins = games.filter(g => g.result === 'win').length;
+        const losses = games.filter(g => g.result === 'loss').length;
+        const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+        const recentMatches = games.slice(0, 5).map(publicGameView);
 
         res.json({
             success: true,
             profile: {
-                username:          user.username,
-                realName:          user.realName ?? null,
-                bio:               user.bio ?? null,
-                location:          user.location ?? {},
+                username: user.username,
+                realName: user.realName ?? null,
+                bio: user.bio ?? null,
+                location: user.location ?? {},
                 preferredLanguage: user.preferredLanguage ?? 'en',
-                joinDate:          user.createdAt,
-                stats:             { totalGames, wins, losses, winRate },
+                joinDate: user.createdAt,
+                stats: { totalGames, wins, losses, winRate },
                 recentMatches,
-                friends:           user.friends ?? [],
-                friendRequests:    user.friendRequests ?? [],
+                friends: user.friends ?? [],
+                friendRequests: user.friendRequests ?? [],
             }
         });
 
@@ -458,24 +499,26 @@ app.get('/profile/:username', async (req, res) => {
     }
 });
 
-/**
- * PATCH /profile/:username
- */
 app.patch('/profile/:username', async (req, res) => {
     try {
-        const { username } = req.params;
+        const username = normalizeUsername(req.params.username);
+
+        if (!username) {
+            return res.status(400).json({ success: false, error: 'Invalid username' });
+        }
+
         const { realName, bio, city, country, preferredLanguage } = req.body;
 
-        const user = await User.findOne({ username: username.toString() });
+        const user = await findUserByUsername(username);
         if (!user) {
             return res.status(404).json({ success: false, error: `User ${username} not found` });
         }
 
-        if (realName !== undefined)           user.realName = realName;
-        if (bio !== undefined)                user.bio = bio;
-        if (city !== undefined)               user.location = { ...user.location, city };
-        if (country !== undefined)            user.location = { ...user.location, country };
-        if (preferredLanguage !== undefined)  user.preferredLanguage = preferredLanguage;
+        if (realName !== undefined) user.realName = realName;
+        if (bio !== undefined) user.bio = bio;
+        if (city !== undefined) user.location = { ...user.location, city };
+        if (country !== undefined) user.location = { ...user.location, country };
+        if (preferredLanguage !== undefined) user.preferredLanguage = preferredLanguage;
 
         await user.save();
 
@@ -483,10 +526,10 @@ app.patch('/profile/:username', async (req, res) => {
             success: true,
             message: 'Profile updated',
             profile: {
-                username:          user.username,
-                realName:          user.realName ?? null,
-                bio:               user.bio ?? null,
-                location:          user.location ?? {},
+                username: user.username,
+                realName: user.realName ?? null,
+                bio: user.bio ?? null,
+                location: user.location ?? {},
                 preferredLanguage: user.preferredLanguage
             }
         });
@@ -503,30 +546,24 @@ app.patch('/profile/:username', async (req, res) => {
 
 // =========================   FRIENDS ENDPOINTS   ===========================
 
-/**
- * POST /friends/request/:username
- * Sends a friend request from the authenticated user to :username.
- * Requires JWT — the sender's username is read from the token payload.
- *
- * Rules:
- *  - Cannot send a request to yourself.
- *  - Cannot send if already friends.
- *  - Cannot send if a request is already pending.
- */
 app.post('/friends/request/:username', async (req, res) => {
     try {
-        const targetUsername = req.params.username;
-        const senderUsername = getUsernameFromToken(req.headers.authorization);
+        const targetUsername = normalizeUsername(req.params.username);
+        const senderUsername = normalizeUsername(getUsernameFromToken(req.headers.authorization));
 
         if (!senderUsername) {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        if (!targetUsername) {
+            return res.status(400).json({ success: false, error: 'Invalid username' });
         }
 
         if (senderUsername === targetUsername) {
             return res.status(400).json({ success: false, error: 'You cannot send a friend request to yourself' });
         }
 
-        const target = await User.findOne({ username: targetUsername });
+        const target = await findUserByUsername(targetUsername);
         if (!target) {
             return res.status(404).json({ success: false, error: `User ${targetUsername} not found` });
         }
@@ -539,7 +576,6 @@ app.post('/friends/request/:username', async (req, res) => {
             return res.status(409).json({ success: false, error: 'Friend request already sent' });
         }
 
-        // Add sender to target's friendRequests array
         target.friendRequests.push(senderUsername);
         await target.save();
 
@@ -551,25 +587,20 @@ app.post('/friends/request/:username', async (req, res) => {
     }
 });
 
-/**
- * POST /friends/accept/:username
- * Accepts a pending friend request from :username.
- * Requires JWT — the accepting user's username is read from the token payload.
- *
- * On success:
- *  - Removes :username from acceptor's friendRequests array.
- *  - Adds each user to the other's friends array (bidirectional).
- */
 app.post('/friends/accept/:username', async (req, res) => {
     try {
-        const senderUsername   = req.params.username;   // who sent the request
-        const acceptorUsername = getUsernameFromToken(req.headers.authorization);
+        const senderUsername = normalizeUsername(req.params.username);
+        const acceptorUsername = normalizeUsername(getUsernameFromToken(req.headers.authorization));
 
         if (!acceptorUsername) {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const acceptor = await User.findOne({ username: acceptorUsername });
+        if (!senderUsername) {
+            return res.status(400).json({ success: false, error: 'Invalid username' });
+        }
+
+        const acceptor = await findUserByUsername(acceptorUsername);
         if (!acceptor) {
             return res.status(404).json({ success: false, error: 'Acceptor user not found' });
         }
@@ -578,15 +609,13 @@ app.post('/friends/accept/:username', async (req, res) => {
             return res.status(404).json({ success: false, error: 'No pending request from that user' });
         }
 
-        const sender = await User.findOne({ username: senderUsername });
+        const sender = await findUserByUsername(senderUsername);
         if (!sender) {
             return res.status(404).json({ success: false, error: `User ${senderUsername} not found` });
         }
 
-        // Move: remove from requests → add to friends (both sides)
         acceptor.friendRequests = acceptor.friendRequests.filter(u => u !== senderUsername);
         if (!acceptor.friends.includes(senderUsername)) acceptor.friends.push(senderUsername);
-
         if (!sender.friends.includes(acceptorUsername)) sender.friends.push(acceptorUsername);
 
         await acceptor.save();
@@ -600,29 +629,28 @@ app.post('/friends/accept/:username', async (req, res) => {
     }
 });
 
-/**
- * DELETE /friends/:username
- * Removes :username from the authenticated user's friends list (bidirectional).
- * Requires JWT.
- */
 app.delete('/friends/:username', async (req, res) => {
     try {
-        const targetUsername  = req.params.username;
-        const currentUsername = getUsernameFromToken(req.headers.authorization);
+        const targetUsername = normalizeUsername(req.params.username);
+        const currentUsername = normalizeUsername(getUsernameFromToken(req.headers.authorization));
 
         if (!currentUsername) {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const current = await User.findOne({ username: currentUsername });
-        const target  = await User.findOne({ username: targetUsername });
+        if (!targetUsername) {
+            return res.status(400).json({ success: false, error: 'Invalid username' });
+        }
+
+        const current = await findUserByUsername(currentUsername);
+        const target = await findUserByUsername(targetUsername);
 
         if (!current || !target) {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
 
         current.friends = current.friends.filter(u => u !== targetUsername);
-        target.friends  = target.friends.filter(u => u !== currentUsername);
+        target.friends = target.friends.filter(u => u !== currentUsername);
 
         await current.save();
         await target.save();
@@ -635,14 +663,10 @@ app.delete('/friends/:username', async (req, res) => {
     }
 });
 
-/**
- * GET /friends
- * Returns the authenticated user's friends list.
- * Requires JWT.
- */
 app.get('/friends', async (req, res) => {
     try {
-        const currentUsername = getUsernameFromToken(req.headers.authorization);
+        const currentUsername = normalizeUsername(getUsernameFromToken(req.headers.authorization));
+
         if (!currentUsername) {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
@@ -662,9 +686,9 @@ app.get('/friends', async (req, res) => {
 
 // ── Health ────────────────────────────────────────────────────────────────────
 
-app.get('/health', async (req, res) => {
+app.get('/health', async (_req, res) => {
     const dbState = mongoose.connection.readyState;
-    const states  = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+    const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
     res.json({ status: 'OK', server: 'running', database: states[dbState], timestamp: new Date() });
 });
 
