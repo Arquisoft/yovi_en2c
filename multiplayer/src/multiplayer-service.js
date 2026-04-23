@@ -35,6 +35,57 @@ const io = new Server(server, {
 
 const rooms = new RoomManager();
 
+function getPlayerColorByUsername(room, username) {
+  if (!room || !username) return null;
+
+  if (room.players.B && room.players.B.username === username) return "B";
+  if (room.players.R && room.players.R.username === username) return "R";
+
+  return null;
+}
+
+function isPlayersTurnByUsername(room, username) {
+  const playerColor = getPlayerColorByUsername(room, username);
+  if (!playerColor) return false;
+
+  const currentTurnIndex = room.yen.turn;
+  const currentTurnColor = room.yen.players[currentTurnIndex];
+
+  return currentTurnColor === playerColor;
+}
+
+function removePlayerByUsername(code, username) {
+  const room = rooms.getRoom(code);
+  if (!room) {
+    return { room: null, removedColor: null };
+  }
+
+  let removedColor = null;
+
+  if (room.players.B && room.players.B.username === username) {
+    removedColor = "B";
+    room.players.B = null;
+  } else if (room.players.R && room.players.R.username === username) {
+    removedColor = "R";
+    room.players.R = null;
+  }
+
+  if (!removedColor) {
+    return { room, removedColor: null };
+  }
+
+  if (!room.players.B && !room.players.R) {
+    rooms.rooms.delete(code);
+    return { room: null, removedColor };
+  }
+
+  if (room.status === "active") {
+    room.status = "finished";
+  }
+
+  return { room, removedColor };
+}
+
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
@@ -50,6 +101,215 @@ app.get("/rooms/:code", (req, res) => {
   }
 
   return res.json(rooms.serializeRoom(room));
+});
+
+app.post("/rooms/create", async (req, res) => {
+  try {
+    const username = String(req.body?.username || "Player 1");
+    const size = Number(req.body?.size || 3);
+
+    if (!Number.isInteger(size) || size < 1) {
+      return res.status(400).json({ ok: false, error: "Invalid board size" });
+    }
+
+    const yen = await createNewGame(size);
+
+    const room = rooms.createRoom({
+      hostSocketId: `http-host-${Date.now()}-${Math.random()}`,
+      username,
+      size,
+      yen
+    });
+
+    return res.status(200).json({
+      ok: true,
+      room: rooms.serializeRoom(room),
+      yourColor: "B"
+    });
+  } catch (error) {
+    return res.status(502).json({
+      ok: false,
+      error: error.response?.data?.error || error.message || "Could not create room"
+    });
+  }
+});
+
+app.post("/rooms/join", (req, res) => {
+  try {
+    const code = String(req.body?.code || "").trim().toUpperCase();
+    const username = String(req.body?.username || "Player 2");
+
+    if (!code) {
+      return res.status(400).json({ ok: false, error: "Room code is required" });
+    }
+
+    const room = rooms.joinRoom({
+      code,
+      socketId: `http-join-${Date.now()}-${Math.random()}`,
+      username
+    });
+
+    io.to(room.code).emit("room_updated", {
+      room: rooms.serializeRoom(room)
+    });
+
+    io.to(room.code).emit("game_started", {
+      room: rooms.serializeRoom(room),
+      message: "Both players connected"
+    });
+
+    return res.status(200).json({
+      ok: true,
+      room: rooms.serializeRoom(room),
+      yourColor: "R"
+    });
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: error.message || "Could not join room"
+    });
+  }
+});
+
+app.post("/rooms/state", (req, res) => {
+  try {
+    const code = String(req.body?.code || "").trim().toUpperCase();
+    const username = req.body?.username ? String(req.body.username) : null;
+
+    if (!code) {
+      return res.status(400).json({ ok: false, error: "Room code is required" });
+    }
+
+    const room = rooms.getRoom(code);
+    if (!room) {
+      return res.status(404).json({ ok: false, error: "Room not found" });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      room: rooms.serializeRoom(room),
+      yourColor: username ? getPlayerColorByUsername(room, username) : null
+    });
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: error.message || "Could not get room state"
+    });
+  }
+});
+
+app.post("/rooms/move", async (req, res) => {
+  try {
+    const code = String(req.body?.code || "").trim().toUpperCase();
+    const username = String(req.body?.username || "");
+    const row = Number(req.body?.row);
+    const col = Number(req.body?.col);
+
+    if (!code) {
+      return res.status(400).json({ ok: false, error: "Room code is required" });
+    }
+
+    if (!username) {
+      return res.status(400).json({ ok: false, error: "Username is required" });
+    }
+
+    if (!Number.isInteger(row) || !Number.isInteger(col)) {
+      return res.status(400).json({ ok: false, error: "Invalid row/col" });
+    }
+
+    const room = rooms.getRoom(code);
+
+    if (!room) {
+      return res.status(404).json({ ok: false, error: "Room not found" });
+    }
+
+    if (room.status !== "active") {
+      return res.status(400).json({ ok: false, error: "Room is not active" });
+    }
+
+    const playerColor = getPlayerColorByUsername(room, username);
+    if (!playerColor) {
+      return res.status(403).json({ ok: false, error: "You are not a player in this room" });
+    }
+
+    if (!isPlayersTurnByUsername(room, username)) {
+      return res.status(400).json({ ok: false, error: "It is not your turn" });
+    }
+
+    const result = await applyPvpMove(room.yen, row, col);
+
+    rooms.updateRoomYen(code, result.yen);
+
+    if (result.finished) {
+      rooms.finishRoom(code);
+    }
+
+    const updatedRoom = rooms.getRoom(code);
+
+    io.to(code).emit("game_updated", {
+      room: rooms.serializeRoom(updatedRoom),
+      finished: result.finished,
+      winner: result.winner,
+      winningEdges: result.winning_edges
+    });
+
+    if (result.finished) {
+      io.to(code).emit("game_over", {
+        room: rooms.serializeRoom(updatedRoom),
+        winner: result.winner,
+        winningEdges: result.winning_edges
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      room: rooms.serializeRoom(updatedRoom),
+      finished: result.finished,
+      winner: result.winner,
+      winningEdges: result.winning_edges
+    });
+  } catch (error) {
+    return res.status(502).json({
+      ok: false,
+      error: error.response?.data?.error || error.message || "Invalid move"
+    });
+  }
+});
+
+app.post("/rooms/leave", (req, res) => {
+  try {
+    const code = String(req.body?.code || "").trim().toUpperCase();
+    const username = String(req.body?.username || "");
+
+    if (!code) {
+      return res.status(400).json({ ok: false, error: "Room code is required" });
+    }
+
+    if (!username) {
+      return res.status(400).json({ ok: false, error: "Username is required" });
+    }
+
+    const room = rooms.getRoom(code);
+    if (!room) {
+      return res.status(404).json({ ok: false, error: "Room not found" });
+    }
+
+    const result = removePlayerByUsername(code, username);
+
+    if (result.room) {
+      io.to(code).emit("opponent_left", {
+        room: rooms.serializeRoom(result.room),
+        removedColor: result.removedColor
+      });
+    }
+
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    return res.status(400).json({
+      ok: false,
+      error: error.message || "Could not leave room"
+    });
+  }
 });
 
 io.on("connection", (socket) => {
