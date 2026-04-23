@@ -223,7 +223,7 @@ jobs:
         with:
           context: ./multiplayer
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-multiplayer:latest
+          tags: ghcr.io/arquisoft/${{ github.event.repository.name }}-multiplayer:latest
 
   docker-push-gamey:
     name: Publish gamey image
