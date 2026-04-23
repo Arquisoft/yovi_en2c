@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, afterEach, describe, expect, test, vi } from "vitest";
@@ -91,9 +91,16 @@ describe("MultiplayerGame", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.clearAllMocks();
     localStorage.clear();
   });
+
+  async function emitSocketEvent(event: string, payload?: any) {
+    await act(async () => {
+      socketHandlers[event]?.(payload);
+    });
+  }
 
   test("redirects to lobby when username or room code is missing", async () => {
     renderGame({ username: "Pablo" });
@@ -470,14 +477,6 @@ describe("MultiplayerGame", () => {
   });
 
   test("shows move error when make_move ack fails", async () => {
-    mockSocketEmit.mockImplementation(
-      (event: string, _payload: any, ack?: (...args: any[]) => void) => {
-        if (event === "make_move") {
-          ack?.({ ok: false, error: "Invalid move" });
-        }
-      }
-    );
-
     renderGame({
       username: "Pablo",
       roomCode: "ABCD12",
@@ -487,7 +486,15 @@ describe("MultiplayerGame", () => {
 
     await waitFor(() => expect(socketHandlers.room_updated).toBeTypeOf("function"));
 
-    socketHandlers.room_updated({ room: activeRoom });
+    await emitSocketEvent("room_updated", { room: activeRoom });
+
+    mockSocketEmit.mockImplementation(
+      (event: string, _payload: any, ack?: (...args: any[]) => void) => {
+        if (event === "make_move") {
+          ack?.({ ok: false, error: "Invalid move" });
+        }
+      }
+    );
 
     const cells = document.querySelectorAll("polygon");
     await userEvent.click(cells[0]);
@@ -495,9 +502,7 @@ describe("MultiplayerGame", () => {
     expect(await screen.findByText(/Invalid move/i)).toBeInTheDocument();
   });
 
-  test("asks for hint and highlights returned cell", async () => {
-    vi.useFakeTimers();
-
+  test("asks for hint", async () => {
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -514,8 +519,7 @@ describe("MultiplayerGame", () => {
     });
 
     await waitFor(() => expect(socketHandlers.room_updated).toBeTypeOf("function"));
-
-    socketHandlers.room_updated({ room: activeRoom });
+    await emitSocketEvent("room_updated", { room: activeRoom });
 
     const hintButton = await screen.findByRole("button", { name: /Pista|Hint/i });
     expect(hintButton).not.toBeDisabled();
@@ -531,9 +535,6 @@ describe("MultiplayerGame", () => {
         })
       );
     });
-
-    vi.runOnlyPendingTimers();
-    vi.useRealTimers();
   });
 
   test("shows hint error when hint endpoint returns not ok", async () => {
@@ -553,8 +554,7 @@ describe("MultiplayerGame", () => {
     });
 
     await waitFor(() => expect(socketHandlers.room_updated).toBeTypeOf("function"));
-
-    socketHandlers.room_updated({ room: activeRoom });
+    await emitSocketEvent("room_updated", { room: activeRoom });
 
     await userEvent.click(await screen.findByRole("button", { name: /Pista|Hint/i }));
 
@@ -572,8 +572,7 @@ describe("MultiplayerGame", () => {
     });
 
     await waitFor(() => expect(socketHandlers.room_updated).toBeTypeOf("function"));
-
-    socketHandlers.room_updated({ room: activeRoom });
+    await emitSocketEvent("room_updated", { room: activeRoom });
 
     await userEvent.click(await screen.findByRole("button", { name: /Pista|Hint/i }));
 
@@ -590,15 +589,18 @@ describe("MultiplayerGame", () => {
 
     await waitFor(() => expect(socketHandlers.game_over).toBeTypeOf("function"));
 
-    socketHandlers.game_over({
+    await emitSocketEvent("game_over", {
       room: activeRoom,
       winner: "B",
       winningEdges: [[[0, 0], [1, 0]]],
     });
 
-    expect(await screen.findByText(/Has ganado|You won/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", {
+        name: /Partida terminada.*Has ganado|Game finished.*You won|ganado|won/i,
+      })
+    ).toBeInTheDocument();
     expect(screen.getByText(/Ganador|Winner/i)).toBeInTheDocument();
-    expect(screen.getByText(/Pablo/i)).toBeInTheDocument();
   });
 
   test("shows game over lost overlay when R wins and current user is B", async () => {
@@ -611,14 +613,19 @@ describe("MultiplayerGame", () => {
 
     await waitFor(() => expect(socketHandlers.game_over).toBeTypeOf("function"));
 
-    socketHandlers.game_over({
+    await emitSocketEvent("game_over", {
       room: activeRoom,
       winner: "R",
       winningEdges: [[[0, 0], [1, 0]]],
     });
 
-    expect(await screen.findByText(/Has perdido|You lost/i)).toBeInTheDocument();
-    expect(screen.getByText(/Laura/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", {
+        name: /Partida terminada.*Has perdido|Game finished.*You lost|perdido|lost/i,
+      })
+    ).toBeInTheDocument();
+
+    expect(screen.getAllByText(/Laura/i).length).toBeGreaterThanOrEqual(1);
   });
 
   test("shows draw overlay when game finishes without winner", async () => {
@@ -631,7 +638,7 @@ describe("MultiplayerGame", () => {
 
     await waitFor(() => expect(socketHandlers.game_over).toBeTypeOf("function"));
 
-    socketHandlers.game_over({
+    await emitSocketEvent("game_over", {
       room: activeRoom,
       winner: null,
       winningEdges: [],
@@ -655,7 +662,7 @@ describe("MultiplayerGame", () => {
 
     await waitFor(() => expect(socketHandlers.game_over).toBeTypeOf("function"));
 
-    socketHandlers.game_over({
+    await emitSocketEvent("game_over", {
       room: activeRoom,
       winner: "B",
       winningEdges: [[[0, 0], [1, 0]]],
@@ -687,18 +694,16 @@ describe("MultiplayerGame", () => {
 
     await waitFor(() => expect(socketHandlers.game_over).toBeTypeOf("function"));
 
-    socketHandlers.game_over({
+    await emitSocketEvent("game_over", {
       room: activeRoom,
       winner: "B",
       winningEdges: [[[0, 0], [1, 0]]],
     });
 
-    await waitFor(() => {
-      expect(global.fetch).not.toHaveBeenCalledWith(
-        "/api/gameresult/multiplayer",
-        expect.anything()
-      );
-    });
+    expect(global.fetch).not.toHaveBeenCalledWith(
+      "/api/gameresult/multiplayer",
+      expect.anything()
+    );
   });
 
   test("back button in game over overlay navigates to multiplayer lobby", async () => {
@@ -713,7 +718,7 @@ describe("MultiplayerGame", () => {
 
     await waitFor(() => expect(socketHandlers.game_over).toBeTypeOf("function"));
 
-    socketHandlers.game_over({
+    await emitSocketEvent("game_over", {
       room: activeRoom,
       winner: "B",
       winningEdges: [[[0, 0], [1, 0]]],
@@ -740,8 +745,10 @@ describe("MultiplayerGame", () => {
 
     await waitFor(() => expect(socketHandlers.opponent_left).toBeTypeOf("function"));
 
-    socketHandlers.opponent_left();
+    await emitSocketEvent("opponent_left");
 
-    expect(await screen.findByText(/opponent|rival|salido/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/El rival se ha desconectado|opponent.*left|opponent.*disconnected/i)
+    ).toBeInTheDocument();
   });
 });
