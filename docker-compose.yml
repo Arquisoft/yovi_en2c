@@ -26,6 +26,20 @@ services:
     networks:
       - monitor-net
 
+  multiplayer:
+    build: ./multiplayer
+    container_name: multiplayer
+    image: ghcr.io/arquisoft/yovi_en2c-multiplayer:latest
+    environment:
+      - GAMEY_BASE_URL=http://gamey:4000
+      - PORT=7000
+    depends_on:
+      - gamey
+    expose:
+      - "7000"
+    networks:
+      - monitor-net
+
   authentication:
     build: ./authentication
     container_name: authentication
@@ -64,6 +78,7 @@ services:
       - AUTH_BASE_URL=http://authentication:5000
       - GAMEY_BASE_URL=http://gamey:4000
       - MULTIPLAYER_BASE_URL=http://multiplayer:7000
+      - USERS_BASE_URL=http://users:3000
       - PORT=8080
     depends_on:
       - authentication
