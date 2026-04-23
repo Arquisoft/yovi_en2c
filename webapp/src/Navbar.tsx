@@ -18,6 +18,8 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
   const goHome = () => navigate("/home", { state: { username } });
   const goGameSelect = () => navigate("/select-difficulty", { state: { username } });
   const goMultiplayer = () => navigate("/multiplayer", { state: { username } });
+  const goStatistics = () => navigate("/statistics", { state: { username } });
+  const goSocial = () => navigate("/social", { state: { username } });
 
   return (
     <header className="navbar">
@@ -70,9 +72,18 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
               type="button"
               className="navbtn"
               aria-current={location.pathname === "/statistics" ? "page" : undefined}
-              onClick={() => navigate("/statistics", { state: { username } })}
+              onClick={goStatistics}
             >
               {t("common.stats")}
+            </button>
+
+            <button
+              type="button"
+              className="navbtn"
+              aria-current={location.pathname === "/social" ? "page" : undefined}
+              onClick={goSocial}
+            >
+              {t("common.social")}
             </button>
           </nav>
         </div>
@@ -81,7 +92,7 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
           <button
             type="button"
             className="navbar__user navbar__user--link"
-            onClick={() => username && navigate(`/profile/${username}`)}
+            onClick={() => username && navigate(`/profile/${username}`, { state: { username } })}
             aria-label={`View profile of ${username}`}
           >
             👤 {username || "—"}

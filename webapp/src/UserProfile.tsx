@@ -27,6 +27,8 @@ type ProfileData = {
         winRate: number;
     };
     recentMatches: RecentMatch[];
+    friends: string[];
+    friendRequests: string[];
 };
 
 type EditForm = {
@@ -36,6 +38,8 @@ type EditForm = {
     country: string;
     preferredLanguage: string;
 };
+
+type FriendRequestStatus = "idle" | "sending" | "sent" | "already" | "error";
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
 
@@ -69,8 +73,8 @@ const EditModal: React.FC<EditModalProps> = ({ form, saving, onChange, onSave, o
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: "16px",
     }}>
-        <div className="modal-card" style={{ width: "100%", maxWidth: 480, display: "flex",
-            flexDirection: "column", gap: 14 }}>
+        <div className="modal-card" style={{ width: "100%", maxWidth: 480,
+            display: "flex", flexDirection: "column", gap: 14 }}>
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h2 style={{ margin: 0, fontSize: "1.2rem" }}>{t("profile.edit.title")}</h2>
@@ -81,7 +85,6 @@ const EditModal: React.FC<EditModalProps> = ({ form, saving, onChange, onSave, o
                 </button>
             </div>
 
-            {/* Text inputs */}
             {(["realName", "city", "country"] as const).map((field) => (
                 <div key={field} className="form-group">
                     <label>{t(`profile.edit.${field}`)}</label>
@@ -96,7 +99,6 @@ const EditModal: React.FC<EditModalProps> = ({ form, saving, onChange, onSave, o
                 </div>
             ))}
 
-            {/* Bio — textarea separate from the map to avoid type narrowing issues */}
             <div className="form-group">
                 <label>{t("profile.edit.bio")}</label>
                 <textarea
@@ -135,25 +137,220 @@ const EditModal: React.FC<EditModalProps> = ({ form, saving, onChange, onSave, o
     </div>
 );
 
+// ── FriendRequestsCard — only visible to the profile owner ───────────────────
+// Shows pending requests with an Accept button for each.
+
+type FriendRequestsCardProps = {
+    requests?: string[];          // made optional, will default to []
+    token: string;
+    onAccepted: () => void;
+    t: (key: string) => string;
+};
+
+const FriendRequestsCard: React.FC<FriendRequestsCardProps> = ({ requests = [], token, onAccepted, t }) => {
+    // Track per-username accepting state to give individual feedback
+    const [accepting, setAccepting] = useState<Record<string, boolean>>({});
+    const [errors,    setErrors]    = useState<Record<string, string>>({});
+
+    const handleAccept = async (senderUsername: string) => {
+        setAccepting(prev => ({ ...prev, [senderUsername]: true }));
+        setErrors(prev => ({ ...prev, [senderUsername]: "" }));
+        try {
+            const res  = await fetch(`/api/friends/accept/${senderUsername}`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                onAccepted(); // re-fetch profile to update both arrays
+            } else {
+                setErrors(prev => ({ ...prev, [senderUsername]: data.error ?? t("profile.friends.acceptError") }));
+            }
+        } catch {
+            setErrors(prev => ({ ...prev, [senderUsername]: t("profile.friends.acceptError") }));
+        } finally {
+            setAccepting(prev => ({ ...prev, [senderUsername]: false }));
+        }
+    };
+
+    // Safe check: if requests is falsy or empty, show empty state
+    if (!requests?.length) {
+        return (
+            <div className="card">
+                <h2 className="card__title">📨 {t("profile.friendRequests.title")}</h2>
+                <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.88rem" }}>
+                    {t("profile.friendRequests.empty")}
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="card">
+            <h2 className="card__title">
+                📨 {t("profile.friendRequests.title")}
+                <span style={{
+                    marginLeft: 8, background: "var(--aqua)", color: "#fff",
+                    borderRadius: 999, padding: "2px 9px", fontSize: "0.75rem", fontWeight: 900,
+                }}>
+                    {requests.length}
+                </span>
+            </h2>
+
+            <div style={{
+                display: "flex", flexDirection: "column", gap: 8,
+                maxHeight: 220, overflowY: "auto",
+                paddingRight: 4,
+            }}>
+                {requests.map(sender => (
+                    <div key={sender} style={{
+                        display: "flex", alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 12px", borderRadius: "var(--r)",
+                        border: "1px solid var(--stroke)", background: "var(--bg)",
+                        gap: 10,
+                    }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{
+                                width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                                background: "linear-gradient(135deg, var(--aqua), var(--navy))",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                fontSize: "0.8rem", fontWeight: 900, color: "#fff",
+                            }}>
+                                {sender.slice(0, 2).toUpperCase()}
+                            </div>
+                            <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>{sender}</span>
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                            <button
+                                type="button"
+                                className="btn btn--primary"
+                                style={{ fontSize: "0.78rem", padding: "5px 14px" }}
+                                onClick={() => handleAccept(sender)}
+                                disabled={accepting[sender]}
+                            >
+                                {accepting[sender] ? "..." : `✔ ${t("profile.friendRequests.accept")}`}
+                            </button>
+                            {errors[sender] && (
+                                <span style={{ fontSize: "0.72rem", color: "var(--danger)" }}>
+                                    {errors[sender]}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// ── FriendsListCard ───────────────────────────────────────────────────────────
+// Scrollable list of accepted friends, visible to the profile owner only.
+
+type FriendsListCardProps = {
+    friends?: string[];
+    onViewProfile: (username: string) => void;
+    t: (key: string) => string;
+};
+
+const FriendsListCard: React.FC<FriendsListCardProps> = ({ friends = [], onViewProfile, t }) => {
+    // Safe check
+    if (!friends?.length) {
+        return (
+            <div className="card">
+                <h2 className="card__title">
+                    👥 {t("profile.friends.title")}
+                    <span style={{
+                        marginLeft: 8, background: "var(--panel)", color: "var(--muted)",
+                        borderRadius: 999, padding: "2px 9px", fontSize: "0.75rem", fontWeight: 900,
+                        border: "1px solid var(--stroke)",
+                    }}>
+                        0
+                    </span>
+                </h2>
+                <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.88rem" }}>
+                    {t("profile.friends.empty")}
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="card">
+            <h2 className="card__title">
+                👥 {t("profile.friends.title")}
+                <span style={{
+                    marginLeft: 8, background: "var(--panel)", color: "var(--muted)",
+                    borderRadius: 999, padding: "2px 9px", fontSize: "0.75rem", fontWeight: 900,
+                    border: "1px solid var(--stroke)",
+                }}>
+                    {friends.length}
+                </span>
+            </h2>
+
+            <div style={{
+                display: "flex", flexDirection: "column", gap: 8,
+                maxHeight: 240, overflowY: "auto",
+                paddingRight: 4,
+            }}>
+                {friends.map(friend => (
+                    <div key={friend} style={{
+                        display: "flex", alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 12px", borderRadius: "var(--r)",
+                        border: "1px solid var(--stroke)", background: "var(--bg)",
+                        gap: 10, cursor: "pointer",
+                    }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{
+                                width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
+                                background: "linear-gradient(135deg, var(--aqua), var(--navy))",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                fontSize: "0.78rem", fontWeight: 900, color: "#fff",
+                            }}>
+                                {friend.slice(0, 2).toUpperCase()}
+                            </div>
+                            <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>{friend}</span>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="btn btn--ghost"
+                            style={{ fontSize: "0.78rem", padding: "4px 12px" }}
+                            onClick={() => onViewProfile(friend)}
+                        >
+                            {t("social.viewProfile")}
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 const UserProfile: React.FC = () => {
     const { username: profileUsername } = useParams<{ username: string }>();
     const navigate = useNavigate();
-    const { t } = useI18n();
+    const { t }    = useI18n();
 
     const currentUser = useMemo(() => localStorage.getItem("username"), []);
     const token       = useMemo(() => localStorage.getItem("token") ?? "", []);
     const isOwner     = currentUser === profileUsername;
 
-    const [profile,    setProfile]    = useState<ProfileData | null>(null);
-    const [loading,    setLoading]    = useState(true);
-    const [error,      setError]      = useState<string | null>(null);
-    const [editOpen,   setEditOpen]   = useState(false);
-    const [saving,     setSaving]     = useState(false);
-    const [editForm,   setEditForm]   = useState<EditForm>({
+    const [profile,  setProfile]  = useState<ProfileData | null>(null);
+    const [loading,  setLoading]  = useState(true);
+    const [error,    setError]    = useState<string | null>(null);
+    const [editOpen, setEditOpen] = useState(false);
+    const [saving,   setSaving]   = useState(false);
+    const [editForm, setEditForm] = useState<EditForm>({
         realName: "", bio: "", city: "", country: "", preferredLanguage: "en"
     });
+
+    // State for the "Send friend request" button on other users' profiles
+    const [frStatus, setFrStatus] = useState<FriendRequestStatus>("idle");
 
     const fetchProfile = async () => {
         if (!profileUsername) return;
@@ -162,8 +359,17 @@ const UserProfile: React.FC = () => {
         try {
             const res  = await fetch(`/api/profile/${profileUsername}`);
             const data = await res.json();
-            if (data.success) setProfile(data.profile);
-            else setError(data.error ?? t("profile.error.generic"));
+            if (data.success) {
+                // Normalize friendRequests and friends to always be arrays
+                const normalizedProfile = {
+                    ...data.profile,
+                    friendRequests: data.profile.friendRequests ?? [],
+                    friends: data.profile.friends ?? [],
+                };
+                setProfile(normalizedProfile);
+            } else {
+                setError(data.error ?? t("profile.error.generic"));
+            }
         } catch {
             setError(t("profile.error.network"));
         } finally {
@@ -210,13 +416,34 @@ const UserProfile: React.FC = () => {
         }
     };
 
+    const handleSendFriendRequest = async () => {
+        if (!token || !profileUsername) return;
+        setFrStatus("sending");
+        try {
+            const res  = await fetch(`/api/friends/request/${profileUsername}`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setFrStatus("sent");
+            } else if (res.status === 409) {
+                setFrStatus("already");
+            } else {
+                setFrStatus("error");
+            }
+        } catch {
+            setFrStatus("error");
+        }
+    };
+
     const logout = () => {
         localStorage.removeItem("username");
         localStorage.removeItem("token");
         navigate("/", { replace: true });
     };
 
-    // ── Loading / error states ─────────────────────────────────────────────────
+    // ── Loading / error states ────────────────────────────────────────────────
 
     if (loading) return (
         <div className="page">
@@ -245,7 +472,10 @@ const UserProfile: React.FC = () => {
     const { city, country } = profile.location ?? {};
     const locationStr = [city, country].filter(Boolean).join(", ");
 
-    // ── Render ─────────────────────────────────────────────────────────────────
+    // Derive whether current user already has a friend relationship with this profile
+    const alreadyFriends = (profile.friends ?? []).includes(currentUser ?? "");
+
+    // ── Render ────────────────────────────────────────────────────────────────
 
     return (
         <div className="page">
@@ -267,10 +497,10 @@ const UserProfile: React.FC = () => {
                 <div style={{ maxWidth: 720, margin: "0 auto",
                     display: "flex", flexDirection: "column", gap: 14 }}>
 
-                    {/* ── Header card ─────────────────────────────────────── */}
+                    {/* ── Header card ──────────────────────────────────────── */}
                     <div className="card" style={{ position: "relative", textAlign: "center" }}>
 
-                        {/* Edit button — only visible to the profile owner */}
+                        {/* Edit button — owner only */}
                         {isOwner && (
                             <button type="button" onClick={openEdit}
                                     className="navbtn"
@@ -316,23 +546,63 @@ const UserProfile: React.FC = () => {
                                 {new Date(profile.joinDate).toLocaleDateString()}
                             </span>
                         </div>
+
+                        {/* Send friend request — visible only when visiting another user's profile */}
+                        {!isOwner && (
+                            <div style={{ marginTop: 16 }}>
+                                {alreadyFriends || frStatus === "already" ? (
+                                    <span style={{
+                                        display: "inline-block", padding: "6px 18px",
+                                        borderRadius: 999, fontSize: "0.85rem", fontWeight: 700,
+                                        background: "rgba(32,201,151,.15)", color: "var(--ok)",
+                                        border: "1px solid var(--ok)",
+                                    }}>
+                                        ✔ {t("profile.friends.alreadyFriends")}
+                                    </span>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="btn btn--primary"
+                                        style={{ fontSize: "0.88rem" }}
+                                        onClick={handleSendFriendRequest}
+                                        disabled={frStatus === "sending" || frStatus === "sent"}
+                                    >
+                                        {frStatus === "idle"    && `➕ ${t("profile.friends.sendRequest")}`}
+                                        {frStatus === "sending" && "..."}
+                                        {frStatus === "sent"    && `✔ ${t("profile.friends.requestSent")}`}
+                                        {frStatus === "error"   && `⚠ ${t("profile.friends.requestError")}`}
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    {/* ── Friends placeholder ─────────────────────────────── */}
-                    <div className="card" style={{ opacity: 0.5, textAlign: "center",
-                        border: "1px dashed var(--stroke)" }}>
-                        <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.9rem" }}>
-                            👥 {t("profile.friends.placeholder")}
-                        </p>
-                    </div>
+                    {/* ── Friend requests card — owner only ────────────────── */}
+                    {isOwner && (
+                        <FriendRequestsCard
+                            requests={profile.friendRequests}
+                            token={token}
+                            onAccepted={fetchProfile}
+                            t={t}
+                        />
+                    )}
 
-                    {/* ── Stats cards ─────────────────────────────────────── */}
+                    {/* ── Friends list card — owner only ───────────────────── */}
+                    {isOwner && (
+                        <FriendsListCard
+                            friends={profile.friends}
+                            onViewProfile={(u) => navigate(`/profile/${u}`)}
+                            t={t}
+                        />
+                    )}
+
+                    {/* ── Stats cards ──────────────────────────────────────── */}
                     <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                         {[
-                            { label: t("stats.totalGames"), value: profile.stats.totalGames, color: "var(--aqua)"   },
-                            { label: t("stats.wins"),       value: profile.stats.wins,        color: "var(--ok)"    },
-                            { label: t("stats.losses"),     value: profile.stats.losses,      color: "var(--danger)"},
-                            { label: t("stats.winRate"),    value: `${profile.stats.winRate}%`, color: "var(--amber)"},
+                            { label: t("stats.totalGames"), value: profile.stats.totalGames, color: "var(--aqua)"    },
+                            { label: t("stats.wins"),       value: profile.stats.wins,        color: "var(--ok)"     },
+                            { label: t("stats.losses"),     value: profile.stats.losses,      color: "var(--danger)" },
+                            { label: t("stats.winRate"),    value: `${profile.stats.winRate}%`, color: "var(--amber)" },
                         ].map(({ label, value, color }) => (
                             <div key={label} style={{
                                 flex: "1 1 130px", border: "1px solid var(--stroke)",
@@ -351,7 +621,7 @@ const UserProfile: React.FC = () => {
                         ))}
                     </div>
 
-                    {/* ── Recent matches ──────────────────────────────────── */}
+                    {/* ── Recent matches ───────────────────────────────────── */}
                     {profile.recentMatches.length > 0 && (
                         <div className="card" style={{ overflowX: "auto" }}>
                             <h2 className="card__title">{t("stats.lastFive")}</h2>
@@ -368,21 +638,22 @@ const UserProfile: React.FC = () => {
                                 </thead>
                                 <tbody>
                                 {profile.recentMatches.map((match) => (
-                                    <tr key={`${match.opponent}-${match.date}`} style={{ borderBottom: "1px solid var(--stroke)" }}>
+                                    <tr key={`${match.opponent}-${match.date}`}
+                                        style={{ borderBottom: "1px solid var(--stroke)" }}>
                                         <td style={{ padding: "10px 8px", fontWeight: 700 }}>
                                             {match.opponent}
                                         </td>
                                         <td style={{ padding: "10px 8px", textAlign: "center" }}>
-                                                <span style={{
-                                                    padding: "3px 10px", borderRadius: 999,
-                                                    fontWeight: 900, fontSize: "0.82rem",
-                                                    background: match.result === "win"
-                                                        ? "rgba(32,201,151,.18)" : "rgba(255,77,77,.18)",
-                                                    color: match.result === "win"
-                                                        ? "var(--ok)" : "var(--danger)",
-                                                }}>
-                                                    {match.result === "win" ? t("stats.win") : t("stats.loss")}
-                                                </span>
+                                            <span style={{
+                                                padding: "3px 10px", borderRadius: 999,
+                                                fontWeight: 900, fontSize: "0.82rem",
+                                                background: match.result === "win"
+                                                    ? "rgba(32,201,151,.18)" : "rgba(255,77,77,.18)",
+                                                color: match.result === "win"
+                                                    ? "var(--ok)" : "var(--danger)",
+                                            }}>
+                                                {match.result === "win" ? t("stats.win") : t("stats.loss")}
+                                            </span>
                                         </td>
                                         <td style={{ padding: "10px 8px", textAlign: "center",
                                             color: "var(--muted)", fontSize: "0.85rem" }}>
@@ -398,8 +669,6 @@ const UserProfile: React.FC = () => {
                             </table>
                         </div>
                     )}
-
-
 
                     <div style={{ display: "flex", justifyContent: "center", paddingTop: 6 }}>
                         <button type="button" className="btn btn--primary"

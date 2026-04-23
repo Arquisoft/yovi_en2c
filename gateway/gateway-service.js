@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 8080;
 app.use(express.json());
 app.use(cors({
   origin: true,
-  methods: ["GET", "POST", "PATCH", "OPTIONS"],
+  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
@@ -19,8 +19,11 @@ const metricsMiddleware = promBundle({
   includePath: true,
   includeStatusCode: true,
   normalizePath: [
-    ['^/stats/.*',   '/stats/:username'],
-    ['^/profile/.*', '/profile/:username'],
+    ['^/stats/.*',           '/stats/:username'],
+    ['^/profile/.*',         '/profile/:username'],
+    ['^/friends/request/.*', '/friends/request/:username'],
+    ['^/friends/accept/.*',  '/friends/accept/:username'],
+    ['^/friends/.*',         '/friends/:username'],
   ],
 });
 app.use(metricsMiddleware);
@@ -60,18 +63,12 @@ const GAME_STATUS_URL = `${GAMEY_BASE_URL}/status`;
 
 // ── Security helpers ──────────────────────────────────────────────────────────
 
-// Validates that a username only contains safe characters.
-// Prevents path traversal (S7044) and SSRF (S5144) by rejecting
-// any value that could manipulate the upstream URL structure.
 const USERNAME_RE = /^[a-zA-Z0-9_-]{1,60}$/;
 
 function isValidUsername(username) {
   return typeof username === "string" && USERNAME_RE.test(username);
 }
 
-// Sanitizes the Authorization header before forwarding it to upstream services.
-// Extracts only the token value after "Bearer " and reconstructs the header,
-// breaking the direct taint flow from req.headers that Sonar tracks as SSRF (S5144).
 const BEARER_RE = /^Bearer\s+([A-Za-z0-9\-._~+/]+=*)$/;
 
 function sanitizeAuthHeader(authHeader) {
@@ -152,9 +149,6 @@ app.post("/game/bot/choose", async (req, res) => {
   }
 });
 
-// POST /hint
-// Always uses alfa_beta_bot to compute the suggestion, regardless of the bot
-// the player is currently facing. This ensures hints are always high quality.
 const HINT_BOT_ID = "alfa_beta_bot";
 
 app.post("/hint", async (req, res) => {
@@ -205,16 +199,13 @@ app.get("/stats/:username", async (req, res) => {
   const authStats = sanitizeAuthHeader(req.headers.authorization);
 
   try {
-    const response = await axios.get(usersUrl, {
-      headers: { Authorization: authStats },
-    });
+    const response = await axios.get(usersUrl, { headers: { Authorization: authStats } });
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Users service unavailable");
   }
 });
 
-// GET /profile/:username — public, no JWT required
 app.get("/profile/:username", async (req, res) => {
   const { username } = req.params;
 
@@ -232,7 +223,6 @@ app.get("/profile/:username", async (req, res) => {
   }
 });
 
-// PATCH /profile/:username — JWT required, only owner can edit
 app.patch("/profile/:username", async (req, res) => {
   const { username } = req.params;
 
@@ -240,10 +230,9 @@ app.patch("/profile/:username", async (req, res) => {
     return res.status(400).json({ ok: false, error: "Invalid username" });
   }
 
-  const usersUrl   = new URL(`/profile/${username}`, USERS_BASE_URL).toString();
-  const authPatch  = sanitizeAuthHeader(req.headers.authorization);
+  const usersUrl  = new URL(`/profile/${username}`, USERS_BASE_URL).toString();
+  const authPatch = sanitizeAuthHeader(req.headers.authorization);
 
-  // Extract only the known editable fields to prevent mass assignment (S5144)
   const { realName, bio, city, country, preferredLanguage } = req.body ?? {};
   const safeBody = { realName, bio, city, country, preferredLanguage };
 
@@ -251,6 +240,123 @@ app.patch("/profile/:username", async (req, res) => {
     const response = await axios.patch(usersUrl, safeBody, {
       headers: { Authorization: authPatch },
     });
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
+});
+
+// ── Search endpoint ───────────────────────────────────────────────────────────
+
+/**
+ * GET /search?q=<query>
+ * Proxies user search to the users service.
+ * No authentication required (public search).
+ */
+app.get("/search", async (req, res) => {
+  const { q } = req.query;
+
+  if (!q || typeof q !== "string" || q.trim().length < 1) {
+    return res.status(400).json({ ok: false, error: "Query parameter q is required" });
+  }
+
+  const usersUrl = new URL("/search", USERS_BASE_URL);
+  usersUrl.searchParams.set("q", q.trim());
+
+  try {
+    const response = await axios.get(usersUrl.toString());
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
+});
+
+// ── Friends endpoints ─────────────────────────────────────────────────────────
+
+/**
+ * POST /friends/request/:username
+ * Forwards a friend request to the users service. Requires JWT.
+ */
+app.post("/friends/request/:username", async (req, res) => {
+  const { username } = req.params;
+
+  if (!isValidUsername(username)) {
+    return res.status(400).json({ ok: false, error: "Invalid username" });
+  }
+
+  const usersUrl = new URL(`/friends/request/${username}`, USERS_BASE_URL).toString();
+  const auth     = sanitizeAuthHeader(req.headers.authorization);
+
+  if (!auth) return res.status(401).json({ ok: false, error: "Authorization header required" });
+
+  try {
+    const response = await axios.post(usersUrl, {}, { headers: { Authorization: auth } });
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
+});
+
+/**
+ * POST /friends/accept/:username
+ * Accepts a pending friend request. Requires JWT.
+ */
+app.post("/friends/accept/:username", async (req, res) => {
+  const { username } = req.params;
+
+  if (!isValidUsername(username)) {
+    return res.status(400).json({ ok: false, error: "Invalid username" });
+  }
+
+  const usersUrl = new URL(`/friends/accept/${username}`, USERS_BASE_URL).toString();
+  const auth     = sanitizeAuthHeader(req.headers.authorization);
+
+  if (!auth) return res.status(401).json({ ok: false, error: "Authorization header required" });
+
+  try {
+    const response = await axios.post(usersUrl, {}, { headers: { Authorization: auth } });
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
+});
+
+/**
+ * DELETE /friends/:username
+ * Removes a friend. Requires JWT.
+ */
+app.delete("/friends/:username", async (req, res) => {
+  const { username } = req.params;
+
+  if (!isValidUsername(username)) {
+    return res.status(400).json({ ok: false, error: "Invalid username" });
+  }
+
+  const usersUrl = new URL(`/friends/${username}`, USERS_BASE_URL).toString();
+  const auth     = sanitizeAuthHeader(req.headers.authorization);
+
+  if (!auth) return res.status(401).json({ ok: false, error: "Authorization header required" });
+
+  try {
+    const response = await axios.delete(usersUrl, { headers: { Authorization: auth } });
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
+});
+
+/**
+ * GET /friends
+ * Returns the authenticated user's friends list. Requires JWT.
+ */
+app.get("/friends", async (req, res) => {
+  const usersUrl = new URL("/friends", USERS_BASE_URL).toString();
+  const auth     = sanitizeAuthHeader(req.headers.authorization);
+
+  if (!auth) return res.status(401).json({ ok: false, error: "Authorization header required" });
+
+  try {
+    const response = await axios.get(usersUrl, { headers: { Authorization: auth } });
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Users service unavailable");
@@ -281,9 +387,7 @@ app.get("/verify", async (req, res) => {
   const authVerify = sanitizeAuthHeader(req.headers.authorization);
 
   try {
-    const response = await axios.get(AUTH_VERIFY_URL, {
-      headers: { Authorization: authVerify },
-    });
+    const response = await axios.get(AUTH_VERIFY_URL, { headers: { Authorization: authVerify } });
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Auth service unavailable");

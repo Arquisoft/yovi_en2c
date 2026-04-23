@@ -185,7 +185,42 @@ export const translations: Record<Lang, Dict> = {
     "profile.edit.save": "Guardar",
     "profile.edit.saving": "Guardando…",
     "profile.edit.cancel": "Cancelar",
-    "profile.friends.placeholder": "Lista de amigos — próximamente",
+
+    // Navbar
+    "common.social": "Social",
+
+    // Página Social
+    "social.title":           "Social",
+    "social.subtitle":        "Encuentra jugadores y envía solicitudes de amistad",
+    "social.searchLabel":     "Buscar jugadores",
+    "social.searchPlaceholder": "Nombre de usuario o correo electrónico…",
+    "social.searching":       "Buscando…",
+    "social.resultsLabel":    "Resultados",
+    "social.noResults":       "Sin resultados para esa búsqueda",
+    "social.searchError":     "Error al buscar usuarios",
+    "social.viewProfile":     "Ver perfil",
+    "social.sendRequest":     "Enviar solicitud",
+    "social.requestSent":     "Solicitud enviada",
+    "social.alreadyFriends":  "Ya son amigos",
+    "social.requestError":    "Error al enviar solicitud",
+    "social.groupsTitle":     "Grupos",
+    "social.groupsSubtitle":  "Próximamente",
+
+    // UserProfile — send friend request (visitante)
+    "profile.friends.sendRequest":   "Enviar solicitud de amistad",
+    "profile.friends.requestSent":   "Solicitud enviada",
+    "profile.friends.requestError":  "Error al enviar solicitud",
+    "profile.friends.alreadyFriends":"Ya sois amigos",
+
+    // UserProfile — friends list card (owner)
+    "profile.friends.title": "Amigos",
+    "profile.friends.empty": "Aún no tienes amigos",
+
+    // UserProfile — friend requests card (owner)
+    "profile.friendRequests.title":  "Solicitudes de amistad",
+    "profile.friendRequests.empty":  "Sin solicitudes pendientes",
+    "profile.friendRequests.accept": "Aceptar",
+    "profile.friendRequests.acceptError": "Error al aceptar solicitud",
 
     //Multiplayer
     "common.multiplayer": "Multijugador",
@@ -409,7 +444,41 @@ export const translations: Record<Lang, Dict> = {
     "profile.edit.save": "Save",
     "profile.edit.saving": "Saving…",
     "profile.edit.cancel": "Cancel",
-    "profile.friends.placeholder": "Friends list — coming soon",
+
+    "common.social": "Social",
+
+    // Social page
+    "social.title":           "Social",
+    "social.subtitle":        "Find players and send friend requests",
+    "social.searchLabel":     "Search players",
+    "social.searchPlaceholder": "Username or email address…",
+    "social.searching":       "Searching…",
+    "social.resultsLabel":    "Results",
+    "social.noResults":       "No results for that search",
+    "social.searchError":     "Error searching users",
+    "social.viewProfile":     "View profile",
+    "social.sendRequest":     "Send request",
+    "social.requestSent":     "Request sent",
+    "social.alreadyFriends":  "Already friends",
+    "social.requestError":    "Error sending request",
+    "social.groupsTitle":     "Groups",
+    "social.groupsSubtitle":  "Coming soon",
+
+    // UserProfile — send friend request (visitor)
+    "profile.friends.sendRequest":   "Send friend request",
+    "profile.friends.requestSent":   "Request sent",
+    "profile.friends.requestError":  "Error sending request",
+    "profile.friends.alreadyFriends":"Already friends",
+
+    // UserProfile — friends list card (owner)
+    "profile.friends.title": "Friends",
+    "profile.friends.empty": "No friends yet",
+
+    // UserProfile — friend requests card (owner)
+    "profile.friendRequests.title":  "Incoming friend requests",
+    "profile.friendRequests.empty":  "No pending requests",
+    "profile.friendRequests.accept": "Accept",
+    "profile.friendRequests.acceptError": "Error accepting request",
 
     //Multiplayer
     "common.multiplayer": "Multiplayer",
