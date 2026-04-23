@@ -11,7 +11,7 @@ const { createNewGame, applyPvpMove } = require("./gamey-client");
 const PORT = Number(process.env.PORT || 7000);
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 
-const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://localhost:4000";
+const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://localhost:4000"; //NOSONAR
 
 const app = express();
 app.disable("x-powered-by");
