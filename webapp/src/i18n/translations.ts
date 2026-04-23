@@ -224,7 +224,10 @@ export const translations: Record<Lang, Dict> = {
     "multiplayer.error.join": "No se pudo unir a la sala.",
     "multiplayer.error.move": "No se pudo realizar la jugada.",
     "multiplayer.error.hint": "No se pudo calcular la pista.",
-    "multiplayer.error.network": "Error de red"
+    "multiplayer.error.network": "Error de red",
+    "multiplayer.playerOne": "Jugador 1",
+    "multiplayer.playerTwo": "Jugador 2",
+    "multiplayer.winner": "Ganador"
 
   },
 
@@ -446,6 +449,9 @@ export const translations: Record<Lang, Dict> = {
     "multiplayer.error.join": "Could not join room.",
     "multiplayer.error.move": "Could not make move.",
     "multiplayer.error.hint": "Could not compute hint.",
-    "multiplayer.error.network": "Network error"
+    "multiplayer.error.network": "Network error",
+    "multiplayer.playerOne": "Player 1",
+    "multiplayer.playerTwo": "Player 2",
+    "multiplayer.winner": "Winner"
   },
 };
