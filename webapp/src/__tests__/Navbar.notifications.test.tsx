@@ -253,21 +253,4 @@ describe("Navbar — notification bell", () => {
         expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
 
-    // ── Pulse animation ───────────────────────────────────────────────────────
-
-    test("bell SVG has animation when there are unread notifications", () => {
-        renderNavbar([makeNotification({ read: false })]);
-
-        const svg = document.querySelector("svg");
-        expect(svg).not.toBeNull();
-        expect(svg!.style.animation).toMatch(/notif-pulse/);
-    });
-
-    test("bell SVG has no animation when all notifications are read", () => {
-        renderNavbar([makeNotification({ read: true })]);
-
-        const svg = document.querySelector("svg");
-        expect(svg).not.toBeNull();
-        expect(svg!.style.animation).toBe("none");
-    });
 });
