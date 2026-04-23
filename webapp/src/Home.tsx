@@ -65,6 +65,10 @@ const Home: React.FC = () => {
     navigate("/game", { state: { username, bot: "minimax_bot", boardSize: 7 } });
   };
 
+  const goMultiplayer = () => {
+    navigate("/multiplayer", { state: { username } });
+  };
+
   if (checkingSession || !username || !token) return null;
 
   return (
@@ -72,7 +76,7 @@ const Home: React.FC = () => {
       <Navbar username={username} onLogout={logout} />
 
       <main className="container">
-        <section className="hero" aria-label="Panel de inicio">
+        <section className="hero" aria-label="Home panel">
           <div className="hero__top">
             <img src={logo} alt="GameY" className="hero__logo" />
 
@@ -90,13 +94,17 @@ const Home: React.FC = () => {
               {t("home.quickgame")}
             </button>
 
+            <button className="btn btn--secondary" onClick={goMultiplayer} type="button">
+              {t("home.multiplayer")}
+            </button>
+
             <button className="btn btn--ghost" onClick={logout} type="button">
               {t("home.changeUser")}
             </button>
           </div>
         </section>
 
-        <section className="grid" aria-label="Tarjetas informativas">
+        <section className="grid" aria-label="Info cards">
           <article className="card">
             <h2 className="card__title">{t("home.card1.title")}</h2>
             <p className="card__text">{t("home.card1.text")}</p>
@@ -114,7 +122,15 @@ const Home: React.FC = () => {
           <article className="card">
             <h2 className="card__title">{t("home.card2.title")}</h2>
             <p className="card__text">{t("home.card2.text")}</p>
-            <span className="pill">{t("home.card2.pill")}</span>
+            <div style={{ marginTop: 16 }}>
+              <button
+                className="btn btn--primary"
+                onClick={goMultiplayer}
+                type="button"
+              >
+                {t("home.card2.button")}
+              </button>
+            </div>
           </article>
 
           <article className="card">
@@ -123,7 +139,7 @@ const Home: React.FC = () => {
             <div style={{ marginTop: 16 }}>
               <button
                 className="btn btn--primary"
-                onClick={() => navigate("/select-difficulty")}
+                onClick={() => navigate("/select-difficulty", { state: { username } })}
                 type="button"
               >
                 {t("home.selectDifficulty")}

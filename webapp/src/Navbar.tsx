@@ -15,81 +15,91 @@ const Navbar: React.FC<NavbarProps> = ({ username, onLogout }) => {
   const location = useLocation();
   const { t } = useI18n();
 
-  const goHome = () => navigate("/home");
+  const goHome = () => navigate("/home", { state: { username } });
   const goGameSelect = () => navigate("/select-difficulty", { state: { username } });
+  const goMultiplayer = () => navigate("/multiplayer", { state: { username } });
 
   return (
-      <header className="navbar">
-        <div className="navbar__inner">
+    <header className="navbar">
+      <div className="navbar__inner">
+        <div className="navbar__left">
+          <button
+            className="navbar__brand"
+            onClick={goHome}
+            type="button"
+            aria-label="Go home"
+          >
+            <img src={logo} alt="GameY" className="navbar__logo" />
+          </button>
 
-          {/* Left zone: brand + navigation links */}
-          <div className="navbar__left">
+          <div className="navbar__divider" aria-hidden="true" />
+
+          <nav className="navbar__actions" aria-label="Main navigation">
             <button
-                className="navbar__brand"
-                onClick={goHome}
-                type="button"
-                aria-label="Ir a Home"
+              type="button"
+              className="navbtn"
+              aria-current={location.pathname === "/home" ? "page" : undefined}
+              onClick={goHome}
             >
-              <img src={logo} alt="GameY" className="navbar__logo" />
+              {t("common.home")}
             </button>
 
-            <div className="navbar__divider" aria-hidden="true" />
-
-            <nav className="navbar__actions" aria-label="Navegación principal">
-              <button
-                  type="button"
-                  className="navbtn"
-                  aria-current={location.pathname === "/home" ? "page" : undefined}
-                  onClick={goHome}
-              >
-                {t("common.home")}
-              </button>
-
-              <button
-                  type="button"
-                  className="navbtn"
-                  aria-current={location.pathname === "/game" ? "page" : undefined}
-                  onClick={goGameSelect}
-              >
-                {t("common.game")}
-              </button>
-
-              <button
-                  type="button"
-                  className="navbtn"
-                  aria-current={location.pathname === "/statistics" ? "page" : undefined}
-                  onClick={() => navigate("/statistics")}
-              >
-                {t("common.stats")}
-              </button>
-            </nav>
-          </div>
-
-          {/* Right zone: user account actions */}
-          <div className="navbar__right">
             <button
-                type="button"
-                className="navbar__user navbar__user--link"
-                onClick={() => username && navigate(`/profile/${username}`)}
-                aria-label={`Ver perfil de ${username}`}
+              type="button"
+              className="navbtn"
+              aria-current={
+                location.pathname === "/game" || location.pathname === "/select-difficulty"
+                  ? "page"
+                  : undefined
+              }
+              onClick={goGameSelect}
             >
-              👤 {username || "—"}
+              {t("common.game")}
             </button>
 
-            <LanguageToggle />
-            <ThemeToggle />
+            <button
+              type="button"
+              className="navbtn"
+              aria-current={location.pathname.startsWith("/multiplayer") ? "page" : undefined}
+              onClick={goMultiplayer}
+            >
+              {t("common.multiplayer")}
+            </button>
 
             <button
-                type="button"
-                className="navbtn navbtn--danger"
-                onClick={() => onLogout?.()}
+              type="button"
+              className="navbtn"
+              aria-current={location.pathname === "/statistics" ? "page" : undefined}
+              onClick={() => navigate("/statistics", { state: { username } })}
             >
-              {t("common.logout")}
+              {t("common.stats")}
             </button>
-          </div>
-
+          </nav>
         </div>
-      </header>
+
+        <div className="navbar__right">
+          <button
+            type="button"
+            className="navbar__user navbar__user--link"
+            onClick={() => username && navigate(`/profile/${username}`)}
+            aria-label={`View profile of ${username}`}
+          >
+            👤 {username || "—"}
+          </button>
+
+          <LanguageToggle />
+          <ThemeToggle />
+
+          <button
+            type="button"
+            className="navbtn navbtn--danger"
+            onClick={() => onLogout?.()}
+          >
+            {t("common.logout")}
+          </button>
+        </div>
+      </div>
+    </header>
   );
 };
 
