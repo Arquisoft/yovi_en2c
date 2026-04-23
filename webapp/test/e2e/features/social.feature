@@ -1,3 +1,4 @@
+@social
 Feature: Social and friend list
   As a logged in user
   I want to search users, send friend requests and manage my friend list
