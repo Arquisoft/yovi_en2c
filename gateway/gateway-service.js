@@ -358,7 +358,7 @@ app.post("/multiplayer/room/join", async (req, res) => {
 });
 
 app.post("/multiplayer/room/state", async (req, res) => {
-  const { code } = req.body ?? {};
+  const { code, username } = req.body ?? {};
 
   if (!code || typeof code !== "string") {
     return res.status(400).json({ ok: false, error: "Missing room code" });
@@ -367,6 +367,7 @@ app.post("/multiplayer/room/state", async (req, res) => {
   try {
     const response = await axios.post(`${MULTIPLAYER_BASE_URL}/rooms/state`, {
       code: code.trim().toUpperCase(),
+      username: typeof username === "string" ? username : undefined,
     });
     return res.status(200).json(response.data);
   } catch (error) {
