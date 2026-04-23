@@ -49,43 +49,47 @@ function buildEmptyLayout(size: number) {
   return Array.from({ length: size }, (_, row) => ".".repeat(row + 1)).join("/");
 }
 
-function normalizeEdges(edgesRaw: any): WinningEdge[] {
+function normalizeEdges(edgesRaw: unknown): WinningEdge[] {
   if (!Array.isArray(edgesRaw)) return [];
+
   return edgesRaw
     .filter(
-      (e: any) =>
-        Array.isArray(e) &&
-        e.length === 2 &&
-        Array.isArray(e[0]) &&
-        Array.isArray(e[1])
+      (edge: unknown) =>
+        Array.isArray(edge) &&
+        edge.length === 2 &&
+        Array.isArray(edge[0]) &&
+        Array.isArray(edge[1])
     )
-    .map((e: any) => [
-      [Number(e[0][0]), Number(e[0][1])],
-      [Number(e[1][0]), Number(e[1][1])]
+    .map((edge: any) => [
+      [Number(edge[0][0]), Number(edge[0][1])],
+      [Number(edge[1][0]), Number(edge[1][1])]
     ]);
 }
 
-function buildWinningCellSet(edgesRaw: any): Set<string> {
+function buildWinningCellSet(edgesRaw: unknown): Set<string> {
   const cells = new Set<string>();
+
   for (const [[r1, c1], [r2, c2]] of normalizeEdges(edgesRaw)) {
     cells.add(`${r1}-${c1}`);
     cells.add(`${r2}-${c2}`);
   }
+
   return cells;
 }
 
 function getHexagonPoints(cx: number, cy: number, radius: number) {
   const points: string[] = [];
+
   for (let i = 0; i < 6; i++) {
     const angle = (Math.PI / 180) * (60 * i - 30);
     points.push(`${cx + radius * Math.cos(angle)},${cy + radius * Math.sin(angle)}`);
   }
+
   return points.join(" ");
 }
 
 const HINT_DURATION_MS = 2500;
-const MULTIPLAYER_URL =
-  import.meta.env.VITE_MULTIPLAYER_URL ?? "http://localhost:7000";
+const MULTIPLAYER_URL = import.meta.env.VITE_MULTIPLAYER_URL ?? "http://localhost:7000";
 const MULTIPLAYER_SOCKET_PATH =
   import.meta.env.VITE_MULTIPLAYER_SOCKET_PATH ?? "/socket.io";
 
@@ -93,7 +97,9 @@ const MultiplayerGame: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useI18n();
+
   const socketRef = useRef<Socket | null>(null);
+  const roomRef = useRef<RoomState | null>(null);
   const hintTimerRef = useRef<number | null>(null);
   const multiplayerResultSavedRef = useRef(false);
 
@@ -123,6 +129,118 @@ const MultiplayerGame: React.FC = () => {
     navigate("/", { replace: true });
   };
 
+  const setRoomState = (nextRoom: RoomState | null) => {
+    roomRef.current = nextRoom;
+    setRoom(nextRoom);
+  };
+
+  const getColorForUsername = (
+    nextRoom: RoomState | null | undefined,
+    currentUsername: string
+  ) => {
+    if (!nextRoom) return null;
+    if (nextRoom.players.B?.username === currentUsername) return "B";
+    if (nextRoom.players.R?.username === currentUsername) return "R";
+    return null;
+  };
+
+  const clearHint = () => {
+    setHintCell(null);
+    if (hintTimerRef.current !== null) {
+      window.clearTimeout(hintTimerRef.current);
+      hintTimerRef.current = null;
+    }
+  };
+
+  const applyRoomUpdate = (nextRoom?: RoomState | null, shouldClearHint = false) => {
+    if (nextRoom) {
+      setRoomState(nextRoom);
+    }
+    if (shouldClearHint) {
+      clearHint();
+    }
+  };
+
+  const applyFinishedState = (
+    nextRoom: RoomState | null | undefined,
+    winnerRaw: string | null | undefined,
+    edgesRaw: unknown
+  ) => {
+    const winner = winnerRaw != null ? String(winnerRaw) : null;
+    const winningCells = buildWinningCellSet(edgesRaw);
+
+    setWinningPath(
+      winner && winningCells.size > 0 ? { winner, cells: winningCells } : null
+    );
+
+    const myColor = getColorForUsername(nextRoom, username);
+    const didIWin = winner ? winner === myColor : false;
+
+    setGameOver({
+      result: winner ? (didIWin ? "win" : "lost") : "draw",
+      winner
+    });
+
+    return winner;
+  };
+
+  const postJson = async (url: string, payload: unknown) => {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    return { response, data };
+  };
+
+  const saveMultiplayerGameResult = async (
+    finalRoom: RoomState | null,
+    winnerColor: string | null
+  ) => {
+    if (!finalRoom || multiplayerResultSavedRef.current) return;
+
+    const player1 = finalRoom.players.B?.username;
+    const player2 = finalRoom.players.R?.username;
+
+    if (!player1 || !player2 || !winnerColor) return;
+
+    const winnerUsername =
+      winnerColor === "B"
+        ? finalRoom.players.B?.username
+        : winnerColor === "R"
+          ? finalRoom.players.R?.username
+          : null;
+
+    if (!winnerUsername) return;
+
+    multiplayerResultSavedRef.current = true;
+
+    try {
+      await postJson("/api/gameresult/multiplayer", {
+        player1,
+        player2,
+        winner: winnerUsername,
+        boardSize: finalRoom.yen.size
+      });
+    } catch {
+      // igual que en PvB: no bloquea la UI
+    }
+  };
+
+  const handleRealtimeFinishedState = (
+    nextRoom: RoomState | null | undefined,
+    winnerRaw: string | null | undefined,
+    edgesRaw: unknown
+  ) => {
+    const winner = applyFinishedState(nextRoom, winnerRaw, edgesRaw);
+
+    if (winner && isHost) {
+      void saveMultiplayerGameResult(nextRoom ?? roomRef.current, winner);
+    }
+  };
+
   useEffect(() => {
     if (!username || !roomCode) {
       navigate("/multiplayer", { replace: true, state: { username } });
@@ -147,7 +265,8 @@ const MultiplayerGame: React.FC = () => {
           setError(response?.error || t("multiplayer.error.join"));
           return;
         }
-        setRoom(response.room);
+
+        setRoomState(response.room ?? null);
       });
     });
 
@@ -161,64 +280,33 @@ const MultiplayerGame: React.FC = () => {
     });
 
     socket.on("room_updated", (data: any) => {
-      if (data?.room) setRoom(data.room);
+      if (data?.room) {
+        setRoomState(data.room);
+      }
     });
 
     socket.on("game_started", (data: any) => {
-      if (data?.room) setRoom(data.room);
+      if (data?.room) {
+        setRoomState(data.room);
+      }
     });
 
     socket.on("game_updated", (data: any) => {
       const nextRoom = data?.room ?? null;
 
-      if (nextRoom) {
-        setRoom(nextRoom);
-        setHintCell(null);
-      }
+      applyRoomUpdate(nextRoom, true);
 
       if (data?.finished) {
-        const winner = data?.winner != null ? String(data.winner) : null;
-        const winningCells = buildWinningCellSet(data?.winningEdges);
-
-        setWinningPath(
-          winner && winningCells.size > 0 ? { winner, cells: winningCells } : null
-        );
-
-        const myColor = yourColorRef(nextRoom ?? room, username);
-        const didIWin = winner ? winner === myColor : false;
-
-        setGameOver({
-          result: winner ? (didIWin ? "win" : "lost") : "draw",
-          winner
-        });
+        handleRealtimeFinishedState(nextRoom ?? roomRef.current, data?.winner, data?.winningEdges);
       }
     });
 
     socket.on("game_over", (data: any) => {
       const nextRoom = data?.room ?? null;
 
-      if (nextRoom) {
-        setRoom(nextRoom);
-      }
+      applyRoomUpdate(nextRoom);
 
-      const winner = data?.winner != null ? String(data.winner) : null;
-      const winningCells = buildWinningCellSet(data?.winningEdges);
-
-      setWinningPath(
-        winner && winningCells.size > 0 ? { winner, cells: winningCells } : null
-      );
-
-      const myColor = yourColorRef(nextRoom ?? room, username);
-      const didIWin = winner ? winner === myColor : false;
-
-      setGameOver({
-        result: winner ? (didIWin ? "win" : "lost") : "draw",
-        winner
-      });
-
-      if (winner && isHost) {
-        saveMultiplayerGameResult(nextRoom ?? room, winner);
-      }
+      handleRealtimeFinishedState(nextRoom ?? roomRef.current, data?.winner, data?.winningEdges);
     });
 
     socket.on("opponent_left", () => {
@@ -226,13 +314,11 @@ const MultiplayerGame: React.FC = () => {
     });
 
     return () => {
-      if (hintTimerRef.current !== null) {
-        window.clearTimeout(hintTimerRef.current);
-      }
+      clearHint();
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [navigate, roomCode, t, username]);
+  }, [isHost, navigate, roomCode, t, username]);
 
   const yen = room?.yen ?? {
     size: boardSizeFromState,
@@ -244,10 +330,7 @@ const MultiplayerGame: React.FC = () => {
   const layoutMatrix = useMemo(() => parseLayout(yen.layout), [yen.layout]);
 
   const yourColor = useMemo(() => {
-    if (!room) return null;
-    if (room.players.B?.username === username) return "B";
-    if (room.players.R?.username === username) return "R";
-    return null;
+    return getColorForUsername(room, username);
   }, [room, username]);
 
   const currentTurnColor = yen.players[yen.turn];
@@ -268,21 +351,6 @@ const MultiplayerGame: React.FC = () => {
   }, [cellSpacing, rowHeight]);
 
   const boardPx = 640;
-
-  function yourColorRef(nextRoom: RoomState | null | undefined, currentUsername: string) {
-    if (!nextRoom) return null;
-    if (nextRoom.players.B?.username === currentUsername) return "B";
-    if (nextRoom.players.R?.username === currentUsername) return "R";
-    return null;
-  }
-
-  const clearHint = () => {
-    setHintCell(null);
-    if (hintTimerRef.current !== null) {
-      window.clearTimeout(hintTimerRef.current);
-      hintTimerRef.current = null;
-    }
-  };
 
   const playMove = (row: number, col: number) => {
     if (!socketRef.current || !room || !isYourTurn) return;
@@ -308,17 +376,9 @@ const MultiplayerGame: React.FC = () => {
     setError("");
 
     try {
-      const res = await fetch("/api/hint", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ yen: room.yen })
-      });
+      const { response, data } = await postJson("/api/hint", { yen: room.yen });
 
-      const data = await res.json();
-
-      if (!res.ok || !data?.ok || !data?.coords) {
+      if (!response.ok || !data?.ok || !data?.coords) {
         setError(data?.error || t("multiplayer.error.hint"));
         return;
       }
@@ -347,61 +407,15 @@ const MultiplayerGame: React.FC = () => {
 
   const leaveRoom = async () => {
     try {
-      await fetch("/api/multiplayer/room/leave", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          code: roomCode,
-          username
-        })
+      await postJson("/api/multiplayer/room/leave", {
+        code: roomCode,
+        username
       });
     } catch {
       // ignore
     } finally {
       socketRef.current?.disconnect();
       navigate("/multiplayer", { replace: true, state: { username } });
-    }
-  };
-
-  const saveMultiplayerGameResult = async (
-    finalRoom: RoomState | null,
-    winnerColor: string | null
-  ) => {
-    if (!finalRoom || multiplayerResultSavedRef.current) return;
-
-    const player1 = finalRoom.players.B?.username;
-    const player2 = finalRoom.players.R?.username;
-
-    if (!player1 || !player2 || !winnerColor) return;
-
-    const winnerUsername =
-      winnerColor === "B"
-        ? finalRoom.players.B?.username
-        : winnerColor === "R"
-          ? finalRoom.players.R?.username
-          : null;
-
-    if (!winnerUsername) return;
-
-    multiplayerResultSavedRef.current = true;
-
-    try {
-      await fetch("/api/gameresult/multiplayer", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          player1,
-          player2,
-          winner: winnerUsername,
-          boardSize: finalRoom.yen.size
-        })
-      });
-    } catch {
-      // silencioso, igual que en PvB
     }
   };
 
