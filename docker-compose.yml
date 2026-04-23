@@ -119,23 +119,6 @@ services:
     networks:
       - monitor-net
 
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
-    ports:
-      - "8085:8080"
-    command:
-      - '--port=8085'
-      - '--docker_only=true'
-      - '--store_container_labels=false'
-      - '--whitelisted_container_labels=com.docker.compose.service'
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-    networks:
-      - monitor-net
   loki:
     image: grafana/loki:latest
     container_name: loki

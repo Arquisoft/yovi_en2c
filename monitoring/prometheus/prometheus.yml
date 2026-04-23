@@ -9,11 +9,3 @@ scrape_configs:
   - job_name: "authentication"
     static_configs:
       - targets: ["authentication:5000"]
-
-  - job_name: "cadvisor"
-    static_configs:
-      - targets: [ "cadvisor:8080" ]
-    metric_relabel_configs:
-      - source_labels: [ __name__ ]
-        regex: "container_tasks_state|container_memory_failures_total"
-        action: drop
