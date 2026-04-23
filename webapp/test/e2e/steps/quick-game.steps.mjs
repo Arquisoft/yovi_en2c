@@ -2,6 +2,20 @@ import { Given, When, Then } from "@cucumber/cucumber";
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:5173";
 
+async function tryLogin(page, username, password) {
+  await page.fill("#login-username", username);
+  await page.fill("#login-password", password);
+
+  const [loginResponse] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes("/api/login") && r.request().method() === "POST"
+    ),
+    page.locator(".submit-button").click(),
+  ]);
+
+  return loginResponse;
+}
+
 Given("I am logged in with a newly registered user", async function () {
   const page = this.page;
   if (!page) throw new Error("Page not initialized");
@@ -35,19 +49,25 @@ Given("I am logged in with a newly registered user", async function () {
 
   await page.waitForSelector("#login-username", { timeout: 15000 });
 
-  await page.fill("#login-username", username);
-  await page.fill("#login-password", password);
+  let loginResponse = null;
+  let lastBody = "";
 
-  const [loginResponse] = await Promise.all([
-    page.waitForResponse(
-      (r) => r.url().includes("/api/login") && r.request().method() === "POST"
-    ),
-    page.locator(".submit-button").click(),
-  ]);
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    loginResponse = await tryLogin(page, username, password);
+    lastBody = await loginResponse.text();
 
-  if (loginResponse.status() >= 400) {
+    if (loginResponse.status() < 400) {
+      break;
+    }
+
+    if (attempt < 4) {
+      await page.waitForTimeout(500);
+    }
+  }
+
+  if (!loginResponse || loginResponse.status() >= 400) {
     throw new Error(
-      `Login failed with status ${loginResponse.status()}: ${await loginResponse.text()}`
+      `Login failed after retries with status ${loginResponse?.status()}: ${lastBody}`
     );
   }
 

@@ -68,6 +68,7 @@ E2E tests currently cover:
 
 - Authentication (register, login, validation)
 - Session persistence
+- Profile and social features
 - Game flow (start, moves, end game)
 - Difficulty and board selection
 - Statistics (data, empty state, error handling)
