@@ -28,11 +28,13 @@ app.use(metricsMiddleware);
 const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://gamey:4000" || "http://localhost:4000"; //NOSONAR
 const AUTH_BASE_URL  = process.env.AUTH_BASE_URL  || "http://authentication:5000" || "http://localhost:5000"; //NOSONAR
 const USERS_BASE_URL = process.env.USERS_BASE_URL || "http://users:3000" || "http://localhost:3000"; //NOSONAR
+const MULTIPLAYER_BASE_URL = process.env.MULTIPLAYER_BASE_URL || "http://multiplayer:7000" || "http://localhost:7000"; // NOSONAR
 
 const AUTH_REGISTER_URL = `${AUTH_BASE_URL}/register`;
 const AUTH_LOGIN_URL    = `${AUTH_BASE_URL}/login`;
 const AUTH_VERIFY_URL   = `${AUTH_BASE_URL}/verify`;
 const GAME_RESULT_URL   = `${USERS_BASE_URL}/gameresult`;
+const MULTIPLAYER_HEALTH_URL = `${MULTIPLAYER_BASE_URL}/health`;
 
 const PVB_MOVE_ROUTES = {
   random_bot:          `${GAMEY_BASE_URL}/v1/game/pvb/random_bot`,
@@ -284,6 +286,141 @@ app.get("/verify", async (req, res) => {
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Auth service unavailable");
+  }
+});
+
+app.get("/multiplayer/health", async (_req, res) => {
+  try {
+    const response = await axios.get(MULTIPLAYER_HEALTH_URL);
+    return res.status(200).json({ ok: true, service: response.data });
+  } catch (error) {
+    return forwardAxiosError(res, error, "Multiplayer service unavailable");
+  }
+});
+
+app.get("/multiplayer/rooms/:code", async (req, res) => {
+  const code = String(req.params.code || "").trim().toUpperCase();
+
+  if (!code) {
+    return res.status(400).json({ ok: false, error: "Missing room code" });
+  }
+
+  try {
+    const response = await axios.get(`${MULTIPLAYER_BASE_URL}/rooms/${encodeURIComponent(code)}`);
+    return res.status(200).json({ ok: true, room: response.data });
+  } catch (error) {
+    return forwardAxiosError(res, error, "Multiplayer service unavailable");
+  }
+});
+
+app.post("/multiplayer/room/create", async (req, res) => {
+  const { username, size } = req.body ?? {};
+
+  if (!username || typeof username !== "string") {
+    return res.status(400).json({ ok: false, error: "Missing username" });
+  }
+
+  if (!Number.isInteger(size) || size < 1) {
+    return res.status(400).json({ ok: false, error: "Invalid board size" });
+  }
+
+  try {
+    const response = await axios.post(`${MULTIPLAYER_BASE_URL}/rooms/create`, {
+      username,
+      size,
+    });
+    return res.status(200).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Multiplayer service unavailable");
+  }
+});
+
+app.post("/multiplayer/room/join", async (req, res) => {
+  const { code, username } = req.body ?? {};
+
+  if (!code || typeof code !== "string") {
+    return res.status(400).json({ ok: false, error: "Missing room code" });
+  }
+
+  if (!username || typeof username !== "string") {
+    return res.status(400).json({ ok: false, error: "Missing username" });
+  }
+
+  try {
+    const response = await axios.post(`${MULTIPLAYER_BASE_URL}/rooms/join`, {
+      code: code.trim().toUpperCase(),
+      username,
+    });
+    return res.status(200).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Multiplayer service unavailable");
+  }
+});
+
+app.post("/multiplayer/room/state", async (req, res) => {
+  const { code } = req.body ?? {};
+
+  if (!code || typeof code !== "string") {
+    return res.status(400).json({ ok: false, error: "Missing room code" });
+  }
+
+  try {
+    const response = await axios.post(`${MULTIPLAYER_BASE_URL}/rooms/state`, {
+      code: code.trim().toUpperCase(),
+    });
+    return res.status(200).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Multiplayer service unavailable");
+  }
+});
+
+app.post("/multiplayer/room/move", async (req, res) => {
+  const { code, row, col, username } = req.body ?? {};
+
+  if (!code || typeof code !== "string") {
+    return res.status(400).json({ ok: false, error: "Missing room code" });
+  }
+
+  if (typeof row !== "number" || typeof col !== "number") {
+    return res.status(400).json({ ok: false, error: "Missing row/col" });
+  }
+
+  if (!username || typeof username !== "string") {
+    return res.status(400).json({ ok: false, error: "Missing username" });
+  }
+
+  try {
+    const response = await axios.post(`${MULTIPLAYER_BASE_URL}/rooms/move`, {
+      code: code.trim().toUpperCase(),
+      row,
+      col,
+      username,
+    });
+    return res.status(200).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Multiplayer service unavailable");
+  }
+});
+
+app.post("/multiplayer/room/leave", async (req, res) => {
+  const { code, username } = req.body ?? {};
+
+  if (!code || typeof code !== "string") {
+    return res.status(400).json({ ok: false, error: "Missing room code" });
+  }
+
+  if (!username || typeof username !== "string") {
+    return res.status(400).json({ ok: false, error: "Missing username" });
+  }
+
+  try {
+    const response = await axios.post(`${MULTIPLAYER_BASE_URL}/rooms/leave`, {
+      code: code.trim().toUpperCase(),
+      username,
+    });
+    return res.status(200).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Multiplayer service unavailable");
   }
 });
 
