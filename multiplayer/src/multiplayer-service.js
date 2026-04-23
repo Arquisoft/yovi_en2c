@@ -33,6 +33,73 @@ const io = new Server(server, {
 
 const rooms = new RoomManager();
 
+//HELPERS -----------------------------------------------------------------------
+
+function parseRoomCode(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function parseUsername(value, fallback = "") {
+  return String(value || fallback);
+}
+
+function badRequest(res, error) {
+  return res.status(400).json({ ok: false, error });
+}
+
+function notFound(res, error) {
+  return res.status(404).json({ ok: false, error });
+}
+
+function gatewayError(res, error, fallback) {
+  return res.status(502).json({
+    ok: false,
+    error: error.response?.data?.error || error.message || fallback
+  });
+}
+
+function socketError(callback, error) {
+  callback({ ok: false, error });
+}
+
+function emitRoomUpdated(room) {
+  io.to(room.code).emit("room_updated", {
+    room: rooms.serializeRoom(room)
+  });
+}
+
+function emitGameStartedIfReady(room) {
+  if (room.players.B && room.players.R) {
+    io.to(room.code).emit("game_started", {
+      room: rooms.serializeRoom(room),
+      message: "Both players connected"
+    });
+  }
+}
+
+function emitGameState(code, room, result) {
+  const payload = {
+    room: rooms.serializeRoom(room),
+    finished: result.finished,
+    winner: result.winner,
+    winningEdges: result.winning_edges
+  };
+
+  io.to(code).emit("game_updated", payload);
+
+  if (result.finished) {
+    io.to(code).emit("game_over", payload);
+  }
+}
+
+function emitOpponentLeft(code, room, removedColor) {
+  io.to(code).emit("opponent_left", {
+    room: rooms.serializeRoom(room),
+    removedColor
+  });
+}
+// ---------------------------------------------------------------------------------
+
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
@@ -84,28 +151,15 @@ app.post("/rooms/create", async (req, res) => {
 
 app.post("/rooms/join", (req, res) => {
   try {
-    const code = String(req.body?.code || "").trim().toUpperCase();
-    const username = String(req.body?.username || "Player 2");
+    const code = parseRoomCode(req.body?.code);
+    const username = parseUsername(req.body?.username, "Player 2");
 
-    if (!code) {
-      return res.status(400).json({ ok: false, error: "Room code is required" });
-    }
+    if (!code) return badRequest(res, "Room code is required");
 
-    const room = rooms.joinRoom({
-      code,
-      username
-    });
+    const room = rooms.joinRoom({ code, username });
 
-    io.to(room.code).emit("room_updated", {
-      room: rooms.serializeRoom(room)
-    });
-
-    if (room.players.B && room.players.R) {
-      io.to(room.code).emit("game_started", {
-        room: rooms.serializeRoom(room),
-        message: "Both players connected"
-      });
-    }
+    emitRoomUpdated(room);
+    emitGameStartedIfReady(room);
 
     return res.status(200).json({
       ok: true,
@@ -113,10 +167,7 @@ app.post("/rooms/join", (req, res) => {
       yourColor: "R"
     });
   } catch (error) {
-    return res.status(400).json({
-      ok: false,
-      error: error.message || "Could not join room"
-    });
+    return badRequest(res, error.message || "Could not join room");
   }
 });
 
@@ -150,66 +201,35 @@ app.post("/rooms/state", (req, res) => {
 
 app.post("/rooms/move", async (req, res) => {
   try {
-    const code = String(req.body?.code || "").trim().toUpperCase();
-    const username = String(req.body?.username || "");
+    const code = parseRoomCode(req.body?.code);
+    const username = parseUsername(req.body?.username);
     const row = Number(req.body?.row);
     const col = Number(req.body?.col);
 
-    if (!code) {
-      return res.status(400).json({ ok: false, error: "Room code is required" });
-    }
-
-    if (!username) {
-      return res.status(400).json({ ok: false, error: "Username is required" });
-    }
-
+    if (!code) return badRequest(res, "Room code is required");
+    if (!username) return badRequest(res, "Username is required");
     if (!Number.isInteger(row) || !Number.isInteger(col)) {
-      return res.status(400).json({ ok: false, error: "Invalid row/col" });
+      return badRequest(res, "Invalid row/col");
     }
 
     const room = rooms.getRoom(code);
-
-    if (!room) {
-      return res.status(404).json({ ok: false, error: "Room not found" });
-    }
-
-    if (room.status !== "active") {
-      return res.status(400).json({ ok: false, error: "Room is not active" });
-    }
+    if (!room) return notFound(res, "Room not found");
+    if (room.status !== "active") return badRequest(res, "Room is not active");
 
     const playerColor = rooms.getPlayerColorByUsername(room, username);
-    if (!playerColor) {
-      return res.status(403).json({ ok: false, error: "You are not a player in this room" });
-    }
+    if (!playerColor) return res.status(403).json({ ok: false, error: "You are not a player in this room" });
 
     if (!rooms.isPlayersTurnByUsername(room, username)) {
-      return res.status(400).json({ ok: false, error: "It is not your turn" });
+      return badRequest(res, "It is not your turn");
     }
 
     const result = await applyPvpMove(room.yen, row, col);
 
     rooms.updateRoomYen(code, result.yen);
-
-    if (result.finished) {
-      rooms.finishRoom(code);
-    }
+    if (result.finished) rooms.finishRoom(code);
 
     const updatedRoom = rooms.getRoom(code);
-
-    io.to(code).emit("game_updated", {
-      room: rooms.serializeRoom(updatedRoom),
-      finished: result.finished,
-      winner: result.winner,
-      winningEdges: result.winning_edges
-    });
-
-    if (result.finished) {
-      io.to(code).emit("game_over", {
-        room: rooms.serializeRoom(updatedRoom),
-        winner: result.winner,
-        winningEdges: result.winning_edges
-      });
-    }
+    emitGameState(code, updatedRoom, result);
 
     return res.status(200).json({
       ok: true,
@@ -219,47 +239,30 @@ app.post("/rooms/move", async (req, res) => {
       winningEdges: result.winning_edges
     });
   } catch (error) {
-    return res.status(502).json({
-      ok: false,
-      error: error.response?.data?.error || error.message || "Invalid move"
-    });
+    return gatewayError(res, error, "Invalid move");
   }
 });
 
 app.post("/rooms/leave", (req, res) => {
   try {
-    const code = String(req.body?.code || "").trim().toUpperCase();
-    const username = String(req.body?.username || "");
+    const code = parseRoomCode(req.body?.code);
+    const username = parseUsername(req.body?.username);
 
-    if (!code) {
-      return res.status(400).json({ ok: false, error: "Room code is required" });
-    }
-
-    if (!username) {
-      return res.status(400).json({ ok: false, error: "Username is required" });
-    }
+    if (!code) return badRequest(res, "Room code is required");
+    if (!username) return badRequest(res, "Username is required");
 
     const room = rooms.getRoom(code);
-
-    if (!room) {
-      return res.status(404).json({ ok: false, error: "Room not found" });
-    }
+    if (!room) return notFound(res, "Room not found");
 
     const result = rooms.removePlayerByUsername(code, username);
 
     if (result.room) {
-      io.to(code).emit("opponent_left", {
-        room: rooms.serializeRoom(result.room),
-        removedColor: result.removedColor
-      });
+      emitOpponentLeft(code, result.room, result.removedColor);
     }
 
     return res.status(200).json({ ok: true });
   } catch (error) {
-    return res.status(400).json({
-      ok: false,
-      error: error.message || "Could not leave room"
-    });
+    return badRequest(res, error.message || "Could not leave room");
   }
 });
 
@@ -310,34 +313,19 @@ io.on("connection", (socket) => {
 
   socket.on("join_room", (payload = {}, callback = () => {}) => {
     try {
-      const code = String(payload.code || "").trim().toUpperCase();
-      const username = String(payload.username || "Player 2");
+      const code = parseRoomCode(payload.code);
+      const username = parseUsername(payload.username, "Player 2");
 
-      if (!code) {
-        callback({ ok: false, error: "Room code is required" });
-        return;
-      }
+      if (!code) return socketError(callback, "Room code is required");
 
       const existingRoom = rooms.getRoom(code);
-
-      if (!existingRoom) {
-        callback({ ok: false, error: "Room not found" });
-        return;
-      }
-
-      let room;
+      if (!existingRoom) return socketError(callback, "Room not found");
 
       const existingColor = rooms.getPlayerColorByUsername(existingRoom, username);
 
-      if (existingColor) {
-        room = rooms.attachSocketToPlayer(code, username, socket.id);
-      } else {
-        room = rooms.joinRoom({
-          code,
-          username,
-          socketId: socket.id
-        });
-      }
+      const room = existingColor
+        ? rooms.attachSocketToPlayer(code, username, socket.id)
+        : rooms.joinRoom({ code, username, socketId: socket.id });
 
       socket.join(room.code);
 
@@ -347,21 +335,10 @@ io.on("connection", (socket) => {
         yourColor: rooms.getPlayerColor(room, socket.id)
       });
 
-      io.to(room.code).emit("room_updated", {
-        room: rooms.serializeRoom(room)
-      });
-
-      if (room.players.B && room.players.R) {
-        io.to(room.code).emit("game_started", {
-          room: rooms.serializeRoom(room),
-          message: "Both players connected"
-        });
-      }
+      emitRoomUpdated(room);
+      emitGameStartedIfReady(room);
     } catch (error) {
-      callback({
-        ok: false,
-        error: error.message || "Could not join room"
-      });
+      socketError(callback, error.message || "Could not join room");
     }
   });
 
@@ -390,57 +367,25 @@ io.on("connection", (socket) => {
 
   socket.on("make_move", async (payload = {}, callback = () => {}) => {
     try {
-      const code = String(payload.code || "").trim().toUpperCase();
+      const code = parseRoomCode(payload.code);
       const row = Number(payload.row);
       const col = Number(payload.col);
 
       const room = rooms.getRoom(code);
-
-      if (!room) {
-        callback({ ok: false, error: "Room not found" });
-        return;
-      }
-
-      if (room.status !== "active") {
-        callback({ ok: false, error: "Room is not active" });
-        return;
-      }
+      if (!room) return socketError(callback, "Room not found");
+      if (room.status !== "active") return socketError(callback, "Room is not active");
 
       const playerColor = rooms.getPlayerColor(room, socket.id);
-      if (!playerColor) {
-        callback({ ok: false, error: "You are not a player in this room" });
-        return;
-      }
-
-      if (!rooms.isPlayersTurn(room, socket.id)) {
-        callback({ ok: false, error: "It is not your turn" });
-        return;
-      }
+      if (!playerColor) return socketError(callback, "You are not a player in this room");
+      if (!rooms.isPlayersTurn(room, socket.id)) return socketError(callback, "It is not your turn");
 
       const result = await applyPvpMove(room.yen, row, col);
 
       rooms.updateRoomYen(code, result.yen);
-
-      if (result.finished) {
-        rooms.finishRoom(code);
-      }
+      if (result.finished) rooms.finishRoom(code);
 
       const updatedRoom = rooms.getRoom(code);
-
-      io.to(code).emit("game_updated", {
-        room: rooms.serializeRoom(updatedRoom),
-        finished: result.finished,
-        winner: result.winner,
-        winningEdges: result.winning_edges
-      });
-
-      if (result.finished) {
-        io.to(code).emit("game_over", {
-          room: rooms.serializeRoom(updatedRoom),
-          winner: result.winner,
-          winningEdges: result.winning_edges
-        });
-      }
+      emitGameState(code, updatedRoom, result);
 
       callback({
         ok: true,
@@ -459,31 +404,22 @@ io.on("connection", (socket) => {
 
   socket.on("leave_room", (payload = {}, callback = () => {}) => {
     try {
-      const code = String(payload.code || "").trim().toUpperCase();
+      const code = parseRoomCode(payload.code);
       const room = rooms.getRoom(code);
 
-      if (!room) {
-        callback({ ok: false, error: "Room not found" });
-        return;
-      }
+      if (!room) return socketError(callback, "Room not found");
 
       socket.leave(code);
 
       const result = rooms.removeSocket(socket.id);
 
       if (result.room) {
-        io.to(code).emit("opponent_left", {
-          room: rooms.serializeRoom(result.room),
-          removedColor: result.removedColor
-        });
+        emitOpponentLeft(code, result.room, result.removedColor);
       }
 
       callback({ ok: true });
     } catch (error) {
-      callback({
-        ok: false,
-        error: error.message || "Could not leave room"
-      });
+      socketError(callback, error.message || "Could not leave room");
     }
   });
 
@@ -491,10 +427,7 @@ io.on("connection", (socket) => {
     const result = rooms.removeSocket(socket.id);
 
     if (result.room) {
-      io.to(result.room.code).emit("opponent_left", {
-        room: rooms.serializeRoom(result.room),
-        removedColor: result.removedColor
-      });
+      emitOpponentLeft(result.room.code, result.room, result.removedColor);
     }
   });
 });

@@ -95,6 +95,39 @@ function forwardAxiosError(res, error, fallbackMessage) {
   return res.status(502).json({ ok: false, error: fallbackMessage });
 }
 
+// ── Other helpers ─────────────────────────────────────────────────────────────
+function requireString(value, errorMessage) {
+  return typeof value === "string" && value.trim() ? null : errorMessage;
+}
+
+function requirePositiveInt(value, errorMessage) {
+  return Number.isInteger(value) && value > 0 ? null : errorMessage;
+}
+
+function requireNumber(value, errorMessage) {
+  return typeof value === "number" && Number.isFinite(value) ? null : errorMessage;
+}
+
+function normalizeRoomCode(code) {
+  return String(code || "").trim().toUpperCase();
+}
+
+function validateMultiplayerFields(validations) {
+  for (const validation of validations) {
+    if (validation) return validation;
+  }
+  return null;
+}
+
+async function proxyMultiplayerPost(res, path, payload, fallbackMessage) {
+  try {
+    const response = await axios.post(`${MULTIPLAYER_BASE_URL}${path}`, payload);
+    return res.status(200).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, fallbackMessage);
+  }
+}
+
 // ── Game endpoints ────────────────────────────────────────────────────────────
 
 app.post("/game/new", async (req, res) => {
@@ -404,14 +437,19 @@ app.get("/multiplayer/health", async (_req, res) => {
 });
 
 app.get("/multiplayer/rooms/:code", async (req, res) => {
-  const code = String(req.params.code || "").trim().toUpperCase();
+  const code = normalizeRoomCode(req.params.code);
 
-  if (!code) {
-    return res.status(400).json({ ok: false, error: "Missing room code" });
+  const validationError = validateMultiplayerFields([
+    requireString(code, "Missing room code"),
+  ]);
+  if (validationError) {
+    return res.status(400).json({ ok: false, error: validationError });
   }
 
   try {
-    const response = await axios.get(`${MULTIPLAYER_BASE_URL}/rooms/${encodeURIComponent(code)}`);
+    const response = await axios.get(
+      `${MULTIPLAYER_BASE_URL}/rooms/${encodeURIComponent(code)}`
+    );
     return res.status(200).json({ ok: true, room: response.data });
   } catch (error) {
     return forwardAxiosError(res, error, "Multiplayer service unavailable");
@@ -421,113 +459,104 @@ app.get("/multiplayer/rooms/:code", async (req, res) => {
 app.post("/multiplayer/room/create", async (req, res) => {
   const { username, size } = req.body ?? {};
 
-  if (!username || typeof username !== "string") {
-    return res.status(400).json({ ok: false, error: "Missing username" });
+  const validationError = validateMultiplayerFields([
+    requireString(username, "Missing username"),
+    requirePositiveInt(size, "Invalid board size"),
+  ]);
+  if (validationError) {
+    return res.status(400).json({ ok: false, error: validationError });
   }
 
-  if (!Number.isInteger(size) || size < 1) {
-    return res.status(400).json({ ok: false, error: "Invalid board size" });
-  }
-
-  try {
-    const response = await axios.post(`${MULTIPLAYER_BASE_URL}/rooms/create`, {
-      username,
-      size,
-    });
-    return res.status(200).json(response.data);
-  } catch (error) {
-    return forwardAxiosError(res, error, "Multiplayer service unavailable");
-  }
+  return proxyMultiplayerPost(
+    res,
+    "/rooms/create",
+    { username, size },
+    "Multiplayer service unavailable"
+  );
 });
 
 app.post("/multiplayer/room/join", async (req, res) => {
   const { code, username } = req.body ?? {};
+  const normalizedCode = normalizeRoomCode(code);
 
-  if (!code || typeof code !== "string") {
-    return res.status(400).json({ ok: false, error: "Missing room code" });
+  const validationError = validateMultiplayerFields([
+    requireString(normalizedCode, "Missing room code"),
+    requireString(username, "Missing username"),
+  ]);
+  if (validationError) {
+    return res.status(400).json({ ok: false, error: validationError });
   }
 
-  if (!username || typeof username !== "string") {
-    return res.status(400).json({ ok: false, error: "Missing username" });
-  }
-
-  try {
-    const response = await axios.post(`${MULTIPLAYER_BASE_URL}/rooms/join`, {
-      code: code.trim().toUpperCase(),
-      username,
-    });
-    return res.status(200).json(response.data);
-  } catch (error) {
-    return forwardAxiosError(res, error, "Multiplayer service unavailable");
-  }
+  return proxyMultiplayerPost(
+    res,
+    "/rooms/join",
+    { code: normalizedCode, username },
+    "Multiplayer service unavailable"
+  );
 });
 
 app.post("/multiplayer/room/state", async (req, res) => {
   const { code, username } = req.body ?? {};
+  const normalizedCode = normalizeRoomCode(code);
 
-  if (!code || typeof code !== "string") {
-    return res.status(400).json({ ok: false, error: "Missing room code" });
+  const validationError = validateMultiplayerFields([
+    requireString(normalizedCode, "Missing room code"),
+  ]);
+  if (validationError) {
+    return res.status(400).json({ ok: false, error: validationError });
   }
 
-  try {
-    const response = await axios.post(`${MULTIPLAYER_BASE_URL}/rooms/state`, {
-      code: code.trim().toUpperCase(),
+  return proxyMultiplayerPost(
+    res,
+    "/rooms/state",
+    {
+      code: normalizedCode,
       username: typeof username === "string" ? username : undefined,
-    });
-    return res.status(200).json(response.data);
-  } catch (error) {
-    return forwardAxiosError(res, error, "Multiplayer service unavailable");
-  }
+    },
+    "Multiplayer service unavailable"
+  );
 });
 
 app.post("/multiplayer/room/move", async (req, res) => {
   const { code, row, col, username } = req.body ?? {};
+  const normalizedCode = normalizeRoomCode(code);
 
-  if (!code || typeof code !== "string") {
-    return res.status(400).json({ ok: false, error: "Missing room code" });
+  const validationError = validateMultiplayerFields([
+    requireString(normalizedCode, "Missing room code"),
+    requireNumber(row, "Missing row/col"),
+    requireNumber(col, "Missing row/col"),
+    requireString(username, "Missing username"),
+  ]);
+  if (validationError) {
+    return res.status(400).json({ ok: false, error: validationError });
   }
 
-  if (typeof row !== "number" || typeof col !== "number") {
-    return res.status(400).json({ ok: false, error: "Missing row/col" });
-  }
-
-  if (!username || typeof username !== "string") {
-    return res.status(400).json({ ok: false, error: "Missing username" });
-  }
-
-  try {
-    const response = await axios.post(`${MULTIPLAYER_BASE_URL}/rooms/move`, {
-      code: code.trim().toUpperCase(),
-      row,
-      col,
-      username,
-    });
-    return res.status(200).json(response.data);
-  } catch (error) {
-    return forwardAxiosError(res, error, "Multiplayer service unavailable");
-  }
+  return proxyMultiplayerPost(
+    res,
+    "/rooms/move",
+    { code: normalizedCode, row, col, username },
+    "Multiplayer service unavailable"
+  );
 });
 
 app.post("/multiplayer/room/leave", async (req, res) => {
   const { code, username } = req.body ?? {};
+  const normalizedCode = normalizeRoomCode(code);
 
-  if (!code || typeof code !== "string") {
-    return res.status(400).json({ ok: false, error: "Missing room code" });
+  const validationError = validateMultiplayerFields([
+    requireString(normalizedCode, "Missing room code"),
+    requireString(username, "Missing username"),
+  ]);
+  if (validationError) {
+    return res.status(400).json({ ok: false, error: validationError });
   }
 
-  if (!username || typeof username !== "string") {
-    return res.status(400).json({ ok: false, error: "Missing username" });
-  }
-
-  try {
-    const response = await axios.post(`${MULTIPLAYER_BASE_URL}/rooms/leave`, {
-      code: code.trim().toUpperCase(),
-      username,
-    });
-    return res.status(200).json(response.data);
-  } catch (error) {
-    return forwardAxiosError(res, error, "Multiplayer service unavailable");
-  }
+  return proxyMultiplayerPost(
+    res,
+    "/rooms/leave",
+    { code: normalizedCode, username },
+    "Multiplayer service unavailable"
+  );
 });
 
 app.post("/gameresult/multiplayer", async (req, res) => {
