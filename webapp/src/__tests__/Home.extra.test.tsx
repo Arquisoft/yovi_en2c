@@ -137,4 +137,166 @@ describe("Home — cobertura adicional", () => {
 
     expect(localStorage.getItem("username")).toBeNull();
   });
+
+  test("calls /api/verify with bearer token when session exists", async () => {
+    renderHome("Pablo", undefined, "valid-token");
+
+    await screen.findByText(/Hola Pablo|Hello Pablo/i);
+
+    expect(global.fetch).toHaveBeenCalledWith("/api/verify", {
+      method: "GET",
+      headers: {
+        Authorization: "Bearer valid-token",
+      },
+    });
+  });
+
+  test("does not render home while session is still being verified", () => {
+    localStorage.setItem("username", "Pablo");
+    localStorage.setItem("token", "slow-token");
+
+    global.fetch = vi.fn(
+      () =>
+        new Promise<Response>(() => {
+          // never resolves
+        })
+    ) as unknown as typeof fetch;
+
+    render(
+      <I18nProvider>
+        <MemoryRouter initialEntries={[{ pathname: "/home", state: { username: "Pablo" } }]}>
+          <Home />
+        </MemoryRouter>
+      </I18nProvider>
+    );
+
+    expect(screen.queryByText(/Hola Pablo|Hello Pablo/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Partida rapida|Start quick game/i })).not.toBeInTheDocument();
+  });
+
+  test("redirects to root when token is missing", async () => {
+    localStorage.setItem("username", "Pablo");
+    localStorage.removeItem("token");
+
+    render(
+      <I18nProvider>
+        <MemoryRouter initialEntries={[{ pathname: "/home", state: { username: "Pablo" } }]}>
+          <Home />
+        </MemoryRouter>
+      </I18nProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+    });
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(localStorage.getItem("username")).toBeNull();
+    expect(localStorage.getItem("token")).toBeNull();
+  });
+
+  test("removes stored credentials when verification response is not ok", async () => {
+    localStorage.setItem("username", "Pablo");
+    localStorage.setItem("token", "bad-token");
+
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+    } as Response);
+
+    render(
+      <I18nProvider>
+        <MemoryRouter initialEntries={[{ pathname: "/home", state: { username: "Pablo" } }]}>
+          <Home />
+        </MemoryRouter>
+      </I18nProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+    });
+
+    expect(localStorage.getItem("username")).toBeNull();
+    expect(localStorage.getItem("token")).toBeNull();
+  });
+
+  test("removes stored credentials when verify request throws", async () => {
+    localStorage.setItem("username", "Pablo");
+    localStorage.setItem("token", "fake-token");
+
+    global.fetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
+
+    render(
+      <I18nProvider>
+        <MemoryRouter initialEntries={[{ pathname: "/home", state: { username: "Pablo" } }]}>
+          <Home />
+        </MemoryRouter>
+      </I18nProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+    });
+
+    expect(localStorage.getItem("username")).toBeNull();
+    expect(localStorage.getItem("token")).toBeNull();
+  });
+
+  test("navigates to multiplayer from hero button", async () => {
+    const user = userEvent.setup();
+    renderHome("Pablo");
+
+    const multiplayerButtons = await screen.findAllByRole("button", {
+      name: /Multijugador|Multiplayer/i,
+    });
+
+    await user.click(multiplayerButtons[0]);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/multiplayer", {
+      state: { username: "Pablo" },
+    });
+  });
+
+  test("navigates to multiplayer from multiplayer card button", async () => {
+    const user = userEvent.setup();
+    renderHome("Pablo");
+
+    const multiplayerButtons = await screen.findAllByRole("button", {
+      name: /Multijugador|Multiplayer/i,
+    });
+
+    await user.click(multiplayerButtons[multiplayerButtons.length - 1]);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/multiplayer", {
+      state: { username: "Pablo" },
+    });
+  });
+
+  test("navigates to select difficulty from third card", async () => {
+    const user = userEvent.setup();
+    renderHome("Pablo");
+
+    const button = await screen.findByRole("button", {
+      name: /Seleccionar dificultad|Select difficulty/i,
+    });
+
+    await user.click(button);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/select-difficulty", {
+      state: { username: "Pablo" },
+    });
+  });
+
+  test("renders hero badge and home panel landmark", async () => {
+    renderHome("Pablo");
+
+    expect(await screen.findByLabelText(/Home panel/i)).toBeInTheDocument();
+    expect(screen.getByText(/GameY/i)).toBeInTheDocument();
+  });
+
+  test("renders info cards section", async () => {
+    renderHome("Pablo");
+
+    expect(await screen.findByLabelText(/Info cards/i)).toBeInTheDocument();
+  });
 });
