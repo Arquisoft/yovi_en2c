@@ -3,7 +3,7 @@ name: Branch Deploy
 on:
   push:
     branches:
-      - ana-https
+      - ana-e2e
   workflow_dispatch:
 
 permissions:
@@ -41,7 +41,7 @@ jobs:
           JWT_EXPIRES: ${{ secrets.JWT_EXPIRES }}
 
   test-rust:
-    name: Run rust tests
+    name: Run rust (gamey) tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -55,10 +55,67 @@ jobs:
           cd gamey
           cargo test
 
+  e2e:
+    name: Run E2E tests
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install users dependencies
+        run: |
+          cd users
+          npm ci
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+
+      - name: Install authentication dependencies
+        run: |
+          cd authentication
+          npm ci
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES: ${{ secrets.JWT_EXPIRES }}
+
+      - name: Install gateway dependencies
+        run: |
+          cd gateway
+          npm ci
+      
+      - name: Install botapi dependencies
+        run: |
+          cd botapi
+          npm ci
+
+      - name: Install webapp dependencies
+        run: |
+          cd webapp
+          npm ci
+
+      - name: Install Playwright browsers
+        run: |
+          cd webapp
+          npm run test:e2e:install-browsers
+
+      - name: Run E2E tests
+        run: |
+          cd webapp
+          npm run test:e2e
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES: ${{ secrets.JWT_EXPIRES }}
+
   docker-push-users:
     name: Publish users image
     runs-on: ubuntu-latest
-    needs: [test-node, test-rust]
+    needs: e2e
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -75,7 +132,7 @@ jobs:
   docker-push-authentication:
     name: Publish authentication image
     runs-on: ubuntu-latest
-    needs: [test-node, test-rust]
+    needs: e2e
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -92,7 +149,7 @@ jobs:
   docker-push-gateway:
     name: Publish gateway image
     runs-on: ubuntu-latest
-    needs: [test-node, test-rust]
+    needs: e2e
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -105,7 +162,25 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
           workdir: gateway
-  
+
+  docker-push-webapp:
+    name: Publish webapp image
+    runs-on: ubuntu-latest
+    needs: e2e
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish webapp
+        uses: elgohr/Publish-Docker-Github-Action@v5
+        with:
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-webapp
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          workdir: webapp
+          buildargs: VITE_API_URL=/api
+
   docker-push-botapi:
     name: Publish botapi image
     runs-on: ubuntu-latest
@@ -123,28 +198,10 @@ jobs:
           registry: ghcr.io
           workdir: botapi
 
-  docker-push-webapp:
-    name: Publish webapp image
-    runs-on: ubuntu-latest
-    needs: [test-node, test-rust]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Publish webapp
-        uses: elgohr/Publish-Docker-Github-Action@v5
-        with:
-          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-webapp
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          registry: ghcr.io
-          workdir: webapp
-          buildargs: VITE_API_URL=/api
-
   docker-push-gamey:
     name: Publish gamey image
     runs-on: ubuntu-latest
-    needs: [test-node, test-rust]
+    needs: e2e
     steps:
       - name: Checkout
         uses: actions/checkout@v4
