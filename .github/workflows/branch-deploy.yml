@@ -3,7 +3,7 @@ name: Branch Deploy
 on:
   push:
     branches:
-      - ana-https
+      - ana-multiplayer
   workflow_dispatch:
 
 permissions:

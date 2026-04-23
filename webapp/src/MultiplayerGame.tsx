@@ -101,6 +101,7 @@ const MultiplayerGame: React.FC = () => {
   const username = state?.username ?? localStorage.getItem("username") ?? "";
   const roomCode = state?.roomCode ?? "";
   const boardSizeFromState = state?.boardSize ?? 7;
+  const isHost = state?.isHost ?? false;
 
   const [room, setRoom] = useState<RoomState | null>(null);
   const [connected, setConnected] = useState(false);
@@ -190,10 +191,6 @@ const MultiplayerGame: React.FC = () => {
           result: winner ? (didIWin ? "win" : "lost") : "draw",
           winner
         });
-
-        if (winner) {
-          saveMultiplayerGameResult(nextRoom ?? room, winner);
-        }
       }
     });
 
@@ -219,7 +216,7 @@ const MultiplayerGame: React.FC = () => {
         winner
       });
 
-      if (winner) {
+      if (winner && isHost) {
         saveMultiplayerGameResult(nextRoom ?? room, winner);
       }
     });
