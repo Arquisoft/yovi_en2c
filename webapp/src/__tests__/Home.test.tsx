@@ -167,7 +167,7 @@ describe("Home", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByRole("heading", { name: /Futuro|Future/i })
+      screen.getByRole("heading", { name: /Multijugador|Multiplayer/i })
     ).toBeInTheDocument();
 
     expect(

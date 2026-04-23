@@ -88,7 +88,7 @@ describe("Navbar", () => {
     const user = userEvent.setup();
     renderNavbar("/game", "Pablo");
 
-    await user.click(screen.getByRole("button", { name: /Ir a Home/i }));
+    await user.click(screen.getByRole("button", { name: /Go home/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith("/home");
   });
