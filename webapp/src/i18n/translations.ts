@@ -223,6 +223,16 @@ export const translations: Record<Lang, Dict> = {
     "profile.friendRequests.accept": "Aceptar",
     "profile.friendRequests.acceptError": "Error al aceptar solicitud",
 
+    //notifiacciones
+    "notifications.bellLabel": "Notificaciones",
+    "notifications.title": "Notificaciones",
+    "notifications.close": "Cerrar",
+    "notifications.empty": "Sin notificaciones",
+    "notifications.unread": "sin leer",
+    "notifications.markRead": "Marcar como leído",
+    "notifications.panelLabel": "Panel de notificaciones",
+    "notifications.welcomeText": "¡Bienvenido al equipo YOVI!",
+    "notifications.friendRequestText": "{{from}} te ha enviado una solicitud de amistad",
   },
 
   en: {
@@ -439,5 +449,16 @@ export const translations: Record<Lang, Dict> = {
     "profile.friendRequests.empty":  "No pending requests",
     "profile.friendRequests.accept": "Accept",
     "profile.friendRequests.acceptError": "Error accepting request",
+
+    //notifiactions
+    "notifications.bellLabel": "Notifications",
+    "notifications.title": "Notifications",
+    "notifications.close": "Close",
+    "notifications.empty": "No notifications",
+    "notifications.unread": "unread",
+    "notifications.markRead": "Mark as read",
+    "notifications.panelLabel": "Notifications panel",
+    "notifications.welcomeText": "Welcome to the YOVI team!",
+    "notifications.friendRequestText": "{{from}} sent you a friend request",
   },
 };
