@@ -54,7 +54,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             <dialog
                 aria-label={t("notifications.panelLabel")}
                 className="navbar__notif-panel"
-                onClick={onClose}
             >
                 {/* Header */}
                 <div className="navbar__notif-header">
