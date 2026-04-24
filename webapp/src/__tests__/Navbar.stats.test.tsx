@@ -49,7 +49,10 @@ describe("Navbar — Statistics button", () => {
 
     await user.click(screen.getByRole("button", { name: /Estadísticas|Statistics/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith("/statistics");
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/statistics",
+      { state: { username: "Pablo" } }
+    );
   });
 
   test("marks statistics button as current page when pathname is /statistics", () => {

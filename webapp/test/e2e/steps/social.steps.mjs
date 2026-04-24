@@ -96,7 +96,7 @@ Before({ tags: "@social" }, async function () {
     if (url.pathname.startsWith("/api/friends/accept/") && method === "POST") {
       const sender = decodeURIComponent(url.pathname.split("/").pop());
       const me = this.socialState.currentUser;
-      const profile = this.socialState.profiles[me];
+      const profile = this.socialState.profiles[me] ?? buildProfile(me);
 
       profile.friendRequests = (profile.friendRequests ?? []).filter(
         (u) => u !== sender
@@ -105,6 +105,8 @@ Before({ tags: "@social" }, async function () {
       if (!profile.friends.includes(sender)) {
         profile.friends.push(sender);
       }
+
+      this.socialState.profiles[me] = profile;
 
       if (!this.socialState.profiles[sender]) {
         this.socialState.profiles[sender] = buildProfile(sender);
@@ -162,7 +164,15 @@ Before({ tags: "@social" }, async function () {
       });
     }
 
-    return route.continue();
+    // Importante: no dejes que otras llamadas /api salgan al backend real en CI
+    return route.fulfill({
+      status: 404,
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: false,
+        error: `Unhandled mocked endpoint: ${method} ${url.pathname}`,
+      }),
+    });
   });
 });
 
@@ -254,17 +264,30 @@ Given("the profile for {string} exists", function (username) {
 
 When("I go to the social page", async function () {
   await this.page.goto("http://localhost:5173/social");
+  await this.page.waitForLoadState("networkidle");
 });
 
 When("I search for {string} in social", async function (query) {
   const input = this.page.locator('input[placeholder], input[type="text"]').first();
+  await input.waitFor({ state: "visible", timeout: 15000 });
   await input.fill(query);
-  await this.page.waitForTimeout(500);
+
+  await this.page.waitForResponse((r) => {
+    const url = new URL(r.url());
+    return (
+      url.pathname === "/api/search" &&
+      url.searchParams.get("q") === query &&
+      r.request().method() === "GET"
+    );
+  });
 });
 
 When("I send a friend request to {string} from social", async function (username) {
   const card = this.page.locator("div").filter({ hasText: username }).first();
+  await card.waitFor({ state: "visible", timeout: 15000 });
+
   const sendButton = card.getByRole("button", { name: /send|enviar/i }).first();
+  await sendButton.waitFor({ state: "visible", timeout: 15000 });
 
   const [response] = await Promise.all([
     this.page.waitForResponse((r) =>
@@ -287,6 +310,8 @@ When("I accept the friend request from {string}", async function (username) {
   const row = requestsCard.locator("div").filter({
     has: this.page.getByText(username, { exact: true }),
   }).first();
+
+  await row.waitFor({ state: "visible", timeout: 15000 });
 
   const currentUser = this.socialState.currentUser;
 
@@ -314,11 +339,18 @@ When("I open the profile of friend {string}", async function (username) {
     has: this.page.getByText(username, { exact: true }),
   }).first();
 
-  await row.getByRole("button", { name: /view profile|ver perfil/i }).click();
+  await row.waitFor({ state: "visible", timeout: 15000 });
+
+  await Promise.all([
+    this.page.waitForURL(new RegExp(`/profile/${username}$`)),
+    row.getByRole("button", { name: /view profile|ver perfil/i }).click(),
+  ]);
 });
 
 Then("I should see {string} in the social results", async function (username) {
-  const visible = await this.page.getByText(username, { exact: true }).isVisible();
+  const result = this.page.getByText(username, { exact: true });
+  await result.waitFor({ state: "visible", timeout: 15000 });
+  const visible = await result.isVisible();
   assert.equal(visible, true);
 });
 
@@ -333,7 +365,10 @@ Then("{string} should appear in my friend list", async function (username) {
 
   await friendsCard.waitFor({ state: "visible", timeout: 15000 });
 
-  const visible = await friendsCard.getByText(username, { exact: true }).isVisible();
+  const friend = friendsCard.getByText(username, { exact: true });
+  await friend.waitFor({ state: "visible", timeout: 15000 });
+
+  const visible = await friend.isVisible();
   assert.equal(visible, true);
 });
 
@@ -344,12 +379,20 @@ Then("I should see {string} in my friend list", async function (username) {
 
   await friendsCard.waitFor({ state: "visible", timeout: 15000 });
 
-  const visible = await friendsCard.getByText(username, { exact: true }).isVisible();
+  const friend = friendsCard.getByText(username, { exact: true });
+  await friend.waitFor({ state: "visible", timeout: 15000 });
+
+  const visible = await friend.isVisible();
   assert.equal(visible, true);
 });
 
 Then("I should be on the profile page of {string}", async function (username) {
+  await this.page.waitForURL(new RegExp(`/profile/${username}$`), { timeout: 15000 });
   assert.match(this.page.url(), new RegExp(`/profile/${username}$`));
-  const visible = await this.page.getByText(username, { exact: true }).isVisible();
+
+  const visibleUserText = this.page.getByText(username, { exact: true });
+  await visibleUserText.waitFor({ state: "visible", timeout: 15000 });
+
+  const visible = await visibleUserText.isVisible();
   assert.equal(visible, true);
 });

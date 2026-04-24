@@ -11,10 +11,10 @@ const API_URL = "/api";
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t }    = useI18n();
+  const { t } = useI18n();
 
-  const [checkingSession,  setCheckingSession]  = useState(true);
-  const [notifications,    setNotifications]    = useState<Notification[]>([]);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const username = useMemo(() => {
     const st = (location.state as LocationState | null) ?? null;
@@ -23,45 +23,39 @@ const Home: React.FC = () => {
 
   const token = useMemo(() => localStorage.getItem("token") ?? "", []);
 
-  // ── Fetch notifications ───────────────────────────────────────────────────
-
   const fetchNotifications = useCallback(async () => {
     if (!token) return;
+
     try {
-      const res  = await fetch(`${API_URL}/notifications`, {
+      const res = await fetch(`${API_URL}/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       if (!res.ok) return;
+
       const data = await res.json();
       if (data.success) setNotifications(data.notifications ?? []);
     } catch {
-      // Non-critical: swallow silently
+      // Non-critical
     }
   }, [token]);
 
-  // ── Mark a single notification as read ───────────────────────────────────
-
   const handleMarkRead = useCallback(async (id: string) => {
-    // Optimistic update — flip the flag immediately in UI
-    setNotifications(prev =>
-        prev.map(n => n.id === id ? { ...n, read: true } : n)
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
 
-    // Persist to backend (fire-and-forget from UI perspective)
     try {
       await fetch(`${API_URL}/notifications/${id}/read`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       });
     } catch {
-      // Revert on network error
-      setNotifications(prev =>
-          prev.map(n => n.id === id ? { ...n, read: false } : n)
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: false } : n))
       );
     }
   }, [token]);
-
-  // ── Verify session then load notifications ────────────────────────────────
 
   useEffect(() => {
     const verifySession = async () => {
@@ -107,79 +101,105 @@ const Home: React.FC = () => {
     navigate("/game", { state: { username, bot: "minimax_bot", boardSize: 7 } });
   };
 
+  const goMultiplayer = () => {
+    navigate("/multiplayer", { state: { username } });
+  };
+
+  const goInstructions = () => {
+    navigate("/instructions", { state: { username } });
+  };
+
+  const goDifficulty = () => {
+    navigate("/select-difficulty", { state: { username } });
+  };
+
+  const goSocial = () => {
+    navigate("/social", { state: { username } });
+  };
+
   if (checkingSession || !username || !token) return null;
 
   return (
-      <div className="page">
-        <Navbar
-            username={username}
-            onLogout={logout}
-            notifications={notifications}
-            onMarkRead={handleMarkRead}
-        />
+    <div className="page">
+      <Navbar
+        username={username}
+        onLogout={logout}
+        notifications={notifications}
+        onMarkRead={handleMarkRead}
+      />
 
-        <main className="container">
-          <section className="hero" aria-label="Panel de inicio">
-            <div className="hero__top">
-              <img src={logo} alt="GameY" className="hero__logo" />
+      <main className="container">
+        <section className="hero" aria-label="Home panel">
+          <div className="hero__top">
+            <img src={logo} alt="GameY" className="hero__logo" />
 
-              <div className="hero__badge">
-                <span aria-hidden="true" />
-                {t("home.badge")}
-              </div>
+            <div className="hero__badge">
+              <span aria-hidden="true" />
+              {t("home.badge")}
             </div>
+          </div>
 
-            <h1 className="hero__title">{t("home.welcome", { username })}</h1>
-            <p className="hero__subtitle">{t("home.subtitle")}</p>
+          <h1 className="hero__title">{t("home.welcome", { username })}</h1>
+          <p className="hero__subtitle">{t("home.subtitle")}</p>
 
-            <div className="hero__actions">
-              <button className="btn btn--primary" onClick={startQuickGame} type="button">
-                {t("home.quickgame")}
-              </button>
+          <div className="hero__actions">
+            <button className="btn btn--primary" onClick={startQuickGame} type="button">
+              {t("home.quickgame")}
+            </button>
 
-              <button className="btn btn--ghost" onClick={logout} type="button">
-                {t("home.changeUser")}
+            <button className="btn btn--secondary" onClick={goMultiplayer} type="button">
+              {t("home.multiplayer")}
+            </button>
+
+            <button className="btn btn--ghost" onClick={logout} type="button">
+              {t("home.changeUser")}
+            </button>
+          </div>
+        </section>
+
+        <section className="grid" aria-label="Info cards">
+          <article className="card">
+            <h2 className="card__title">{t("home.card1.title")}</h2>
+            <p className="card__text">{t("home.card1.text")}</p>
+            <div style={{ marginTop: 16 }}>
+              <button className="btn btn--primary" onClick={goInstructions} type="button">
+                {t("home.instructions")}
               </button>
             </div>
-          </section>
+          </article>
 
-          <section className="grid" aria-label="Tarjetas informativas">
-            <article className="card">
-              <h2 className="card__title">{t("home.card1.title")}</h2>
-              <p className="card__text">{t("home.card1.text")}</p>
-              <div style={{ marginTop: 16 }}>
-                <button
-                    className="btn btn--primary"
-                    onClick={() => navigate("/instructions", { state: { username } })}
-                    type="button"
-                >
-                  {t("home.instructions")}
-                </button>
-              </div>
-            </article>
+          <article className="card">
+            <h2 className="card__title">{t("home.card2.title")}</h2>
+            <p className="card__text">{t("home.card2.text")}</p>
+            <div style={{ marginTop: 16 }}>
+              <button className="btn btn--primary" onClick={goMultiplayer} type="button">
+                {t("home.card2.button")}
+              </button>
+            </div>
+          </article>
 
-            <article className="card">
-              <h2 className="card__title">{t("home.card2.title")}</h2>
-              <p className="card__text">{t("home.card2.text")}</p>
-              <span className="pill">{t("home.card2.pill")}</span>
-            </article>
+          <article className="card">
+            <h2 className="card__title">{t("home.card3.title")}</h2>
+            <p className="card__text">{t("home.card3.text")}</p>
+            <div style={{ marginTop: 16 }}>
+              <button className="btn btn--primary" onClick={goDifficulty} type="button">
+                {t("home.selectDifficulty")}
+              </button>
+            </div>
+          </article>
 
-            <article className="card">
-              <h2 className="card__title">{t("home.card3.title")}</h2>
-              <p className="card__text">{t("home.card3.text")}</p>
-              <div style={{ marginTop: 16 }}>
-                <button
-                    className="btn btn--primary"
-                    onClick={() => navigate("/select-difficulty")}
-                    type="button"
-                >
-                  {t("home.selectDifficulty")}
-                </button>
-              </div>
-            </article>
-          </section>
-        </main>
-      </div>
+          <article className="card">
+            <h2 className="card__title">{t("home.card4.title")}</h2>
+            <p className="card__text">{t("home.card4.text")}</p>
+            <div style={{ marginTop: 16 }}>
+              <button className="btn btn--primary" onClick={goSocial} type="button">
+                {t("home.card4.button")}
+              </button>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
   );
 };
 

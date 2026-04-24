@@ -1077,3 +1077,31 @@ body {
   color: var(--muted);
   margin-bottom: 10px;
 }
+
+/* ============================================================
+   MULTIPLAYER
+   ============================================================ */
+.mp-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.mp-label {
+  font-weight: 900;
+  color: var(--text);
+}
+
+.mp-size-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mp-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
