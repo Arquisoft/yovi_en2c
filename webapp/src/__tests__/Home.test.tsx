@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, afterEach, describe, expect, test, vi, it } from "vitest";
@@ -23,13 +23,8 @@ function renderHome(
 ) {
   localStorage.clear();
 
-  if (usernameInStorage) {
-    localStorage.setItem("username", usernameInStorage);
-  }
-
-  if (tokenInStorage) {
-    localStorage.setItem("token", tokenInStorage);
-  }
+  if (usernameInStorage) localStorage.setItem("username", usernameInStorage);
+  if (tokenInStorage) localStorage.setItem("token", tokenInStorage);
 
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
@@ -76,12 +71,8 @@ describe("Home", () => {
     expect(await screen.findByText(/Hola Pablo|Hello Pablo/i)).toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: /GameY/i })).toHaveLength(2);
     expect(screen.getByText(/Juega al juego Y|Play the Game of Y/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Partida rápida|Start quick game/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Cambiar usuario|Change user/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Partida rápida|Start quick game/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Cambiar usuario|Change user/i })).toBeInTheDocument();
   });
 
   test("renders home content with username from localStorage", async () => {
@@ -120,12 +111,21 @@ describe("Home", () => {
 
     await screen.findByRole("button", { name: /Partida rápida|Start quick game/i });
 
-    await user.click(
-      screen.getByRole("button", { name: /Partida rápida|Start quick game/i })
-    );
+    await user.click(screen.getByRole("button", { name: /Partida rápida|Start quick game/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith("/game", {
       state: { username: "Pablo", bot: "minimax_bot", boardSize: 7 },
+    });
+  });
+
+  test("navigates to local game from local play card", async () => {
+    const user = userEvent.setup();
+    renderHome("Pablo");
+
+    await user.click(await screen.findByRole("button", { name: /Jugar en local|Play locally/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/game", {
+      state: { username: "Pablo", bot: "local", boardSize: 7, localGame: true },
     });
   });
 
@@ -135,9 +135,7 @@ describe("Home", () => {
 
     await screen.findByRole("button", { name: /Cambiar usuario|Change user/i });
 
-    await user.click(
-      screen.getByRole("button", { name: /Cambiar usuario|Change user/i })
-    );
+    await user.click(screen.getByRole("button", { name: /Cambiar usuario|Change user/i }));
 
     expect(localStorage.getItem("username")).toBeNull();
     expect(localStorage.getItem("token")).toBeNull();
@@ -148,38 +146,36 @@ describe("Home", () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
-    await screen.findByRole("button", { name: /Salir|Logout/i });
-
-    await user.click(
-      screen.getByRole("button", { name: /Salir|Logout/i })
-    );
+    await user.click(await screen.findByRole("button", { name: /Salir|Logout/i }));
 
     expect(localStorage.getItem("username")).toBeNull();
     expect(localStorage.getItem("token")).toBeNull();
     expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
   });
 
-  it("renders the three home cards", async () => {
+  it("renders the six home cards with their pills", async () => {
     renderHome("Pablo");
 
-    expect(
-      await screen.findByRole("heading", { name: /Instrucciones|Instructions/i })
-    ).toBeInTheDocument();
+    const cards = await screen.findByLabelText(/Info cards/i);
 
-    expect(
-      screen.getByRole("heading", { name: /Multijugador|Multiplayer/i })
-    ).toBeInTheDocument();
+    expect(within(cards).getByRole("heading", { name: /Instrucciones|Instructions/i })).toBeInTheDocument();
+    expect(within(cards).getByRole("heading", { name: /Multijugador|Multiplayer/i })).toBeInTheDocument();
+    expect(within(cards).getByRole("heading", { name: /Distintos bots|Different bots/i })).toBeInTheDocument();
+    expect(within(cards).getByRole("heading", { name: /Social/i })).toBeInTheDocument();
+    expect(within(cards).getByRole("heading", { name: /Jugar en local|Local play/i })).toBeInTheDocument();
+    expect(within(cards).getByRole("heading", { name: /Futuro|Future/i })).toBeInTheDocument();
 
-    expect(
-      screen.getByRole("heading", { name: /Distintos bots|Different bots/i })
-    ).toBeInTheDocument();
+    expect(within(cards).getByText(/Reglas básicas|Basic rules/i)).toBeInTheDocument();
+    expect(within(cards).getByText(/Modo local|Local mode/i)).toBeInTheDocument();
+    expect(within(cards).getByText(/^Próximamente$|^Coming soon$/i)).toBeInTheDocument();
   });
 
   it("navigates to instructions from the first card", async () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
-    const instructionsButton = await screen.findByRole("button", {
+    const cards = await screen.findByLabelText(/Info cards/i);
+    const instructionsButton = within(cards).getByRole("button", {
       name: /Instrucciones|Instructions/i,
     });
 
