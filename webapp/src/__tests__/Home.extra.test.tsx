@@ -65,7 +65,7 @@ describe("Home — cobertura adicional", () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
-    await screen.findByRole("button", { name: /Partida rapida|Start quick game/i });
+    await screen.findByRole("button", { name: /Partida rápida|Start quick game/i });
 
     const diffButton = screen.getByRole("button", { name: /Seleccionar dificultad|Select difficulty/i });
     await user.click(diffButton);
@@ -79,9 +79,9 @@ describe("Home — cobertura adicional", () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
-    await screen.findByRole("button", { name: /Partida rapida|Start quick game/i });
+    await screen.findByRole("button", { name: /Partida rápida|Start quick game/i });
 
-    await user.click(screen.getByRole("button", { name: /Partida rapida|Start quick game/i }));
+    await user.click(screen.getByRole("button", { name: /Partida rápida|Start quick game/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith("/game", {
       state: { username: "Pablo", bot: "minimax_bot", boardSize: 7 },
@@ -171,7 +171,7 @@ describe("Home — cobertura adicional", () => {
     );
 
     expect(screen.queryByText(/Hola Pablo|Hello Pablo/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Partida rapida|Start quick game/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Partida rápida|Start quick game/i })).not.toBeInTheDocument();
   });
 
   test("redirects to root when token is missing", async () => {
