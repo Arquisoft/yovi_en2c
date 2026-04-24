@@ -35,6 +35,17 @@ pub struct PvpMoveResponse {
     pub winning_edges: Vec<[[usize; 2]; 2]>,
 }
 
+/// Convenience alias for the handler error type.
+type HandlerError = (StatusCode, Json<ErrorResponse>);
+
+/// Builds a 400 Bad Request error response with a message tied to the current API version.
+fn bad_request(message: &str, api_version: &str) -> HandlerError {
+    (
+        StatusCode::BAD_REQUEST,
+        Json(ErrorResponse::error(message, Some(api_version.to_string()), None)),
+    )
+}
+
 fn row_col_to_coords(
     layout: &str,
     size: u32,
@@ -224,82 +235,37 @@ fn compute_result_from_yen(yen: &YEN) -> (bool, Option<char>, Vec<[[usize; 2]; 2
 pub async fn pvp_move(
     Path(params): Path<PvpParams>,
     Json(req): Json<PvpMoveRequest>,
-) -> Result<Json<PvpMoveResponse>, (StatusCode, Json<ErrorResponse>)> {
-    if let Err(err) = check_api_version(&params.api_version) {
+) -> Result<Json<PvpMoveResponse>, HandlerError> {
+    let version = &params.api_version;
+
+    if let Err(err) = check_api_version(version) {
         return Err((StatusCode::BAD_REQUEST, Json(err)));
     }
 
     let layout_str = req.yen.layout().to_string();
     let size = req.yen.size();
 
-    let mut game = match GameY::try_from(req.yen) {
-        Ok(game) => game,
-        Err(err) => {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::error(
-                    &format!("Invalid YEN format: {}", err),
-                    Some(params.api_version),
-                    None,
-                )),
-            ));
-        }
-    };
+    let mut game = GameY::try_from(req.yen)
+        .map_err(|err| bad_request(&format!("Invalid YEN format: {}", err), version))?;
 
     if game.check_game_over() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::error(
-                "Game is already over",
-                Some(params.api_version),
-                None,
-            )),
-        ));
+        return Err(bad_request("Game is already over", version));
     }
 
-    let coords = match row_col_to_coords(&layout_str, size, req.row, req.col) {
-        Ok(coords) => coords,
-        Err(msg) => {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::error(
-                    &format!("Invalid coordinates: {}", msg),
-                    Some(params.api_version),
-                    None,
-                )),
-            ));
-        }
-    };
+    let coords = row_col_to_coords(&layout_str, size, req.row, req.col)
+        .map_err(|msg| bad_request(&format!("Invalid coordinates: {}", msg), version))?;
 
-    let current_player = match game.next_player() {
-        Some(player) => player,
-        None => {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::error(
-                    "No next player available",
-                    Some(params.api_version),
-                    None,
-                )),
-            ));
-        }
-    };
+    let current_player = game
+        .next_player()
+        .ok_or_else(|| bad_request("No next player available", version))?;
 
     let movement = Movement::Placement {
         player: current_player,
         coords,
     };
 
-    if let Err(err) = game.add_move(movement) {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::error(
-                &format!("Invalid move: {}", err),
-                Some(params.api_version),
-                None,
-            )),
-        ));
-    }
+    game.add_move(movement)
+        .map_err(|err| bad_request(&format!("Invalid move: {}", err), version))?;
 
     let new_yen: YEN = (&game).into();
     let (finished, winner, winning_edges) = compute_result_from_yen(&new_yen);

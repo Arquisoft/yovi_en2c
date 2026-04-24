@@ -179,6 +179,42 @@ async function proxyMultiplayerPost(res, path, payload, fallbackMessage) {
   }
 }
 
+/**
+ * Proxies an authenticated GET request to the users service.
+ * Extracts and validates the Authorization header, then forwards the request.
+ */
+async function proxyUsersGet(res, usersUrl, authHeader) {
+  const auth = sanitizeAuthHeader(authHeader);
+  if (!requireAuth(res, auth)) return;
+
+  try {
+    const response = await axios.get(usersUrl, {
+      headers: { Authorization: auth },
+    });
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
+}
+
+/**
+ * Proxies an authenticated POST (with empty body) to the users service.
+ * Used for friend request/accept actions.
+ */
+async function proxyUsersPostWithAuth(res, usersUrl, authHeader) {
+  const auth = sanitizeAuthHeader(authHeader);
+  if (!requireAuth(res, auth)) return;
+
+  try {
+    const response = await axios.post(usersUrl, {}, { //NOSONAR
+      headers: { Authorization: auth }, //NOSONAR
+    }); //NOSONAR
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
+}
+
 app.post("/game/new", async (req, res) => {
   try {
     const response = await axios.post(GAME_NEW_URL, req.body); //NOSONAR
@@ -283,17 +319,8 @@ app.get("/stats/:username", async (req, res) => {
 
   const safeUsername = safeUsernameSegment(username);
   const usersUrl = internalUrl(USERS_BASE_URL, `/stats/${safeUsername}`);
-  const authStats = sanitizeAuthHeader(req.headers.authorization);
 
-  try {
-    const response = await axios.get(usersUrl, {
-      headers: { Authorization: authStats },
-    });
-
-    return res.status(response.status).json(response.data);
-  } catch (error) {
-    return forwardAxiosError(res, error, "Users service unavailable");
-  }
+  return proxyUsersGet(res, usersUrl, req.headers.authorization);
 });
 
 app.get("/profile/:username", async (req, res) => {
@@ -354,42 +381,20 @@ app.post("/friends/request/:username", async (req, res) => {
   const { username } = req.params;
   if (!validateUsernameParam(res, username)) return;
 
-  const auth = sanitizeAuthHeader(req.headers.authorization);
-  if (!requireAuth(res, auth)) return;
-
   const safeUsername = safeUsernameSegment(username);
   const usersUrl = internalUrl(USERS_BASE_URL, `/friends/request/${safeUsername}`);
 
-  try {
-    const response = await axios.post(usersUrl, {}, { //NOSONAR
-      headers: { Authorization: auth }, //NOSONAR
-    }); //NOSONAR
-
-    return res.status(response.status).json(response.data);
-  } catch (error) {
-    return forwardAxiosError(res, error, "Users service unavailable");
-  }
+  return proxyUsersPostWithAuth(res, usersUrl, req.headers.authorization);
 });
 
 app.post("/friends/accept/:username", async (req, res) => {
   const { username } = req.params;
   if (!validateUsernameParam(res, username)) return;
 
-  const auth = sanitizeAuthHeader(req.headers.authorization);
-  if (!requireAuth(res, auth)) return;
-
   const safeUsername = safeUsernameSegment(username);
   const usersUrl = internalUrl(USERS_BASE_URL, `/friends/accept/${safeUsername}`);
 
-  try {
-    const response = await axios.post(usersUrl, {}, { //NOSONAR
-      headers: { Authorization: auth }, //NOSONAR
-    }); //NOSONAR
-
-    return res.status(response.status).json(response.data);
-  } catch (error) {
-    return forwardAxiosError(res, error, "Users service unavailable");
-  }
+  return proxyUsersPostWithAuth(res, usersUrl, req.headers.authorization);
 });
 
 app.delete("/friends/:username", async (req, res) => {
@@ -414,37 +419,13 @@ app.delete("/friends/:username", async (req, res) => {
 });
 
 app.get("/friends", async (req, res) => {
-  const auth = sanitizeAuthHeader(req.headers.authorization);
-  if (!requireAuth(res, auth)) return;
-
   const usersUrl = internalUrl(USERS_BASE_URL, "/friends");
-
-  try {
-    const response = await axios.get(usersUrl, {
-      headers: { Authorization: auth },
-    });
-
-    return res.status(response.status).json(response.data);
-  } catch (error) {
-    return forwardAxiosError(res, error, "Users service unavailable");
-  }
+  return proxyUsersGet(res, usersUrl, req.headers.authorization);
 });
 
 app.get("/notifications", async (req, res) => {
-  const auth = sanitizeAuthHeader(req.headers.authorization);
-  if (!requireAuth(res, auth)) return;
-
   const usersUrl = internalUrl(USERS_BASE_URL, "/notifications");
-
-  try {
-    const response = await axios.get(usersUrl, {
-      headers: { Authorization: auth },
-    });
-
-    return res.status(response.status).json(response.data);
-  } catch (error) {
-    return forwardAxiosError(res, error, "Users service unavailable");
-  }
+  return proxyUsersGet(res, usersUrl, req.headers.authorization);
 });
 
 app.patch("/notifications/:id/read", async (req, res) => {
