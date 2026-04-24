@@ -50,10 +50,10 @@ function normalizeUsername(value) {
     if (typeof value !== 'string') return null;
 
     const username = value.trim();
-    if (!username) return null;
 
-    const usernameRegex = /^[A-Za-z0-9_]{1,30}$/;
-    if (!usernameRegex.test(username)) return null;
+    if (!/^[A-Za-z0-9_-]{1,30}$/.test(username)) {
+        return null;
+    }
 
     return username;
 }
@@ -62,7 +62,12 @@ function normalizeLooseUsername(value) {
     if (typeof value !== 'string') return null;
 
     const username = value.trim();
-    return username || null;
+
+    if (!/^[A-Za-z0-9_-]{1,30}$/.test(username)) {
+        return null;
+    }
+
+    return username;
 }
 
 function normalizeEmail(value) {
@@ -92,13 +97,42 @@ function parsePositiveInt(value, fallback) {
     return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-async function findUserByUsername(username) {
-    return User.findOne({ username });
+function parseBoardSize(value, fallback = 7) {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+async function findUserByUsername(username, projection = null) {
+    const safeUsername = normalizeUsername(username);
+
+    if (!safeUsername) return null;
+
+    const query = User.findOne()
+        .where('username')
+        .equals(safeUsername);
+
+    if (projection) {
+        query.select(projection);
+    }
+
+    return query.exec();
 }
 
 async function ensureExistingUser(username) {
     const user = await findUserByUsername(username);
     return user || null;
+}
+
+function findGamesByUsername(username) {
+    const safeUsername = normalizeUsername(username);
+
+    if (!safeUsername) {
+        return null;
+    }
+
+    return GameResult.find()
+        .where('username')
+        .equals(safeUsername);
 }
 
 function publicGameView(game) {
@@ -116,25 +150,6 @@ function buildWinLossStats(games) {
         wins: games.filter(g => g.result === 'win').length,
         losses: games.filter(g => g.result === 'loss').length,
     };
-}
-
-function formatCreateUserValidationErrors(error) {
-    const messages = Object.values(error.errors || {})
-        .map(e => e?.message)
-        .filter(Boolean);
-
-    const customOrder = [
-        'Email is invalid',
-        'Username is invalid',
-        'Username is a mandatory field'
-    ];
-
-    const ordered = [
-        ...customOrder.filter(msg => messages.includes(msg)),
-        ...messages.filter(msg => !customOrder.includes(msg))
-    ];
-
-    return ordered.join(', ');
 }
 
 // =============================   USERS ENDPOINTS    ============================================
@@ -297,7 +312,7 @@ app.post('/gameresult', async (req, res) => {
             result,
             winner: normalizedWinner,
             score: score || 0,
-            boardSize: boardSize || 7,
+            boardSize: parseBoardSize(boardSize, 7),
             gameMode: gameMode || 'pvb'
         });
 
@@ -315,7 +330,7 @@ app.post('/gameresult/multiplayer', async (req, res) => {
         const player1 = normalizeUsername(req.body?.player1);
         const player2 = normalizeUsername(req.body?.player2);
         const winner = normalizeUsername(req.body?.winner);
-        const { boardSize } = req.body;
+        const normalizedBoardSize = parseBoardSize(req.body?.boardSize, 7);
 
         if (!player1 || !player2 || !winner) {
             return res.status(400).json({
@@ -356,8 +371,6 @@ app.post('/gameresult/multiplayer', async (req, res) => {
                 error: `The user ${player2} does not exist`
             });
         }
-
-        const normalizedBoardSize = Number.isInteger(boardSize) && boardSize > 0 ? boardSize : 7;
 
         const player1Won = winner === player1;
         const player2Won = winner === player2;
@@ -400,14 +413,19 @@ app.post('/gameresult/multiplayer', async (req, res) => {
 
 app.get('/history/:username', async (req, res) => {
     try {
-        const username = normalizeLooseUsername(req.params.username);
+        const username = normalizeUsername(req.params.username);
         const limit = parsePositiveInt(req.query.limit, 20);
 
         if (!username) {
             return res.status(400).json({ success: false, error: 'Invalid username' });
         }
 
-        const games = await GameResult.find({ username })
+        const gamesQuery = findGamesByUsername(username);
+        if (!gamesQuery) {
+            return res.status(400).json({ success: false, error: 'Invalid username' });
+        }
+
+        const games = await gamesQuery
             .sort({ date: -1 })
             .limit(limit);
 
@@ -451,7 +469,12 @@ app.get('/stats/:username', async (req, res) => {
             return res.status(404).json({ success: false, error: `User ${username} not found` });
         }
 
-        const games = await GameResult.find({ username }).sort({ date: -1 });
+        const gamesQuery = findGamesByUsername(username);
+        if (!gamesQuery) {
+            return res.status(400).json({ success: false, error: 'Invalid username' });
+        }
+
+        const games = await gamesQuery.sort({ date: -1 });
         const totalGames = games.length;
         const wins = games.filter(g => g.result === 'win').length;
         const losses = games.filter(g => g.result === 'loss').length;
@@ -494,12 +517,17 @@ app.get('/profile/:username', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid username' });
         }
 
-        const user = await User.findOne({ username }, { password: 0 });
+        const user = await findUserByUsername(username, '-password');
         if (!user) {
             return res.status(404).json({ success: false, error: `User ${username} not found` });
         }
 
-        const games = await GameResult.find({ username }).sort({ date: -1 });
+        const gamesQuery = findGamesByUsername(username);
+        if (!gamesQuery) {
+            return res.status(400).json({ success: false, error: 'Invalid username' });
+        }
+
+        const games = await gamesQuery.sort({ date: -1 });
         const totalGames = games.length;
         const wins = games.filter(g => g.result === 'win').length;
         const losses = games.filter(g => g.result === 'loss').length;
@@ -700,7 +728,7 @@ app.get('/friends', async (req, res) => {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const user = await User.findOne({ username: currentUsername }, { friends: 1 });
+        const user = await findUserByUsername(currentUsername, 'friends');
         if (!user) {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
