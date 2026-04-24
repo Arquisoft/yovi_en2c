@@ -28,10 +28,10 @@ const metricsMiddleware = promBundle({
 });
 app.use(metricsMiddleware);
 
-const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://gamey:4000" || "http://localhost:4000"; //NOSONAR
-const AUTH_BASE_URL  = process.env.AUTH_BASE_URL  || "http://authentication:5000" || "http://localhost:5000"; //NOSONAR
-const USERS_BASE_URL = process.env.USERS_BASE_URL || "http://users:3000" || "http://localhost:3000"; //NOSONAR
-const MULTIPLAYER_BASE_URL = process.env.MULTIPLAYER_BASE_URL || "http://multiplayer:7000" || "http://localhost:7000"; // NOSONAR
+const GAMEY_BASE_URL = process.env.GAMEY_BASE_URL || "http://gamey:4000";
+const AUTH_BASE_URL  = process.env.AUTH_BASE_URL  || "http://authentication:5000";
+const USERS_BASE_URL = process.env.USERS_BASE_URL || "http://users:3000";
+const MULTIPLAYER_BASE_URL = process.env.MULTIPLAYER_BASE_URL || "http://multiplayer:7000";
 
 const AUTH_REGISTER_URL = `${AUTH_BASE_URL}/register`;
 const AUTH_LOGIN_URL    = `${AUTH_BASE_URL}/login`;
@@ -61,8 +61,6 @@ const BOT_CHOOSE_ROUTES = {
 const GAME_NEW_URL    = `${GAMEY_BASE_URL}/game/new`;
 const GAME_STATUS_URL = `${GAMEY_BASE_URL}/status`;
 
-// ── Security helpers ──────────────────────────────────────────────────────────
-
 const USERNAME_RE = /^[a-zA-Z0-9_-]{1,60}$/;
 
 function isValidUsername(username) {
@@ -77,8 +75,6 @@ function sanitizeAuthHeader(authHeader) {
   if (!match) return undefined;
   return `Bearer ${match[1]}`;
 }
-
-// ── Error forwarding ──────────────────────────────────────────────────────────
 
 function forwardAxiosError(res, error, fallbackMessage) {
   const status = error?.response?.status;
@@ -95,7 +91,6 @@ function forwardAxiosError(res, error, fallbackMessage) {
   return res.status(502).json({ ok: false, error: fallbackMessage });
 }
 
-// ── Other helpers ─────────────────────────────────────────────────────────────
 function requireString(value, errorMessage) {
   return typeof value === "string" && value.trim() ? null : errorMessage;
 }
@@ -128,11 +123,25 @@ async function proxyMultiplayerPost(res, path, payload, fallbackMessage) {
   }
 }
 
-// ── Game endpoints ────────────────────────────────────────────────────────────
+function validateUsernameParam(res, username) {
+  if (!isValidUsername(username)) {
+    res.status(400).json({ ok: false, error: "Invalid username" });
+    return false;
+  }
+  return true;
+}
+
+function requireAuth(res, auth) {
+  if (!auth) {
+    res.status(401).json({ ok: false, error: "Authorization header required" });
+    return false;
+  }
+  return true;
+}
 
 app.post("/game/new", async (req, res) => {
   try {
-    const response = await axios.post(GAME_NEW_URL, req.body); // NOSONAR
+    const response = await axios.post(GAME_NEW_URL, req.body);
     return res.status(200).json({ ok: true, yen: response.data });
   } catch (error) {
     return forwardAxiosError(res, error, "Game server unavailable");
@@ -151,14 +160,14 @@ app.post("/game/pvb/move", async (req, res) => {
   if (!route) return res.status(400).json({ ok: false, error: "Invalid bot id" });
 
   try {
-    const response = await axios.post(route, { yen, row, col }); // NOSONAR
+    const response = await axios.post(route, { yen, row, col });
     const payload  = response.data || {};
 
     return res.status(200).json({
-      ok:            true,
-      yen:           payload.yen ?? payload,
-      finished:      payload.finished === true,
-      winner:        payload.winner ?? null,
+      ok: true,
+      yen: payload.yen ?? payload,
+      finished: payload.finished === true,
+      winner: payload.winner ?? null,
       winning_edges: payload.winning_edges ?? [],
     });
   } catch (error) {
@@ -175,7 +184,7 @@ app.post("/game/bot/choose", async (req, res) => {
   if (!route) return res.status(400).json({ ok: false, error: "Invalid bot id" });
 
   try {
-    const response = await axios.post(route, yen); // NOSONAR
+    const response = await axios.post(route, yen);
     return res.status(200).json({ ok: true, coordinates: response.data.coords });
   } catch (error) {
     return forwardAxiosError(res, error, "Game server unavailable");
@@ -193,7 +202,7 @@ app.post("/hint", async (req, res) => {
   if (!route) return res.status(400).json({ ok: false, error: "Hint bot unavailable" });
 
   try {
-    const response = await axios.post(route, yen); // NOSONAR
+    const response = await axios.post(route, yen);
     const coords   = response.data?.coords ?? response.data;
     return res.status(200).json({ ok: true, coords });
   } catch (error) {
@@ -201,7 +210,7 @@ app.post("/hint", async (req, res) => {
   }
 });
 
-app.get("/game/status", async (req, res) => {
+app.get("/game/status", async (_req, res) => {
   try {
     const response = await axios.get(GAME_STATUS_URL);
     return res.status(200).json({ ok: true, message: response.data });
@@ -210,11 +219,9 @@ app.get("/game/status", async (req, res) => {
   }
 });
 
-// ── Users endpoints ───────────────────────────────────────────────────────────
-
 app.post("/gameresult", async (req, res) => {
   try {
-    const response = await axios.post(GAME_RESULT_URL, req.body); // NOSONAR
+    const response = await axios.post(GAME_RESULT_URL, req.body);
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Users service unavailable");
@@ -223,10 +230,7 @@ app.post("/gameresult", async (req, res) => {
 
 app.get("/stats/:username", async (req, res) => {
   const { username } = req.params;
-
-  if (!isValidUsername(username)) {
-    return res.status(400).json({ ok: false, error: "Invalid username" });
-  }
+  if (!validateUsernameParam(res, username)) return;
 
   const usersUrl  = new URL(`/stats/${username}`, USERS_BASE_URL).toString();
   const authStats = sanitizeAuthHeader(req.headers.authorization);
@@ -241,10 +245,7 @@ app.get("/stats/:username", async (req, res) => {
 
 app.get("/profile/:username", async (req, res) => {
   const { username } = req.params;
-
-  if (!isValidUsername(username)) {
-    return res.status(400).json({ ok: false, error: "Invalid username" });
-  }
+  if (!validateUsernameParam(res, username)) return;
 
   const usersUrl = new URL(`/profile/${username}`, USERS_BASE_URL).toString();
 
@@ -258,10 +259,7 @@ app.get("/profile/:username", async (req, res) => {
 
 app.patch("/profile/:username", async (req, res) => {
   const { username } = req.params;
-
-  if (!isValidUsername(username)) {
-    return res.status(400).json({ ok: false, error: "Invalid username" });
-  }
+  if (!validateUsernameParam(res, username)) return;
 
   const usersUrl  = new URL(`/profile/${username}`, USERS_BASE_URL).toString();
   const authPatch = sanitizeAuthHeader(req.headers.authorization);
@@ -279,13 +277,6 @@ app.patch("/profile/:username", async (req, res) => {
   }
 });
 
-// ── Search endpoint ───────────────────────────────────────────────────────────
-
-/**
- * GET /search?q=<query>
- * Proxies user search to the users service.
- * No authentication required (public search).
- */
 app.get("/search", async (req, res) => {
   const { q } = req.query;
 
@@ -304,23 +295,14 @@ app.get("/search", async (req, res) => {
   }
 });
 
-// ── Friends endpoints ─────────────────────────────────────────────────────────
-
-/**
- * POST /friends/request/:username
- * Forwards a friend request to the users service. Requires JWT.
- */
 app.post("/friends/request/:username", async (req, res) => {
   const { username } = req.params;
+  if (!validateUsernameParam(res, username)) return;
 
-  if (!isValidUsername(username)) {
-    return res.status(400).json({ ok: false, error: "Invalid username" });
-  }
+  const auth = sanitizeAuthHeader(req.headers.authorization);
+  if (!requireAuth(res, auth)) return;
 
   const usersUrl = new URL(`/friends/request/${username}`, USERS_BASE_URL).toString();
-  const auth     = sanitizeAuthHeader(req.headers.authorization);
-
-  if (!auth) return res.status(401).json({ ok: false, error: "Authorization header required" });
 
   try {
     const response = await axios.post(usersUrl, {}, { headers: { Authorization: auth } });
@@ -330,21 +312,14 @@ app.post("/friends/request/:username", async (req, res) => {
   }
 });
 
-/**
- * POST /friends/accept/:username
- * Accepts a pending friend request. Requires JWT.
- */
 app.post("/friends/accept/:username", async (req, res) => {
   const { username } = req.params;
+  if (!validateUsernameParam(res, username)) return;
 
-  if (!isValidUsername(username)) {
-    return res.status(400).json({ ok: false, error: "Invalid username" });
-  }
+  const auth = sanitizeAuthHeader(req.headers.authorization);
+  if (!requireAuth(res, auth)) return;
 
   const usersUrl = new URL(`/friends/accept/${username}`, USERS_BASE_URL).toString();
-  const auth     = sanitizeAuthHeader(req.headers.authorization);
-
-  if (!auth) return res.status(401).json({ ok: false, error: "Authorization header required" });
 
   try {
     const response = await axios.post(usersUrl, {}, { headers: { Authorization: auth } });
@@ -354,21 +329,14 @@ app.post("/friends/accept/:username", async (req, res) => {
   }
 });
 
-/**
- * DELETE /friends/:username
- * Removes a friend. Requires JWT.
- */
 app.delete("/friends/:username", async (req, res) => {
   const { username } = req.params;
+  if (!validateUsernameParam(res, username)) return;
 
-  if (!isValidUsername(username)) {
-    return res.status(400).json({ ok: false, error: "Invalid username" });
-  }
+  const auth = sanitizeAuthHeader(req.headers.authorization);
+  if (!requireAuth(res, auth)) return;
 
   const usersUrl = new URL(`/friends/${username}`, USERS_BASE_URL).toString();
-  const auth     = sanitizeAuthHeader(req.headers.authorization);
-
-  if (!auth) return res.status(401).json({ ok: false, error: "Authorization header required" });
 
   try {
     const response = await axios.delete(usersUrl, { headers: { Authorization: auth } });
@@ -378,15 +346,11 @@ app.delete("/friends/:username", async (req, res) => {
   }
 });
 
-/**
- * GET /friends
- * Returns the authenticated user's friends list. Requires JWT.
- */
 app.get("/friends", async (req, res) => {
-  const usersUrl = new URL("/friends", USERS_BASE_URL).toString();
-  const auth     = sanitizeAuthHeader(req.headers.authorization);
+  const auth = sanitizeAuthHeader(req.headers.authorization);
+  if (!requireAuth(res, auth)) return;
 
-  if (!auth) return res.status(401).json({ ok: false, error: "Authorization header required" });
+  const usersUrl = new URL("/friends", USERS_BASE_URL).toString();
 
   try {
     const response = await axios.get(usersUrl, { headers: { Authorization: auth } });
@@ -396,11 +360,9 @@ app.get("/friends", async (req, res) => {
   }
 });
 
-// ── Auth endpoints ────────────────────────────────────────────────────────────
-
 app.post("/login", async (req, res) => {
   try {
-    const response = await axios.post(AUTH_LOGIN_URL, req.body); // NOSONAR
+    const response = await axios.post(AUTH_LOGIN_URL, req.body);
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Auth service unavailable");
@@ -409,7 +371,7 @@ app.post("/login", async (req, res) => {
 
 app.post("/register", async (req, res) => {
   try {
-    const response = await axios.post(AUTH_REGISTER_URL, req.body); // NOSONAR
+    const response = await axios.post(AUTH_REGISTER_URL, req.body);
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Auth service unavailable");
@@ -561,14 +523,12 @@ app.post("/multiplayer/room/leave", async (req, res) => {
 
 app.post("/gameresult/multiplayer", async (req, res) => {
   try {
-    const response = await axios.post(MULTIPLAYER_GAME_RESULT_URL, req.body); // NOSONAR
+    const response = await axios.post(MULTIPLAYER_GAME_RESULT_URL, req.body);
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Users service unavailable");
   }
 });
-
-// ── Server start ──────────────────────────────────────────────────────────────
 
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
