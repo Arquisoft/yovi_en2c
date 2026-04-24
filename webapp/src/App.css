@@ -777,3 +777,172 @@ body {
 [data-theme="light"] .modal-card {
   background: #ffffff;
 }
+
+/* ── Notification bell wrapper ───────────────────────────────────────────── */
+.navbar__notif-anchor {
+  position: relative;
+}
+
+/* ── Notification backdrop (cierra el panel al clicar fuera) ─────────────── */
+.navbar__notif-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+
+/* ── Notification panel ──────────────────────────────────────────────────── */
+.navbar__notif-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 100;
+  width: 320px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: var(--r);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+  padding: 12px 0;
+}
+
+[data-theme="light"] .navbar__notif-panel {
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Panel header ────────────────────────────────────────────────────────── */
+.navbar__notif-header {
+  padding: 0 16px 10px;
+  border-bottom: 1px solid var(--stroke);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navbar__notif-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.navbar__notif-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+.navbar__notif-empty {
+  margin: 24px 16px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+/* ── Notification list ───────────────────────────────────────────────────── */
+.navbar__notif-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar__notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--stroke);
+  transition: background 0.12s ease;
+}
+
+.navbar__notif-item--unread {
+  background: var(--bg);
+}
+
+.navbar__notif-item--read {
+  background: transparent;
+  opacity: 0.7;
+}
+
+.navbar__notif-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.navbar__notif-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.navbar__notif-text {
+  margin: 0 0 2px;
+  font-size: 0.85rem;
+}
+
+.navbar__notif-text--unread {
+  font-weight: 700;
+}
+
+.navbar__notif-text--read {
+  font-weight: 400;
+}
+
+.navbar__notif-date {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.navbar__notif-mark-btn {
+  background: none;
+  border: none;
+  color: var(--aqua);
+  cursor: pointer;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: var(--r);
+  transition: background 0.12s ease;
+}
+
+.navbar__notif-mark-btn:hover {
+  background: rgba(67, 195, 221, 0.12);
+}
+
+/* ── Unread badge sobre el botón de la campana ───────────────────────────── */
+.navbar__notif-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translate(40%, -40%);
+  background: var(--danger);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 900;
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  padding: 0 4px;
+  pointer-events: none;
+}
+
+/* ── Animación de la campana ─────────────────────────────────────────────── */
+@keyframes notif-pulse {
+  0%, 100% { transform: rotate(0deg); }
+  15%       { transform: rotate(10deg); }
+  30%       { transform: rotate(-10deg); }
+  45%       { transform: rotate(6deg); }
+  60%       { transform: rotate(-6deg); }
+  75%       { transform: rotate(2deg); }
+}
+
+.navbar__notif-bell--active {
+  animation: notif-pulse 1.4s ease-in-out infinite;
+}
