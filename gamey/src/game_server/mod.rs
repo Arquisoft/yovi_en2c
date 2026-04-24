@@ -33,6 +33,7 @@ pub mod bot {
 pub mod game {
     pub mod pvb;
     pub mod new;
+    pub mod check;
 }
 
 use axum::response::IntoResponse;
@@ -79,6 +80,9 @@ pub fn create_router(state: AppState) -> axum::Router {
             "/game/new",
             axum::routing::post(game::new::new_game),
         )
+        .route(
+            "/game/check",
+            axum::routing::post(game::check::check_game))
         .layer(prometheus_layer)
         .with_state(state)
 }
