@@ -49,7 +49,7 @@ function getUndoLimitBtn(value: number | "unlimited") {
         return within(card).getByRole("button", { name: /sin l[íi]mite|unlimited/i });
     }
     return within(card).getByRole("button", {
-        name: new RegExp(`^${value}$|${value}\s*(movimiento|move)`, "i"),
+        name: new RegExp(`^${value}$|${value}\\s*(movimiento|move)`, "i"),
     });
 }
 
@@ -59,7 +59,7 @@ function queryUndoLimitBtn(value: number | "unlimited") {
         return within(card).queryByRole("button", { name: /sin l[íi]mite|unlimited/i });
     }
     return within(card).queryByRole("button", {
-        name: new RegExp(`^${value}$|${value}\s*(movimiento|move)`, "i"),
+        name: new RegExp(`^${value}$|${value}\\s*(movimiento|move)`, "i"),
     });
 }
 
