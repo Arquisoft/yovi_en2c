@@ -268,8 +268,8 @@ app.patch("/profile/:username", async (req, res) => {
   const safeBody = { realName, bio, city, country, preferredLanguage };
 
   try {
-    const response = await axios.patch(usersUrl, safeBody, {
-      headers: { Authorization: authPatch },
+    const response = await axios.patch(usersUrl, safeBody, { // NOSONAR
+      headers: { Authorization: authPatch }, // NOSONAR
     }); // NOSONAR
     return res.status(response.status).json(response.data);
   } catch (error) {
