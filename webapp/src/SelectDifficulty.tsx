@@ -5,31 +5,33 @@ import Navbar from "./Navbar";
 import logo from "../img/logo.png";
 
 const difficulties = [
-    { id: "heuristic_bot", nameKey: "difficulty.easy", botId: "heuristic_bot" },
-    { id: "minimax_bot", nameKey: "difficulty.medium", botId: "minimax_bot" },
-    { id: "alfa_beta_bot", nameKey: "difficulty.hard", botId: "alfa_beta_bot" },
-    { id: "monte_carlo_hard", nameKey: "difficulty.expert", botId: "monte_carlo_hard" },
+    { id: "heuristic_bot",       nameKey: "difficulty.easy",    botId: "heuristic_bot"       },
+    { id: "minimax_bot",         nameKey: "difficulty.medium",  botId: "minimax_bot"         },
+    { id: "alfa_beta_bot",       nameKey: "difficulty.hard",    botId: "alfa_beta_bot"       },
+    { id: "monte_carlo_hard",    nameKey: "difficulty.expert",  botId: "monte_carlo_hard"    },
     { id: "monte_carlo_extreme", nameKey: "difficulty.extreme", botId: "monte_carlo_extreme" },
 ];
 
-const PRESET_SIZES = [5, 7, 9, 11];
-const MIN_RECOMMENDED = 5;
-const MAX_RECOMMENDED = 11;
-
-// 0 = no limit
-const PRESET_TIMERS = [0, 15, 30, 60];
+const PRESET_SIZES       = [5, 7, 9, 11];
+const MIN_RECOMMENDED    = 5;
+const MAX_RECOMMENDED    = 11;
+const PRESET_TIMERS      = [0, 15, 30, 60];   // 0 = no limit
+const PRESET_UNDO_LIMITS = [1, 2, 3, 0];       // 0 = unlimited
 
 const SelectDifficulty: React.FC = () => {
     const navigate = useNavigate();
-    const { t } = useI18n();
-    const [username, setUsername] = useState<string | null>(null);
-    const [selected, setSelected] = useState<string>("");
-    const [presetSize, setPresetSize] = useState<number | null>(7);
-    const [customSize, setCustomSize] = useState<string>("");
+    const { t }    = useI18n();
 
-    // Timer state: presetTimer = selected preset (null = custom), customTimer = raw input
+    const [username,    setUsername]    = useState<string | null>(null);
+    const [selected,    setSelected]    = useState<string>("");
+    const [presetSize,  setPresetSize]  = useState<number | null>(7);
+    const [customSize,  setCustomSize]  = useState<string>("");
     const [presetTimer, setPresetTimer] = useState<number | null>(0);
     const [customTimer, setCustomTimer] = useState<string>("");
+
+    // ── Undo config ───────────────────────────────────────────────────────────
+    const [allowUndo, setAllowUndo] = useState<boolean>(false);
+    const [undoLimit, setUndoLimit] = useState<number>(3);
 
     const boardSize = customSize !== "" ? parseInt(customSize, 10) : (presetSize ?? 7);
     const timerSeconds: number =
@@ -52,38 +54,22 @@ const SelectDifficulty: React.FC = () => {
         navigate("/", { replace: true });
     };
 
-    const handlePresetSize = (size: number) => {
-        setPresetSize(size);
-        setCustomSize("");
-    };
-
-    const handleCustomSize = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setPresetSize(null);
-        setCustomSize(e.target.value);
-    };
-
-    const handlePresetTimer = (seconds: number) => {
-        setPresetTimer(seconds);
-        setCustomTimer("");
-    };
-
-    const handleCustomTimer = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setPresetTimer(null);
-        setCustomTimer(e.target.value);
-    };
+    const handlePresetSize  = (size: number)                          => { setPresetSize(size);  setCustomSize(""); };
+    const handleCustomSize  = (e: React.ChangeEvent<HTMLInputElement>) => { setPresetSize(null);  setCustomSize(e.target.value); };
+    const handlePresetTimer = (seconds: number)                        => { setPresetTimer(seconds); setCustomTimer(""); };
+    const handleCustomTimer = (e: React.ChangeEvent<HTMLInputElement>) => { setPresetTimer(null); setCustomTimer(e.target.value); };
 
     const sizeWarning = (): string | null => {
-        if (!boardSize || isNaN(boardSize)) return null;
-        if (boardSize < MIN_RECOMMENDED) return t("boardsize.warning.small");
-        if (boardSize > MAX_RECOMMENDED) return t("boardsize.warning.large");
+        if (!boardSize || isNaN(boardSize))    return null;
+        if (boardSize < MIN_RECOMMENDED)       return t("boardsize.warning.small");
+        if (boardSize > MAX_RECOMMENDED)       return t("boardsize.warning.large");
         return null;
     };
 
     const timerWarning = (): string | null => {
-        if (timerSeconds === 0) return null;
-        if (isNaN(timerSeconds)) return null;
-        if (timerSeconds < 5) return t("timer.warning.short");
-        if (timerSeconds > 300) return t("timer.warning.long");
+        if (timerSeconds === 0 || isNaN(timerSeconds)) return null;
+        if (timerSeconds < 5)                          return t("timer.warning.short");
+        if (timerSeconds > 300)                        return t("timer.warning.long");
         return null;
     };
 
@@ -93,9 +79,11 @@ const SelectDifficulty: React.FC = () => {
             navigate("/game", {
                 state: {
                     username,
-                    bot: selected,
+                    bot:          selected,
                     boardSize,
                     timerSeconds: isNaN(timerSeconds) ? 0 : timerSeconds,
+                    allowUndo,
+                    undoLimit:    allowUndo ? undoLimit : 0,
                 },
             });
         }
@@ -103,16 +91,18 @@ const SelectDifficulty: React.FC = () => {
 
     if (!username) return null;
 
-    const sizeWarn = sizeWarning();
+    const sizeWarn  = sizeWarning();
     const timerWarn = timerWarning();
 
     return (
         <div className="page">
             <Navbar username={username} onLogout={logout} />
-            <main className="container" style={{ paddingTop: 40, textAlign: "center" }}>
-                <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
+            <main className="container sd-container">
 
-                    <div className="hero" style={{ textAlign: "center" }}>
+                <div className="sd-wrapper">
+
+                    {/* ── Hero ──────────────────────────────────────────────── */}
+                    <div className="hero sd-hero">
                         <div className="hero__top">
                             <img src={logo} alt="GameY" className="hero__logo" />
                         </div>
@@ -120,16 +110,15 @@ const SelectDifficulty: React.FC = () => {
                         <p className="hero__subtitle">{t("difficulty.subtitle")}</p>
                     </div>
 
-                    {/* Bot selection */}
+                    {/* ── Bot selection ─────────────────────────────────────── */}
                     <div className="card">
                         <h2 className="card__title">{t("difficulty.subtitle")}</h2>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
+                        <div className="sd-btn-list">
                             {difficulties.map((diff) => (
                                 <button
                                     key={diff.id}
                                     onClick={() => setSelected(diff.botId)}
-                                    className={`btn ${selected === diff.botId ? "btn--primary" : ""}`}
-                                    style={{ width: "100%", textAlign: "center" }}
+                                    className={`btn sd-btn-full ${selected === diff.botId ? "btn--primary" : ""}`}
                                 >
                                     {t(diff.nameKey)}
                                 </button>
@@ -137,17 +126,16 @@ const SelectDifficulty: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Board size */}
+                    {/* ── Board size ────────────────────────────────────────── */}
                     <div className="card">
                         <h2 className="card__title">{t("boardsize.title")}</h2>
                         <p className="card__text">{t("boardsize.subtitle")}</p>
-                        <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 12, flexWrap: "wrap" }}>
+                        <div className="sd-preset-row">
                             {PRESET_SIZES.map((size) => (
                                 <button
                                     key={size}
                                     onClick={() => handlePresetSize(size)}
-                                    className={`btn ${presetSize === size ? "btn--primary" : ""}`}
-                                    style={{ minWidth: 60 }}
+                                    className={`btn sd-preset-btn ${presetSize === size ? "btn--primary" : ""}`}
                                 >
                                     {size}
                                 </button>
@@ -159,36 +147,21 @@ const SelectDifficulty: React.FC = () => {
                             value={customSize}
                             onChange={handleCustomSize}
                             placeholder={t("boardsize.custom.placeholder")}
-                            className="form-input"
-                            style={{ marginTop: 12, textAlign: "center" }}
+                            className="form-input sd-custom-input"
                         />
-                        {sizeWarn && (
-                            <p style={{
-                                marginTop: 10,
-                                padding: "8px 12px",
-                                borderRadius: 10,
-                                background: "rgba(254,235,160,.15)",
-                                border: "1px solid rgba(254,235,160,.50)",
-                                color: "#feeba0",
-                                fontWeight: 700,
-                                fontSize: "0.9rem",
-                            }}>
-                                {sizeWarn}
-                            </p>
-                        )}
+                        {sizeWarn && <p className="sd-warning">{sizeWarn}</p>}
                     </div>
 
-                    {/* Turn timer */}
+                    {/* ── Turn timer ────────────────────────────────────────── */}
                     <div className="card">
                         <h2 className="card__title">{t("timer.title")}</h2>
                         <p className="card__text">{t("timer.subtitle")}</p>
-                        <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 12, flexWrap: "wrap" }}>
+                        <div className="sd-preset-row">
                             {PRESET_TIMERS.map((seconds) => (
                                 <button
                                     key={seconds}
                                     onClick={() => handlePresetTimer(seconds)}
-                                    className={`btn ${presetTimer === seconds ? "btn--primary" : ""}`}
-                                    style={{ minWidth: 60 }}
+                                    className={`btn sd-preset-btn ${presetTimer === seconds ? "btn--primary" : ""}`}
                                 >
                                     {seconds === 0 ? t("timer.noLimit") : `${seconds}s`}
                                 </button>
@@ -201,38 +174,65 @@ const SelectDifficulty: React.FC = () => {
                             value={customTimer}
                             onChange={handleCustomTimer}
                             placeholder={t("timer.custom.placeholder")}
-                            className="form-input"
-                            style={{ marginTop: 12, textAlign: "center" }}
+                            className="form-input sd-custom-input"
                         />
-                        {timerWarn && (
-                            <p style={{
-                                marginTop: 10,
-                                padding: "8px 12px",
-                                borderRadius: 10,
-                                background: "rgba(254,235,160,.15)",
-                                border: "1px solid rgba(254,235,160,.50)",
-                                color: "#feeba0",
-                                fontWeight: 700,
-                                fontSize: "0.9rem",
-                            }}>
-                                {timerWarn}
-                            </p>
+                        {timerWarn && <p className="sd-warning">{timerWarn}</p>}
+                    </div>
+
+                    {/* ── Undo moves ────────────────────────────────────────── */}
+                    <div className="card">
+                        <h2 className="card__title">{t("undo.title")}</h2>
+                        <p className="card__text">{t("undo.subtitle")}</p>
+
+                        {/* Toggle */}
+                        <div className="sd-toggle-row">
+                            <span className="sd-toggle-label">{t("undo.toggle.label")}</span>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={allowUndo}
+                                aria-label={t("undo.toggle.label")}
+                                onClick={() => setAllowUndo(prev => !prev)}
+                                className={`sd-toggle ${allowUndo ? "sd-toggle--on" : ""}`}
+                            >
+                                <span className="sd-toggle__thumb" />
+                            </button>
+                        </div>
+
+                        {/* Limit selector */}
+                        {allowUndo && (
+                            <div className="sd-undo-limits">
+                                <p className="sd-undo-limits__label">{t("undo.limit.label")}</p>
+                                <div className="sd-preset-row">
+                                    {PRESET_UNDO_LIMITS.map((limit) => (
+                                        <button
+                                            key={limit}
+                                            onClick={() => setUndoLimit(limit)}
+                                            className={`btn sd-preset-btn ${undoLimit === limit ? "btn--primary" : ""}`}
+                                            aria-label={limit === 0
+                                                ? t("undo.limit.unlimited")
+                                                : `${limit} ${t("undo.limit.moves")}`}
+                                        >
+                                            {limit === 0 ? t("undo.limit.unlimited") : limit}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         )}
                     </div>
 
+                    {/* ── Actions ───────────────────────────────────────────── */}
                     <button
                         onClick={handleStart}
                         disabled={!selected}
-                        className="btn btn--primary"
-                        style={{ width: "100%" }}
+                        className="btn btn--primary sd-btn-full"
                     >
                         {t("difficulty.start")}
                     </button>
 
                     <button
                         type="button"
-                        className="btn"
-                        style={{ width: "100%" }}
+                        className="btn sd-btn-full"
                         onClick={() => navigate("/instructions", { state: { username } })}
                     >
                         {t("instructions.title")}
