@@ -37,6 +37,7 @@ const AUTH_REGISTER_URL = `${AUTH_BASE_URL}/register`;
 const AUTH_LOGIN_URL    = `${AUTH_BASE_URL}/login`;
 const AUTH_VERIFY_URL   = `${AUTH_BASE_URL}/verify`;
 const GAME_RESULT_URL   = `${USERS_BASE_URL}/gameresult`;
+const GAME_SWAP_URL = `${GAMEY_BASE_URL}/v1/game/swap`;
 
 const PVB_MOVE_ROUTES = {
   random_bot:          `${GAMEY_BASE_URL}/v1/game/pvb/random_bot`,
@@ -158,6 +159,40 @@ app.post("/hint", async (req, res) => {
   try {
     const response = await axios.post(route, yen); // NOSONAR
     return res.status(200).json({ ok: true, coords: response.data?.coords ?? response.data });
+  } catch (error) {
+    return forwardAxiosError(res, error, "Game server unavailable");
+  }
+});
+
+/**
+ * POST /game/swap
+ * Applies the Pie Rule swap to the current YEN state.
+ * Proxies to POST /v1/game/swap on the Rust game engine.
+ *
+ * Body: { yen: <YEN object> }
+ * Response: { ok: true, yen: <swapped YEN object> }
+ *
+ * Errors:
+ *   400 — Missing YEN in request body
+ *   400 — Swap not allowed at this turn (forwarded from game engine)
+ *   502 — Game server unreachable
+ */
+app.post("/game/swap", async (req, res) => {
+  const { yen } = req.body;
+
+  if (!yen) return res.status(400).json({ ok: false, error: "Missing YEN" });
+
+  try {
+    const response = await axios.post(GAME_SWAP_URL, { yen }); // NOSONAR
+    const payload  = response.data || {};
+
+    return res.status(200).json({
+      ok:            true,
+      yen:           payload.yen ?? payload,
+      finished:      payload.finished === true,
+      winner:        payload.winner ?? null,
+      winning_edges: payload.winning_edges ?? [],
+    });
   } catch (error) {
     return forwardAxiosError(res, error, "Game server unavailable");
   }
