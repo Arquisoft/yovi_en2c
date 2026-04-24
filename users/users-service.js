@@ -79,7 +79,7 @@ async function findUserByUsername(username, projection) {
 
     if (!safeUsername) return null;
 
-    return execMaybe(User.findOne(
+    return execMaybe(User.findOne( //NOSONAR
         { username: { $eq: safeUsername } },
         projection
     ));
@@ -90,7 +90,7 @@ function findGamesByUsername(username) {
 
     if (!safeUsername) return null;
 
-    return GameResult.find({
+    return GameResult.find({ // NOSONAR
         username: { $eq: safeUsername }
     });
 }
@@ -257,7 +257,7 @@ app.get('/search', async (req, res) => {
         const escaped = escapeRegex(safeQuery);
         const regex = new RegExp(escaped, 'i');
 
-        const users = await User.find(
+        const users = await User.find( //NOSONAR
             {
                 $or: [
                     { username: { $regex: regex } },
