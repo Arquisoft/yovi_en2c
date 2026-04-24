@@ -53,7 +53,7 @@ export const translations: Record<Lang, Dict> = {
     "home.badge": "Estás en Gamey - Yovi_EN2C",
     "home.welcome": "Hola {username}",
     "home.subtitle":
-      "Juega al juego Y",
+        "Juega al juego Y",
     "home.quickgame": "Partida rapida",
     "home.goBoard": "Ir al tablero",
     "home.changeUser": "Cambiar usuario",
@@ -102,7 +102,7 @@ export const translations: Record<Lang, Dict> = {
     "boardsize.custom.placeholder": "Tamaño personalizado",
     "boardsize.warning.small": "El tablero es muy pequeño, la partida puede no ser divertida",
     "boardsize.warning.large": "Los tableros grandes pueden ralentizar la respuesta del bot",
-  
+
     // Instructions
     "instructions.title": "Instrucciones",
     "instructions.subtitle": "Aprende las reglas básicas de GameY y elige la dificultad que mejor se adapte a ti",
@@ -151,7 +151,7 @@ export const translations: Record<Lang, Dict> = {
     //Tema (colores )
     "common.lightMode": "Cambiar a tema claro",
     "common.darkMode":  "Cambiar a tema oscuro",
-    
+
     //Timer
     "timer.title": "Tiempo por turno",
     "timer.subtitle": "El jugador pierde si no mueve a tiempo. 0 = sin límite.",
@@ -243,6 +243,43 @@ export const translations: Record<Lang, Dict> = {
     "undo.limit.unlimited": "Sin límite",
     "game.undo": "Deshacer",
     "game.undoDone": "Movimiento deshecho",
+
+    // Modo de juego (selector)
+    "gamemode.title": "Modo de juego",
+    "gamemode.subtitle": "Elige cómo quieres jugar esta partida",
+    "gamemode.vsBot": "🤖 Contra el bot",
+    "gamemode.local": "👥 Multijugador local",
+
+    // Multijugador local — jugadores
+    "local.player1.label": "Jugador 1",
+    "local.player2.label": "Jugador 2",
+    "local.player2.title": "Nombre del segundo jugador",
+    "local.player2.subtitle": "El jugador 1 es el usuario con sesión iniciada",
+    "local.player2.placeholder": "Nombre del jugador 2",
+
+    // Multijugador local — quién empieza
+    "local.firstplayer.title": "¿Quién empieza?",
+    "local.firstplayer.subtitle": "Elige qué jugador realiza el primer movimiento",
+    "local.firstplayer.random": "🎲 Aleatorio",
+
+    // Multijugador local — indicador de turno en partida
+    "local.activeturn": "Turno",
+
+    // Regla del pastel
+    "pierule.title": "🥧 Regla del pastel",
+    "pierule.description": "Tras el primer movimiento, el jugador 2 puede intercambiar los colores con el jugador 1 para equilibrar la ventaja del primer turno.",
+    "pierule.toggle.label": "Activar regla del pastel",
+    "pierule.used": "Regla del pastel aplicada",
+    "pierule.modal.title": "¿Intercambiar colores?",
+    "pierule.modal.description": "{player} puede tomar el color del jugador 1 como propio o continuar como jugador 2.",
+    "pierule.modal.accept": "Sí, intercambiar",
+    "pierule.modal.decline": "No, continuar",
+
+    // Home — card 2 actualizada
+    "home.card2.cta": "Jugar en local",
+
+    // Fin de partida — modo local
+    "game.finished.wins": "¡ha ganado!",
   },
 
   en: {
@@ -340,7 +377,7 @@ export const translations: Record<Lang, Dict> = {
     "boardsize.custom.placeholder": "Custom size",
     "boardsize.warning.small": "Board too small, the game may not be fun",
     "boardsize.warning.large": "Large boards may cause slow bot responses",
-  
+
     // Instructions
     "instructions.title": "Instructions",
     "instructions.subtitle": "Learn the basic rules of GameY and choose the difficulty that fits you best",
@@ -389,7 +426,7 @@ export const translations: Record<Lang, Dict> = {
     //Theme
     "common.lightMode": "Switch to light theme",
     "common.darkMode":  "Switch to dark theme",
-    
+
     //Timer
     "timer.title": "Turn Timer",
     "timer.subtitle": "Player loses if they don't move in time. 0 = no limit.",
@@ -480,5 +517,42 @@ export const translations: Record<Lang, Dict> = {
     "undo.limit.unlimited": "Unlimited",
     "game.undo": "Undo",
     "game.undoDone": "Move undone",
+
+    // Game mode (selector)
+    "gamemode.title": "Game Mode",
+    "gamemode.subtitle": "Choose how you want to play this match",
+    "gamemode.vsBot": "🤖 vs Bot",
+    "gamemode.local": "👥 Local Multiplayer",
+
+    // Local multiplayer — players
+    "local.player1.label": "Player 1",
+    "local.player2.label": "Player 2",
+    "local.player2.title": "Second player's name",
+    "local.player2.subtitle": "Player 1 is the logged-in user",
+    "local.player2.placeholder": "Player 2 name",
+
+    // Local multiplayer — who starts
+    "local.firstplayer.title": "Who goes first?",
+    "local.firstplayer.subtitle": "Choose which player makes the first move",
+    "local.firstplayer.random": "🎲 Random",
+
+    // Local multiplayer — active turn indicator in game
+    "local.activeturn": "Turn",
+
+    // Pie rule
+    "pierule.title": "🥧 Pie Rule",
+    "pierule.description": "After the first move, player 2 can swap colors with player 1 to balance the first-move advantage.",
+    "pierule.toggle.label": "Enable pie rule",
+    "pierule.used": "Pie rule applied",
+    "pierule.modal.title": "Swap colors?",
+    "pierule.modal.description": "{player} can take player 1's color as their own or continue as player 2.",
+    "pierule.modal.accept": "Yes, swap",
+    "pierule.modal.decline": "No, continue",
+
+    // Home — card 2 updated
+    "home.card2.cta": "Play local",
+
+    // Game over — local mode
+    "game.finished.wins": "wins!",
   },
 };
