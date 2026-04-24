@@ -40,22 +40,25 @@ const Home: React.FC = () => {
     }
   }, [token]);
 
-  const handleMarkRead = useCallback(async (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-
-    try {
-      await fetch(`${API_URL}/notifications/${id}/read`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    } catch {
+  const handleMarkRead = useCallback(
+    async (id: string) => {
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: false } : n))
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
-    }
-  }, [token]);
+
+      try {
+        await fetch(`${API_URL}/notifications/${id}/read`, {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, read: false } : n))
+        );
+      }
+    },
+    [token]
+  );
 
   useEffect(() => {
     const verifySession = async () => {
@@ -99,6 +102,12 @@ const Home: React.FC = () => {
 
   const startQuickGame = () => {
     navigate("/game", { state: { username, bot: "minimax_bot", boardSize: 7 } });
+  };
+
+  const goLocalGame = () => {
+    navigate("/game", {
+      state: { username, bot: "local", boardSize: 7, localGame: true },
+    });
   };
 
   const goMultiplayer = () => {
@@ -159,6 +168,10 @@ const Home: React.FC = () => {
 
         <section className="grid" aria-label="Info cards">
           <article className="card">
+            <div className="hero__badge">
+              <span aria-hidden="true" />
+              {t("home.card1.pill")}
+            </div>
             <h2 className="card__title">{t("home.card1.title")}</h2>
             <p className="card__text">{t("home.card1.text")}</p>
             <div style={{ marginTop: 16 }}>
@@ -169,6 +182,10 @@ const Home: React.FC = () => {
           </article>
 
           <article className="card">
+            <div className="hero__badge">
+              <span aria-hidden="true" />
+              {t("home.card2.pill")}
+            </div>
             <h2 className="card__title">{t("home.card2.title")}</h2>
             <p className="card__text">{t("home.card2.text")}</p>
             <div style={{ marginTop: 16 }}>
@@ -179,6 +196,10 @@ const Home: React.FC = () => {
           </article>
 
           <article className="card">
+            <div className="hero__badge">
+              <span aria-hidden="true" />
+              {t("home.card3.pill")}
+            </div>
             <h2 className="card__title">{t("home.card3.title")}</h2>
             <p className="card__text">{t("home.card3.text")}</p>
             <div style={{ marginTop: 16 }}>
@@ -189,6 +210,10 @@ const Home: React.FC = () => {
           </article>
 
           <article className="card">
+            <div className="hero__badge">
+              <span aria-hidden="true" />
+              {t("home.card4.pill")}
+            </div>
             <h2 className="card__title">{t("home.card4.title")}</h2>
             <p className="card__text">{t("home.card4.text")}</p>
             <div style={{ marginTop: 16 }}>
@@ -196,6 +221,29 @@ const Home: React.FC = () => {
                 {t("home.card4.button")}
               </button>
             </div>
+          </article>
+
+          <article className="card">
+            <div className="hero__badge">
+              <span aria-hidden="true" />
+              {t("home.card5.pill")}
+            </div>
+            <h2 className="card__title">{t("home.card5.title")}</h2>
+            <p className="card__text">{t("home.card5.text")}</p>
+            <div style={{ marginTop: 16 }}>
+              <button className="btn btn--primary" onClick={goLocalGame} type="button">
+                {t("home.card5.button")}
+              </button>
+            </div>
+          </article>
+
+          <article className="card">
+            <div className="hero__badge">
+              <span aria-hidden="true" />
+              {t("home.card6.pill")}
+            </div>
+            <h2 className="card__title">{t("home.card6.title")}</h2>
+            <p className="card__text">{t("home.card6.text")}</p>
           </article>
         </section>
       </main>
