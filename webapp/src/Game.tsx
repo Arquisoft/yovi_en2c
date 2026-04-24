@@ -17,8 +17,9 @@ type GatewayResponse =
 }
     | { ok: false; error: string; details?: any };
 
-const API_URL = "/api";
+const API_URL          = "/api";
 const HINT_DURATION_MS = 2500;
+const UNDO_TOAST_MS    = 1800;
 
 function parseLayout(layout: string) {
   if (!layout) return [];
@@ -120,7 +121,7 @@ const BotTimer: React.FC<BotTimerProps> = ({ size }) => {
 const Game: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useI18n();
+  const { t }    = useI18n();
 
   const username = useMemo(() => {
     const st = (location.state as { username?: string } | null) ?? null;
@@ -151,6 +152,18 @@ const Game: React.FC = () => {
 
   const timerEnabled = timerSeconds > 0;
 
+  // ── Undo config (read from navigation state) ──────────────────────────────
+  const allowUndo = useMemo(() => {
+    const st = (location.state as { allowUndo?: boolean } | null) ?? null;
+    return st?.allowUndo ?? false;
+  }, [location.state]);
+
+  // undoLimit: 0 = unlimited, >0 = max undos per game
+  const undoLimit = useMemo(() => {
+    const st = (location.state as { undoLimit?: number } | null) ?? null;
+    return st?.undoLimit ?? 0;
+  }, [location.state]);
+
   const [showInstructions, setShowInstructions] = useState(false);
 
   const boardSizeFromState = useMemo(() => {
@@ -158,13 +171,21 @@ const Game: React.FC = () => {
     return st?.boardSize ?? 7;
   }, [location.state]);
 
-  const [busy,      setBusy]      = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
-  const [moveCount, setMoveCount] = useState(0);
+  const [busy,       setBusy]       = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+  const [moveCount,  setMoveCount]  = useState(0);
 
   const [hintCell,    setHintCell]    = useState<string | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
   const hintTimerRef = useRef<number | null>(null);
+
+  // ── Undo state ────────────────────────────────────────────────────────────
+  // yenHistory: array of YEN states BEFORE each human move (index 0 = oldest).
+  // Each entry is the complete yen object the player could revert to.
+  const [yenHistory,  setYenHistory]  = useState<any[]>([]);
+  const [undoCount,   setUndoCount]   = useState(0);   // how many undos used this game
+  const [undoToast,   setUndoToast]   = useState(false);
+  const undoToastTimerRef = useRef<number | null>(null);
 
   const [fixedPlayers, setFixedPlayersState] = useState<[string, string] | null>(null);
   const fixedPlayersRef = useRef<[string, string] | null>(null);
@@ -232,6 +253,7 @@ const Game: React.FC = () => {
     return () => {
       if (finishTimerRef.current !== null) window.clearTimeout(finishTimerRef.current);
       if (hintTimerRef.current !== null) window.clearTimeout(hintTimerRef.current);
+      if (undoToastTimerRef.current !== null) window.clearTimeout(undoToastTimerRef.current);
       stopTimer();
     };
   }, [stopTimer]);
@@ -241,6 +263,7 @@ const Game: React.FC = () => {
     setYen(null); setWinningPath(null); setGameOver(null);
     setError(null); setMoveCount(0); setShowInstructions(false);
     setHintCell(null); setHintLoading(false);
+    setYenHistory([]); setUndoCount(0); setUndoToast(false);
     stopTimer(); setTimeLeft(timerSeconds);
   }, [botId, boardSizeFromState, stopTimer, timerSeconds]);
 
@@ -273,7 +296,7 @@ const Game: React.FC = () => {
   const rowHeight   = cellSpacing * 0.85;
 
   const pieceRadius = useMemo(() => {
-    const byWidth = cellSpacing * 0.42;
+    const byWidth  = cellSpacing * 0.42;
     const byHeight = rowHeight * 0.48;
     return Math.max(7, Math.min(22, byWidth, byHeight));
   }, [cellSpacing, rowHeight]);
@@ -348,6 +371,8 @@ const Game: React.FC = () => {
     clearPendingFinish(); setMoveCount(0); stopTimer(); setTimeLeft(timerSeconds);
     clearHint(); setHintLoading(false);
     fixedPlayersRef.current = null; setFixedPlayersState(null);
+    // Reset undo state for new game
+    setYenHistory([]); setUndoCount(0); setUndoToast(false);
     try {
       const res  = await fetch(`${API_URL}/game/new`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -382,10 +407,16 @@ const Game: React.FC = () => {
     stopTimer();
     const optimisticYen = applyLocalHumanMove(yen, target.row, target.col, humanToken);
     setBusy(true); setError(null);
-    const previousYen  = yen;
-    const newMoveCount = moveCount + 1;
+    const previousYen   = yen;
+    const newMoveCount  = moveCount + 1;
     setMoveCount(newMoveCount);
     setYen(optimisticYen);
+
+    // ── Push to undo history before the move is sent ──────────────────────
+    if (allowUndo) {
+      setYenHistory(prev => [...prev, previousYen]);
+    }
+
     try {
       const res  = await fetch(`${API_URL}/game/pvb/move`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -400,13 +431,46 @@ const Game: React.FC = () => {
       applyFinishFromGateway(data, players, newMoveCount, boardSizeFromState);
       if (!(data as any).finished) startTimer();
     } catch (e: any) {
+      // Revert on error — also pop the history entry we just pushed
       setYen(previousYen);
       setMoveCount((c) => Math.max(0, c - 1));
+      if (allowUndo) {
+        setYenHistory(prev => prev.slice(0, -1));
+      }
       setError(e?.message ?? "Backend error");
       startTimer();
     } finally {
       setBusy(false);
     }
+  };
+
+  // ── Undo move ─────────────────────────────────────────────────────────────
+  // Restores the board to the state before the last human move.
+  // The bot's response move is also rolled back because the history stores
+  // the YEN BEFORE the human moved (which is also BEFORE the bot responded).
+  const undoMove = () => {
+    if (!allowUndo) return;
+    if (yenHistory.length === 0) return;
+    if (gameOver) return;
+    if (busy) return;
+    if (undoLimit > 0 && undoCount >= undoLimit) return;
+
+    const previousYen = yenHistory[yenHistory.length - 1];
+    setYen(previousYen);
+    setYenHistory(prev => prev.slice(0, -1));
+    setMoveCount(prev => Math.max(0, prev - 1));
+    setUndoCount(prev => prev + 1);
+    clearHint();
+    stopTimer();
+    startTimer();
+
+    // Show brief "Move undone" toast
+    setUndoToast(true);
+    if (undoToastTimerRef.current !== null) window.clearTimeout(undoToastTimerRef.current);
+    undoToastTimerRef.current = window.setTimeout(() => {
+      setUndoToast(false);
+      undoToastTimerRef.current = null;
+    }, UNDO_TOAST_MS);
   };
 
   const requestHint = async () => {
@@ -465,8 +529,21 @@ const Game: React.FC = () => {
     return 1.4;
   };
 
-  // Hint button visible only during the player's turn
+  // ── Button visibility / disabled logic ────────────────────────────────────
   const showHintButton = !!yen && !gameOver && !busy;
+
+  const showUndoButton = allowUndo && !!yen && !gameOver;
+
+  // The undo button is disabled when:
+  //  - the game is busy (waiting for bot)
+  //  - no moves have been made yet (history is empty)
+  //  - the undo limit has been reached
+  const undoDisabled =
+      busy ||
+      yenHistory.length === 0 ||
+      (undoLimit > 0 && undoCount >= undoLimit);
+
+  const undoRemaining = undoLimit > 0 ? undoLimit - undoCount : null;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -538,7 +615,7 @@ const Game: React.FC = () => {
               </div>
           )}
 
-          {/* Board + side panel (timer + hint) */}
+          {/* Board + side panel */}
           <div className="game-board-area">
             <div
                 className="game-board-wrapper"
@@ -578,11 +655,10 @@ const Game: React.FC = () => {
               </svg>
             </div>
 
-            {/* Side panel — always rendered when game is active so the hint
-                button has a fixed position regardless of timer being enabled */}
+            {/* Side panel — timer + hint + undo */}
             {yen && !gameOver && (
                 <div className="game-side-panel">
-                  {/* Timer section — only when timer is enabled */}
+                  {/* Timer section */}
                   {timerEnabled && (
                       <>
                         {busy ? (
@@ -599,7 +675,7 @@ const Game: React.FC = () => {
                       </>
                   )}
 
-                  {/* Hint button — below the timer, visible only on player's turn */}
+                  {/* Hint button */}
                   {showHintButton && (
                       <button
                           onClick={requestHint}
@@ -610,9 +686,61 @@ const Game: React.FC = () => {
                         {hintLoading ? t("game.hintLoading") : t("game.hint")}
                       </button>
                   )}
+
+                  {/* Undo button — below hint, only when undo is enabled */}
+                  {showUndoButton && (
+                      <button
+                          onClick={undoMove}
+                          disabled={undoDisabled}
+                          aria-label={t("game.undo")}
+                          className="game-hint-btn"
+                          style={{
+                            marginTop: 8,
+                            opacity: undoDisabled ? 0.45 : 1,
+                            cursor: undoDisabled ? "not-allowed" : "pointer",
+                          }}
+                      >
+                        {t("game.undo")}
+                        {undoRemaining !== null && (
+                            <span style={{
+                              marginLeft: 6,
+                              fontSize: "0.72rem",
+                              opacity: 0.75,
+                            }}>
+                              ({undoRemaining})
+                            </span>
+                        )}
+                      </button>
+                  )}
                 </div>
             )}
           </div>
+
+          {/* Undo toast — brief "Move undone" notification */}
+          {undoToast && (
+              <div
+                  role="status"
+                  aria-live="polite"
+                  style={{
+                    position: "fixed",
+                    bottom: 28,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    zIndex: 200,
+                    background: "rgba(30,40,60,0.92)",
+                    border: "1px solid rgba(67,195,221,.45)",
+                    color: "#fff",
+                    borderRadius: 10,
+                    padding: "10px 22px",
+                    fontWeight: 700,
+                    fontSize: "0.9rem",
+                    pointerEvents: "none",
+                    whiteSpace: "nowrap",
+                  }}
+              >
+                {t("game.undoDone")}
+              </div>
+          )}
 
           {/* Game over overlay */}
           {gameOver && (
