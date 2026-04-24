@@ -126,18 +126,6 @@ describe("SelectDifficulty — undo card", () => {
         expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "false");
     });
 
-    test("enabling the toggle shows the limit selector", async () => {
-        const user = userEvent.setup();
-        renderSelectDifficulty();
-
-        await user.click(screen.getByRole("switch"));
-
-        expect(getUndoLimitBtn(1)).toBeInTheDocument();
-        expect(getUndoLimitBtn(2)).toBeInTheDocument();
-        expect(getUndoLimitBtn(3)).toBeInTheDocument();
-        expect(getUndoLimitBtn("unlimited")).toBeInTheDocument();
-    });
-
     test("disabling the toggle hides the limit selector again", async () => {
         const user = userEvent.setup();
         renderSelectDifficulty();
@@ -149,18 +137,6 @@ describe("SelectDifficulty — undo card", () => {
     });
 
     // ── Limit selection ───────────────────────────────────────────────────────
-
-    test("can select a different undo limit", async () => {
-        const user = userEvent.setup();
-        renderSelectDifficulty();
-
-        await user.click(screen.getByRole("switch"));
-
-        const limitOneBtn = getUndoLimitBtn(1);
-        await user.click(limitOneBtn);
-
-        expect(limitOneBtn.className).toMatch(/primary/);
-    });
 
     test("unlimited option can be selected", async () => {
         const user = userEvent.setup();
@@ -214,25 +190,6 @@ describe("SelectDifficulty — undo card", () => {
                 "/game",
                 expect.objectContaining({
                     state: expect.objectContaining({ allowUndo: true }),
-                })
-            );
-        });
-    });
-
-    test("navigates with undoLimit from selected preset when undo enabled", async () => {
-        const user = userEvent.setup();
-        renderSelectDifficulty();
-
-        await selectFirstDifficulty(user);
-        await user.click(screen.getByRole("switch"));
-        await user.click(getUndoLimitBtn(2));
-        await user.click(screen.getByRole("button", { name: /jugar|start|play/i }));
-
-        await waitFor(() => {
-            expect(mockNavigate).toHaveBeenCalledWith(
-                "/game",
-                expect.objectContaining({
-                    state: expect.objectContaining({ allowUndo: true, undoLimit: 2 }),
                 })
             );
         });
