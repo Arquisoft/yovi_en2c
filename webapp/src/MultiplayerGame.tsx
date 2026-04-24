@@ -89,10 +89,8 @@ function getHexagonPoints(cx: number, cy: number, radius: number) {
 }
 
 const HINT_DURATION_MS = 2500;
-const MULTIPLAYER_URL =
-  import.meta.env.VITE_MULTIPLAYER_URL ?? window.location.origin;
-const MULTIPLAYER_SOCKET_PATH =
-  import.meta.env.VITE_MULTIPLAYER_SOCKET_PATH ?? "/socket.io";
+const MULTIPLAYER_URL = window.location.origin;
+const MULTIPLAYER_SOCKET_PATH = "/socket.io";
 
 const MultiplayerGame: React.FC = () => {
   const navigate = useNavigate();
