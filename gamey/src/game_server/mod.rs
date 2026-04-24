@@ -37,36 +37,26 @@ pub mod game {
 }
 
 use axum::response::IntoResponse;
-use axum_prometheus::metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
-use std::sync::{Arc, OnceLock};
+use axum_prometheus::PrometheusMetricLayer;
+use std::sync::Arc;
 pub use bot::choose::MoveResponse;
 pub use error::ErrorResponse;
 pub use version::*;
 
 use crate::{GameYError, HeuristicBot, YBotRegistry, game_server::state::AppState};
 
-static PROMETHEUS_HANDLE: OnceLock<PrometheusHandle> = OnceLock::new();
-
-fn prometheus_handle() -> &'static PrometheusHandle {
-    PROMETHEUS_HANDLE.get_or_init(|| {
-        PrometheusBuilder::new()
-            .install_recorder()
-            .expect("Failed to install Prometheus recorder")
-    })
-}
-
 /// Creates the Axum router with the given state.
 ///
 /// This is useful for testing the API without binding to a network port.
 pub fn create_router(state: AppState) -> axum::Router {
-    let _ = prometheus_handle();
-
-    let prometheus_layer = axum_prometheus::PrometheusMetricLayer::new();
+    // PrometheusMetricLayer uses the Tower middleware pattern — it wraps every
+    // route in the router automatically, so no per-route changes are needed.
+    let (prometheus_layer, metrics_handle) = PrometheusMetricLayer::pair();
 
     axum::Router::new()
         .route("/status", axum::routing::get(status))
-        .route("/metrics", axum::routing::get(|| async {
-            prometheus_handle().render()
+        .route("/metrics", axum::routing::get(move || async move {
+            metrics_handle.render()
         }))
         .route(
             "/{api_version}/ybot/choose/{bot_id}",
