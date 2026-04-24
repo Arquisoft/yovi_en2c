@@ -233,6 +233,16 @@ export const translations: Record<Lang, Dict> = {
     "notifications.panelLabel": "Panel de notificaciones",
     "notifications.welcomeText": "¡Bienvenido al equipo YOVI!",
     "notifications.friendRequestText": "{{from}} te ha enviado una solicitud de amistad",
+
+    //deshacer movimiento en partida
+    "undo.title": "Deshacer movimientos",
+    "undo.subtitle": "Permite revertir tu último movimiento",
+    "undo.toggle.label": "Permitir deshacer",
+    "undo.limit.label": "Límite de veces",
+    "undo.limit.moves": "movimientos",
+    "undo.limit.unlimited": "Sin límite",
+    "game.undo": "Deshacer",
+    "game.undoDone": "Movimiento deshecho",
   },
 
   en: {
@@ -460,5 +470,15 @@ export const translations: Record<Lang, Dict> = {
     "notifications.panelLabel": "Notifications panel",
     "notifications.welcomeText": "Welcome to the YOVI team!",
     "notifications.friendRequestText": "{{from}} sent you a friend request",
+
+    //undo move
+    "undo.title": "Undo moves",
+    "undo.subtitle": "Allows you to revert your last move",
+    "undo.toggle.label": "Allow undo",
+    "undo.limit.label": "Limit",
+    "undo.limit.moves": "moves",
+    "undo.limit.unlimited": "Unlimited",
+    "game.undo": "Undo",
+    "game.undoDone": "Move undone",
   },
 };
