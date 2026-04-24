@@ -301,10 +301,6 @@ mod tests {
         (&game).into()
     }
 
-    fn request_body(yen: crate::YEN, row: usize, col: usize) -> PvpMoveRequest {
-        PvpMoveRequest { yen, row, col }
-    }
-
     fn post_pvp(body: &PvpMoveRequest, version: &str) -> Request<Body> {
         Request::post(format!("/{version}/game/pvp/move"))
             .header("content-type", "application/json")
@@ -312,19 +308,26 @@ mod tests {
             .unwrap()
     }
 
-    async fn send_pvp(body: &PvpMoveRequest, version: &str) -> axum::response::Response {
-        test_app().oneshot(post_pvp(body, version)).await.unwrap()
+    async fn send_pvp(body: PvpMoveRequest, version: &str) -> axum::response::Response {
+        test_app().oneshot(post_pvp(&body, version)).await.unwrap()
     }
 
-    async fn assert_pvp_status(body: PvpMoveRequest, version: &str, expected: StatusCode) {
-        let response = send_pvp(&body, version).await;
-        assert_eq!(response.status(), expected);
+    async fn expect_bad_request(yen: crate::YEN, row: usize, col: usize, version: &str) {
+        let response = send_pvp(PvpMoveRequest { yen, row, col }, version).await;
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]
     async fn test_pvp_valid_request() {
-        let body = request_body(new_yen(3), 0, 0);
-        let response = send_pvp(&body, API_VERSION).await;
+        let response = send_pvp(
+            PvpMoveRequest {
+                yen: new_yen(3),
+                row: 0,
+                col: 0,
+            },
+            API_VERSION,
+        )
+        .await;
 
         assert_eq!(response.status(), StatusCode::OK);
 
@@ -338,83 +341,48 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_pvp_invalid_api_version() {
-        assert_pvp_status(
-            request_body(new_yen(3), 0, 0),
-            "v2",
-            StatusCode::BAD_REQUEST,
-        )
-        .await;
-    }
+    async fn test_pvp_rejects_invalid_inputs() {
+        let invalid_cases = [
+            (new_yen(3), 0, 0, "v2"),
+            (new_yen(3), 99, 0, API_VERSION),
+            (new_yen(3), 0, 99, API_VERSION),
+            (
+                crate::YEN::new(3, 0, vec!['B', 'R'], "X/../...".to_string()),
+                0,
+                0,
+                API_VERSION,
+            ),
+        ];
 
-    #[tokio::test]
-    async fn test_pvp_row_out_of_bounds() {
-        assert_pvp_status(
-            request_body(new_yen(3), 99, 0),
-            API_VERSION,
-            StatusCode::BAD_REQUEST,
-        )
-        .await;
-    }
-
-    #[tokio::test]
-    async fn test_pvp_col_out_of_bounds() {
-        assert_pvp_status(
-            request_body(new_yen(3), 0, 99),
-            API_VERSION,
-            StatusCode::BAD_REQUEST,
-        )
-        .await;
+        for (yen, row, col, version) in invalid_cases {
+            expect_bad_request(yen, row, col, version).await;
+        }
     }
 
     #[tokio::test]
     async fn test_pvp_rejects_finished_game() {
         let mut game = crate::GameY::new(1);
+
         game.add_move(crate::Movement::Placement {
             player: crate::PlayerId::new(0),
             coords: crate::Coordinates::new(0, 0, 0),
         })
         .unwrap();
 
-        let yen: crate::YEN = (&game).into();
-
-        assert_pvp_status(
-            request_body(yen, 0, 0),
-            API_VERSION,
-            StatusCode::BAD_REQUEST,
-        )
-        .await;
-    }
-
-    #[tokio::test]
-    async fn test_pvp_rejects_invalid_yen_format() {
-        let yen = crate::YEN::new(3, 0, vec!['B', 'R'], "X/../...".to_string());
-
-        assert_pvp_status(
-            request_body(yen, 0, 0),
-            API_VERSION,
-            StatusCode::BAD_REQUEST,
-        )
-        .await;
+        expect_bad_request((&game).into(), 0, 0, API_VERSION).await;
     }
 
     #[tokio::test]
     async fn test_pvp_rejects_occupied_cell() {
         let mut game = crate::GameY::new(3);
+
         game.add_move(crate::Movement::Placement {
             player: crate::PlayerId::new(0),
             coords: crate::Coordinates::new(2, 0, 0),
         })
         .unwrap();
 
-        let yen: crate::YEN = (&game).into();
-
-        assert_pvp_status(
-            request_body(yen, 0, 0),
-            API_VERSION,
-            StatusCode::BAD_REQUEST,
-        )
-        .await;
+        expect_bad_request((&game).into(), 0, 0, API_VERSION).await;
     }
 
     #[test]
