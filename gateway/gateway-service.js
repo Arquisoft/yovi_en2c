@@ -64,6 +64,7 @@ const GAME_NEW_URL = `${GAMEY_BASE_URL}/game/new`;
 const GAME_STATUS_URL = `${GAMEY_BASE_URL}/status`;
 
 const USERNAME_RE = /^[a-zA-Z0-9_-]{1,60}$/;
+const ROOM_CODE_RE = /^[A-Z0-9]{1,12}$/;
 const OBJECT_ID_RE = /^[a-f\d]{24}$/i;
 const BEARER_RE = /^Bearer\s+([A-Za-z0-9\-._~+/]+=*)$/;
 
@@ -71,8 +72,37 @@ function isValidUsername(username) {
   return typeof username === "string" && USERNAME_RE.test(username);
 }
 
+function isValidRoomCode(code) {
+  return typeof code === "string" && ROOM_CODE_RE.test(code);
+}
+
 function isValidObjectId(id) {
   return typeof id === "string" && OBJECT_ID_RE.test(id);
+}
+
+function safePathSegment(value, validator) {
+  if (typeof value !== "string") return null;
+
+  const trimmed = value.trim();
+  if (!validator(trimmed)) return null;
+
+  return encodeURIComponent(trimmed);
+}
+
+function safeUsernameSegment(username) {
+  return safePathSegment(username, isValidUsername);
+}
+
+function safeObjectIdSegment(id) {
+  return safePathSegment(id, isValidObjectId);
+}
+
+function safeRoomCodeSegment(code) {
+  return safePathSegment(code, isValidRoomCode);
+}
+
+function internalUrl(baseUrl, path) {
+  return new URL(path, baseUrl).toString();
 }
 
 function sanitizeAuthHeader(authHeader) {
@@ -142,7 +172,7 @@ function requireAuth(res, auth) {
 
 async function proxyMultiplayerPost(res, path, payload, fallbackMessage) {
   try {
-    const response = await axios.post(`${MULTIPLAYER_BASE_URL}${path}`, payload); // NOSONAR
+    const response = await axios.post(internalUrl(MULTIPLAYER_BASE_URL, path), payload);
     return res.status(200).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, fallbackMessage);
@@ -151,7 +181,7 @@ async function proxyMultiplayerPost(res, path, payload, fallbackMessage) {
 
 app.post("/game/new", async (req, res) => {
   try {
-    const response = await axios.post(GAME_NEW_URL, req.body); // NOSONAR
+    const response = await axios.post(GAME_NEW_URL, req.body);
     return res.status(200).json({ ok: true, yen: response.data });
   } catch (error) {
     return forwardAxiosError(res, error, "Game server unavailable");
@@ -171,7 +201,7 @@ app.post("/game/pvb/move", async (req, res) => {
   if (!route) return res.status(400).json({ ok: false, error: "Invalid bot id" });
 
   try {
-    const response = await axios.post(route, { yen, row, col }); // NOSONAR
+    const response = await axios.post(route, { yen, row, col });
     const payload = response.data || {};
 
     return res.status(200).json({
@@ -195,7 +225,7 @@ app.post("/game/bot/choose", async (req, res) => {
   if (!route) return res.status(400).json({ ok: false, error: "Invalid bot id" });
 
   try {
-    const response = await axios.post(route, yen); // NOSONAR
+    const response = await axios.post(route, yen);
     return res.status(200).json({ ok: true, coordinates: response.data.coords });
   } catch (error) {
     return forwardAxiosError(res, error, "Game server unavailable");
@@ -213,7 +243,7 @@ app.post("/hint", async (req, res) => {
   if (!route) return res.status(400).json({ ok: false, error: "Hint bot unavailable" });
 
   try {
-    const response = await axios.post(route, yen); // NOSONAR
+    const response = await axios.post(route, yen);
     return res.status(200).json({ ok: true, coords: response.data?.coords ?? response.data });
   } catch (error) {
     return forwardAxiosError(res, error, "Game server unavailable");
@@ -222,7 +252,7 @@ app.post("/hint", async (req, res) => {
 
 app.get("/game/status", async (_req, res) => {
   try {
-    const response = await axios.get(GAME_STATUS_URL); // NOSONAR
+    const response = await axios.get(GAME_STATUS_URL);
     return res.status(200).json({ ok: true, message: response.data });
   } catch (error) {
     return forwardAxiosError(res, error, "Game server unavailable");
@@ -231,7 +261,7 @@ app.get("/game/status", async (_req, res) => {
 
 app.post("/gameresult", async (req, res) => {
   try {
-    const response = await axios.post(GAME_RESULT_URL, req.body); // NOSONAR
+    const response = await axios.post(GAME_RESULT_URL, req.body);
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Users service unavailable");
@@ -240,7 +270,7 @@ app.post("/gameresult", async (req, res) => {
 
 app.post("/gameresult/multiplayer", async (req, res) => {
   try {
-    const response = await axios.post(MULTIPLAYER_GAME_RESULT_URL, req.body); // NOSONAR
+    const response = await axios.post(MULTIPLAYER_GAME_RESULT_URL, req.body);
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Users service unavailable");
@@ -251,13 +281,14 @@ app.get("/stats/:username", async (req, res) => {
   const { username } = req.params;
   if (!validateUsernameParam(res, username)) return;
 
-  const usersUrl = new URL(`/stats/${username}`, USERS_BASE_URL).toString();
+  const safeUsername = safeUsernameSegment(username);
+  const usersUrl = internalUrl(USERS_BASE_URL, `/stats/${safeUsername}`);
   const authStats = sanitizeAuthHeader(req.headers.authorization);
 
   try {
     const response = await axios.get(usersUrl, {
       headers: { Authorization: authStats },
-    }); // NOSONAR
+    });
 
     return res.status(response.status).json(response.data);
   } catch (error) {
@@ -269,10 +300,11 @@ app.get("/profile/:username", async (req, res) => {
   const { username } = req.params;
   if (!validateUsernameParam(res, username)) return;
 
-  const usersUrl = new URL(`/profile/${username}`, USERS_BASE_URL).toString();
+  const safeUsername = safeUsernameSegment(username);
+  const usersUrl = internalUrl(USERS_BASE_URL, `/profile/${safeUsername}`);
 
   try {
-    const response = await axios.get(usersUrl); // NOSONAR
+    const response = await axios.get(usersUrl);
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Users service unavailable");
@@ -283,7 +315,8 @@ app.patch("/profile/:username", async (req, res) => {
   const { username } = req.params;
   if (!validateUsernameParam(res, username)) return;
 
-  const usersUrl = new URL(`/profile/${username}`, USERS_BASE_URL).toString();
+  const safeUsername = safeUsernameSegment(username);
+  const usersUrl = internalUrl(USERS_BASE_URL, `/profile/${safeUsername}`);
   const authPatch = sanitizeAuthHeader(req.headers.authorization);
   const { realName, bio, city, country, preferredLanguage } = req.body ?? {};
   const safeBody = { realName, bio, city, country, preferredLanguage };
@@ -291,7 +324,7 @@ app.patch("/profile/:username", async (req, res) => {
   try {
     const response = await axios.patch(usersUrl, safeBody, {
       headers: { Authorization: authPatch },
-    }); // NOSONAR
+    });
 
     return res.status(response.status).json(response.data);
   } catch (error) {
@@ -310,7 +343,7 @@ app.get("/search", async (req, res) => {
   usersUrl.searchParams.set("q", q.trim());
 
   try {
-    const response = await axios.get(usersUrl.toString()); // NOSONAR
+    const response = await axios.get(usersUrl.toString());
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Users service unavailable");
@@ -324,12 +357,13 @@ app.post("/friends/request/:username", async (req, res) => {
   const auth = sanitizeAuthHeader(req.headers.authorization);
   if (!requireAuth(res, auth)) return;
 
-  const usersUrl = new URL(`/friends/request/${username}`, USERS_BASE_URL).toString();
+  const safeUsername = safeUsernameSegment(username);
+  const usersUrl = internalUrl(USERS_BASE_URL, `/friends/request/${safeUsername}`);
 
   try {
     const response = await axios.post(usersUrl, {}, {
       headers: { Authorization: auth },
-    }); // NOSONAR
+    });
 
     return res.status(response.status).json(response.data);
   } catch (error) {
@@ -344,12 +378,13 @@ app.post("/friends/accept/:username", async (req, res) => {
   const auth = sanitizeAuthHeader(req.headers.authorization);
   if (!requireAuth(res, auth)) return;
 
-  const usersUrl = new URL(`/friends/accept/${username}`, USERS_BASE_URL).toString();
+  const safeUsername = safeUsernameSegment(username);
+  const usersUrl = internalUrl(USERS_BASE_URL, `/friends/accept/${safeUsername}`);
 
   try {
     const response = await axios.post(usersUrl, {}, {
       headers: { Authorization: auth },
-    }); // NOSONAR
+    });
 
     return res.status(response.status).json(response.data);
   } catch (error) {
@@ -364,12 +399,13 @@ app.delete("/friends/:username", async (req, res) => {
   const auth = sanitizeAuthHeader(req.headers.authorization);
   if (!requireAuth(res, auth)) return;
 
-  const usersUrl = new URL(`/friends/${username}`, USERS_BASE_URL).toString();
+  const safeUsername = safeUsernameSegment(username);
+  const usersUrl = internalUrl(USERS_BASE_URL, `/friends/${safeUsername}`);
 
   try {
     const response = await axios.delete(usersUrl, {
       headers: { Authorization: auth },
-    }); // NOSONAR
+    });
 
     return res.status(response.status).json(response.data);
   } catch (error) {
@@ -381,12 +417,12 @@ app.get("/friends", async (req, res) => {
   const auth = sanitizeAuthHeader(req.headers.authorization);
   if (!requireAuth(res, auth)) return;
 
-  const usersUrl = new URL("/friends", USERS_BASE_URL).toString();
+  const usersUrl = internalUrl(USERS_BASE_URL, "/friends");
 
   try {
     const response = await axios.get(usersUrl, {
       headers: { Authorization: auth },
-    }); // NOSONAR
+    });
 
     return res.status(response.status).json(response.data);
   } catch (error) {
@@ -398,12 +434,12 @@ app.get("/notifications", async (req, res) => {
   const auth = sanitizeAuthHeader(req.headers.authorization);
   if (!requireAuth(res, auth)) return;
 
-  const usersUrl = new URL("/notifications", USERS_BASE_URL).toString();
+  const usersUrl = internalUrl(USERS_BASE_URL, "/notifications");
 
   try {
     const response = await axios.get(usersUrl, {
       headers: { Authorization: auth },
-    }); // NOSONAR
+    });
 
     return res.status(response.status).json(response.data);
   } catch (error) {
@@ -421,12 +457,13 @@ app.patch("/notifications/:id/read", async (req, res) => {
   const auth = sanitizeAuthHeader(req.headers.authorization);
   if (!requireAuth(res, auth)) return;
 
-  const usersUrl = new URL(`/notifications/${id}/read`, USERS_BASE_URL).toString();
+  const safeId = safeObjectIdSegment(id);
+  const usersUrl = internalUrl(USERS_BASE_URL, `/notifications/${safeId}/read`);
 
   try {
     const response = await axios.patch(usersUrl, {}, {
       headers: { Authorization: auth },
-    }); // NOSONAR
+    });
 
     return res.status(response.status).json(response.data);
   } catch (error) {
@@ -436,7 +473,7 @@ app.patch("/notifications/:id/read", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   try {
-    const response = await axios.post(AUTH_LOGIN_URL, req.body); // NOSONAR
+    const response = await axios.post(AUTH_LOGIN_URL, req.body);
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Auth service unavailable");
@@ -445,7 +482,7 @@ app.post("/login", async (req, res) => {
 
 app.post("/register", async (req, res) => {
   try {
-    const response = await axios.post(AUTH_REGISTER_URL, req.body); // NOSONAR
+    const response = await axios.post(AUTH_REGISTER_URL, req.body);
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Auth service unavailable");
@@ -458,7 +495,7 @@ app.get("/verify", async (req, res) => {
   try {
     const response = await axios.get(AUTH_VERIFY_URL, {
       headers: { Authorization: authVerify },
-    }); // NOSONAR
+    });
 
     return res.status(response.status).json(response.data);
   } catch (error) {
@@ -468,7 +505,7 @@ app.get("/verify", async (req, res) => {
 
 app.get("/multiplayer/health", async (_req, res) => {
   try {
-    const response = await axios.get(MULTIPLAYER_HEALTH_URL); // NOSONAR
+    const response = await axios.get(MULTIPLAYER_HEALTH_URL);
     return res.status(200).json({ ok: true, service: response.data });
   } catch (error) {
     return forwardAxiosError(res, error, "Multiplayer service unavailable");
@@ -482,15 +519,15 @@ app.get("/multiplayer/rooms/:code", async (req, res) => {
     requireString(code, "Missing room code"),
   ]);
 
-  if (validationError) {
-    return res.status(400).json({ ok: false, error: validationError });
+  if (validationError || !isValidRoomCode(code)) {
+    return res.status(400).json({ ok: false, error: validationError || "Invalid room code" });
   }
 
-  try {
-    const response = await axios.get(
-      `${MULTIPLAYER_BASE_URL}/rooms/${encodeURIComponent(code)}`
-    ); // NOSONAR
+  const safeCode = safeRoomCodeSegment(code);
+  const roomUrl = internalUrl(MULTIPLAYER_BASE_URL, `/rooms/${safeCode}`);
 
+  try {
+    const response = await axios.get(roomUrl);
     return res.status(200).json({ ok: true, room: response.data });
   } catch (error) {
     return forwardAxiosError(res, error, "Multiplayer service unavailable");
@@ -505,14 +542,14 @@ app.post("/multiplayer/room/create", async (req, res) => {
     requirePositiveInt(size, "Invalid board size"),
   ]);
 
-  if (validationError) {
-    return res.status(400).json({ ok: false, error: validationError });
+  if (validationError || !isValidUsername(username)) {
+    return res.status(400).json({ ok: false, error: validationError || "Invalid username" });
   }
 
   return proxyMultiplayerPost(
     res,
     "/rooms/create",
-    { username, size },
+    { username: username.trim(), size },
     "Multiplayer service unavailable"
   );
 });
@@ -526,14 +563,17 @@ app.post("/multiplayer/room/join", async (req, res) => {
     requireString(username, "Missing username"),
   ]);
 
-  if (validationError) {
-    return res.status(400).json({ ok: false, error: validationError });
+  if (validationError || !isValidRoomCode(normalizedCode) || !isValidUsername(username)) {
+    return res.status(400).json({
+      ok: false,
+      error: validationError || "Invalid multiplayer join payload",
+    });
   }
 
   return proxyMultiplayerPost(
     res,
     "/rooms/join",
-    { code: normalizedCode, username },
+    { code: normalizedCode, username: username.trim() },
     "Multiplayer service unavailable"
   );
 });
@@ -546,17 +586,19 @@ app.post("/multiplayer/room/state", async (req, res) => {
     requireString(normalizedCode, "Missing room code"),
   ]);
 
-  if (validationError) {
-    return res.status(400).json({ ok: false, error: validationError });
+  if (validationError || !isValidRoomCode(normalizedCode)) {
+    return res.status(400).json({ ok: false, error: validationError || "Invalid room code" });
   }
+
+  const payload = {
+    code: normalizedCode,
+    username: typeof username === "string" && isValidUsername(username) ? username.trim() : undefined,
+  };
 
   return proxyMultiplayerPost(
     res,
     "/rooms/state",
-    {
-      code: normalizedCode,
-      username: typeof username === "string" ? username : undefined,
-    },
+    payload,
     "Multiplayer service unavailable"
   );
 });
@@ -572,14 +614,17 @@ app.post("/multiplayer/room/move", async (req, res) => {
     requireString(username, "Missing username"),
   ]);
 
-  if (validationError) {
-    return res.status(400).json({ ok: false, error: validationError });
+  if (validationError || !isValidRoomCode(normalizedCode) || !isValidUsername(username)) {
+    return res.status(400).json({
+      ok: false,
+      error: validationError || "Invalid multiplayer move payload",
+    });
   }
 
   return proxyMultiplayerPost(
     res,
     "/rooms/move",
-    { code: normalizedCode, row, col, username },
+    { code: normalizedCode, row, col, username: username.trim() },
     "Multiplayer service unavailable"
   );
 });
@@ -593,14 +638,17 @@ app.post("/multiplayer/room/leave", async (req, res) => {
     requireString(username, "Missing username"),
   ]);
 
-  if (validationError) {
-    return res.status(400).json({ ok: false, error: validationError });
+  if (validationError || !isValidRoomCode(normalizedCode) || !isValidUsername(username)) {
+    return res.status(400).json({
+      ok: false,
+      error: validationError || "Invalid multiplayer leave payload",
+    });
   }
 
   return proxyMultiplayerPost(
     res,
     "/rooms/leave",
-    { code: normalizedCode, username },
+    { code: normalizedCode, username: username.trim() },
     "Multiplayer service unavailable"
   );
 });
