@@ -79,7 +79,10 @@ async function findUserByUsername(username, projection) {
 
     if (!safeUsername) return null;
 
-    return execMaybe(User.findOne({ username: safeUsername }, projection));
+    return execMaybe(User.findOne(
+        { username: { $eq: safeUsername } },
+        projection
+    ));
 }
 
 function findGamesByUsername(username) {
@@ -87,7 +90,9 @@ function findGamesByUsername(username) {
 
     if (!safeUsername) return null;
 
-    return GameResult.find({ username: safeUsername });
+    return GameResult.find({
+        username: { $eq: safeUsername }
+    });
 }
 
 function normalizeEmail(value) {
@@ -253,7 +258,12 @@ app.get('/search', async (req, res) => {
         const regex = new RegExp(escaped, 'i');
 
         const users = await User.find(
-            { $or: [{ username: regex }, { email: regex }] },
+            {
+                $or: [
+                    { username: { $regex: regex } },
+                    { email: { $regex: regex } }
+                ]
+            },
             { password: 0, friendRequests: 0 }
         ).limit(20);
 
@@ -754,7 +764,7 @@ module.exports = app;
 
 // =============================== START THE SERVER ================================
 
-if (require.main === module) {
+if (require.main?.filename === __filename) {
     app.listen(PORT, () => {
         console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
