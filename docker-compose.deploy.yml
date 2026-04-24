@@ -12,6 +12,7 @@ services:
       - webapp
       - gateway
       - botapi
+      - multiplayer
     networks:
       - monitor-net
 
@@ -50,16 +51,33 @@ services:
     networks:
       - monitor-net
 
+  multiplayer:
+    image: ghcr.io/arquisoft/yovi_en2c-multiplayer:latest
+    container_name: multiplayer
+    environment:
+      - GAMEY_BASE_URL=http://gamey:4000
+      - PORT=7000
+    depends_on:
+      - gamey
+    expose:
+      - "7000"
+    networks:
+      - monitor-net
+
   gateway:
     image: ghcr.io/arquisoft/yovi_en2c-gateway:latest
     container_name: gateway
     environment:
       - AUTH_BASE_URL=http://authentication:5000
       - GAMEY_BASE_URL=http://gamey:4000
+      - MULTIPLAYER_BASE_URL=http://multiplayer:7000
+      - USERS_BASE_URL=http://users:3000
       - PORT=8080
     depends_on:
       - authentication
       - gamey
+      - users
+      - multiplayer
     expose:
       - "8080"
     networks:

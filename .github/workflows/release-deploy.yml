@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [webapp, users, gateway, authentication, botapi]
+        service: [webapp, users, gateway, authentication, botapi, multiplayer]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -96,6 +96,11 @@ jobs:
       - name: Install webapp dependencies
         run: |
           cd webapp
+          npm ci
+
+      - name: Install multiplayer dependencies
+        run: |
+          cd multiplayer
           npm ci
 
       - name: Install Playwright browsers
@@ -198,6 +203,28 @@ jobs:
           registry: ghcr.io
           workdir: botapi
 
+  docker-push-multiplayer:
+    name: Publish multiplayer image
+    runs-on: ubuntu-latest
+    needs: e2e
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push multiplayer
+        uses: docker/build-push-action@v6
+        with:
+          context: ./multiplayer
+          push: true
+          tags: ghcr.io/arquisoft/${{ github.event.repository.name }}-multiplayer:latest
+
   docker-push-gamey:
     name: Publish gamey image
     runs-on: ubuntu-latest
@@ -225,6 +252,8 @@ jobs:
       - docker-push-webapp
       - docker-push-gamey
       - docker-push-botapi
+      - docker-push-multiplayer
+      
     steps:
       - name: Checkout
         uses: actions/checkout@v4
