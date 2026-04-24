@@ -1,7 +1,4 @@
-// Tests adicionales para Home.tsx — pégalos al final de Home.test.tsx
-// Cubren: botón "Select Difficulty", fetch exception y token inválido
-
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, afterEach, describe, expect, test, vi } from "vitest";
@@ -20,9 +17,9 @@ vi.mock("react-router-dom", async () => {
 });
 
 function renderHome(
-    usernameFromState?: string,
-    usernameInStorage?: string,
-    tokenInStorage = "fake-token"
+  usernameFromState?: string,
+  usernameInStorage?: string,
+  tokenInStorage = "fake-token"
 ) {
   localStorage.clear();
   if (usernameInStorage) localStorage.setItem("username", usernameInStorage);
@@ -34,16 +31,18 @@ function renderHome(
   } as Response);
 
   return render(
-      <I18nProvider>
-        <MemoryRouter
-            initialEntries={[{
-              pathname: "/home",
-              state: usernameFromState ? { username: usernameFromState } : undefined,
-            }]}
-        >
-          <Home />
-        </MemoryRouter>
-      </I18nProvider>
+    <I18nProvider>
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: "/home",
+            state: usernameFromState ? { username: usernameFromState } : undefined,
+          },
+        ]}
+      >
+        <Home />
+      </MemoryRouter>
+    </I18nProvider>
   );
 }
 
@@ -59,16 +58,15 @@ describe("Home — cobertura adicional", () => {
     localStorage.clear();
   });
 
-  // ─── Botón "Seleccionar dificultad" ──────────────────────────────────────
-
   test("navigates to select-difficulty when button is clicked", async () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
-    await screen.findByRole("button", { name: /Partida rápida|Start quick game/i });
+    const button = await screen.findByRole("button", {
+      name: /Seleccionar dificultad|Select difficulty/i,
+    });
 
-    const diffButton = screen.getByRole("button", { name: /Seleccionar dificultad|Select difficulty/i });
-    await user.click(diffButton);
+    await user.click(button);
 
     expect(mockNavigate).toHaveBeenCalledWith("/select-difficulty", {
       state: { username: "Pablo" },
@@ -79,16 +77,23 @@ describe("Home — cobertura adicional", () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
-    await screen.findByRole("button", { name: /Partida rápida|Start quick game/i });
-
-    await user.click(screen.getByRole("button", { name: /Partida rápida|Start quick game/i }));
+    await user.click(await screen.findByRole("button", { name: /Partida rápida|Start quick game/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith("/game", {
       state: { username: "Pablo", bot: "minimax_bot", boardSize: 7 },
     });
   });
 
-  // ─── Fetch lanza excepción (catch) → redirige a "/" ──────────────────────
+  test("local game navigates with localGame flag", async () => {
+    const user = userEvent.setup();
+    renderHome("Pablo");
+
+    await user.click(await screen.findByRole("button", { name: /Jugar en local|Play locally/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/select-difficulty", {
+      state: { username: "Pablo", bot: "local", boardSize: 7, localGame: true },
+    });
+  });
 
   test("redirects to root when fetch throws an error", async () => {
     localStorage.setItem("username", "Pablo");
@@ -97,11 +102,11 @@ describe("Home — cobertura adicional", () => {
     global.fetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
 
     render(
-        <I18nProvider>
-          <MemoryRouter initialEntries={[{ pathname: "/home", state: { username: "Pablo" } }]}>
-            <Home />
-          </MemoryRouter>
-        </I18nProvider>
+      <I18nProvider>
+        <MemoryRouter initialEntries={[{ pathname: "/home", state: { username: "Pablo" } }]}>
+          <Home />
+        </MemoryRouter>
+      </I18nProvider>
     );
 
     await waitFor(() => {
@@ -111,8 +116,6 @@ describe("Home — cobertura adicional", () => {
     expect(localStorage.getItem("username")).toBeNull();
     expect(localStorage.getItem("token")).toBeNull();
   });
-
-  // ─── Fetch responde !ok → redirige a "/" ─────────────────────────────────
 
   test("redirects to root when token verification fails", async () => {
     localStorage.setItem("username", "Pablo");
@@ -124,11 +127,11 @@ describe("Home — cobertura adicional", () => {
     } as Response);
 
     render(
-        <I18nProvider>
-          <MemoryRouter initialEntries={[{ pathname: "/home", state: { username: "Pablo" } }]}>
-            <Home />
-          </MemoryRouter>
-        </I18nProvider>
+      <I18nProvider>
+        <MemoryRouter initialEntries={[{ pathname: "/home", state: { username: "Pablo" } }]}>
+          <Home />
+        </MemoryRouter>
+      </I18nProvider>
     );
 
     await waitFor(() => {
@@ -246,11 +249,13 @@ describe("Home — cobertura adicional", () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
-    const multiplayerButtons = await screen.findAllByRole("button", {
-      name: /Multijugador|Multiplayer/i,
-    });
+    const homePanel = await screen.findByLabelText(/Home panel/i);
 
-    await user.click(multiplayerButtons[0]);
+    await user.click(
+      within(homePanel).getByRole("button", {
+        name: /Multijugador|Multiplayer/i,
+      })
+    );
 
     expect(mockNavigate).toHaveBeenCalledWith("/multiplayer", {
       state: { username: "Pablo" },
@@ -261,11 +266,13 @@ describe("Home — cobertura adicional", () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
-    const multiplayerButtons = await screen.findAllByRole("button", {
-      name: /Multijugador|Multiplayer/i,
-    });
+    const cards = await screen.findByLabelText(/Info cards/i);
 
-    await user.click(multiplayerButtons[multiplayerButtons.length - 1]);
+    await user.click(
+      within(cards).getByRole("button", {
+        name: /Jugar multijugador|Play multiplayer/i,
+      })
+    );
 
     expect(mockNavigate).toHaveBeenCalledWith("/multiplayer", {
       state: { username: "Pablo" },
@@ -290,13 +297,28 @@ describe("Home — cobertura adicional", () => {
   test("renders hero badge and home panel landmark", async () => {
     renderHome("Pablo");
 
-    expect(await screen.findByLabelText(/Home panel/i)).toBeInTheDocument();
-    expect(screen.getByText(/GameY/i)).toBeInTheDocument();
+    const homePanel = await screen.findByLabelText(/Home panel/i);
+
+    expect(homePanel).toBeInTheDocument();
+    expect(
+      within(homePanel).getByText(
+        /Estás en Gamey - Yovi_EN2C|You are in Gamey - Yovi_EN2C/i
+      )
+    ).toBeInTheDocument();
+    expect(within(homePanel).getByRole("img", { name: /GameY/i })).toBeInTheDocument();
   });
 
-  test("renders info cards section", async () => {
+  test("renders info cards section with new local and future cards", async () => {
     renderHome("Pablo");
 
-    expect(await screen.findByLabelText(/Info cards/i)).toBeInTheDocument();
+    const cards = await screen.findByLabelText(/Info cards/i);
+
+    expect(cards).toBeInTheDocument();
+    expect(within(cards).getByRole("heading", { name: /Jugar en local|Local play/i })).toBeInTheDocument();
+    expect(within(cards).getByText(/Modo local|Local mode/i)).toBeInTheDocument();
+    expect(within(cards).getByRole("button", { name: /Jugar en local|Play locally/i })).toBeInTheDocument();
+
+    expect(within(cards).getByRole("heading", { name: /Futuro|Future/i })).toBeInTheDocument();
+    expect(within(cards).getByText(/^Próximamente$|^Coming soon$/i)).toBeInTheDocument();
   });
 });
