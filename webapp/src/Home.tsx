@@ -1,16 +1,20 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import Navbar from "./Navbar";
+import Navbar, { type Notification } from "./Navbar";
 import { useI18n } from "./i18n/I18nProvider";
 import logo from "../img/logo.png";
 
 type LocationState = { username?: string };
 
+const API_URL = "/api";
+
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useI18n();
+
   const [checkingSession, setCheckingSession] = useState(true);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const username = useMemo(() => {
     const st = (location.state as LocationState | null) ?? null;
@@ -18,6 +22,40 @@ const Home: React.FC = () => {
   }, [location.state]);
 
   const token = useMemo(() => localStorage.getItem("token") ?? "", []);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_URL}/notifications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (data.success) setNotifications(data.notifications ?? []);
+    } catch {
+      // Non-critical
+    }
+  }, [token]);
+
+  const handleMarkRead = useCallback(async (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+
+    try {
+      await fetch(`${API_URL}/notifications/${id}/read`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: false } : n))
+      );
+    }
+  }, [token]);
 
   useEffect(() => {
     const verifySession = async () => {
@@ -29,12 +67,9 @@ const Home: React.FC = () => {
       }
 
       try {
-        const API_URL = "/api";
         const res = await fetch(`${API_URL}/verify`, {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (!res.ok) {
@@ -45,6 +80,7 @@ const Home: React.FC = () => {
         }
 
         setCheckingSession(false);
+        fetchNotifications();
       } catch {
         localStorage.removeItem("username");
         localStorage.removeItem("token");
@@ -53,7 +89,7 @@ const Home: React.FC = () => {
     };
 
     verifySession();
-  }, [username, token, navigate]);
+  }, [username, token, navigate, fetchNotifications]);
 
   const logout = () => {
     localStorage.removeItem("username");
@@ -69,11 +105,28 @@ const Home: React.FC = () => {
     navigate("/multiplayer", { state: { username } });
   };
 
+  const goInstructions = () => {
+    navigate("/instructions", { state: { username } });
+  };
+
+  const goDifficulty = () => {
+    navigate("/select-difficulty", { state: { username } });
+  };
+
+  const goSocial = () => {
+    navigate("/social", { state: { username } });
+  };
+
   if (checkingSession || !username || !token) return null;
 
   return (
     <div className="page">
-      <Navbar username={username} onLogout={logout} />
+      <Navbar
+        username={username}
+        onLogout={logout}
+        notifications={notifications}
+        onMarkRead={handleMarkRead}
+      />
 
       <main className="container">
         <section className="hero" aria-label="Home panel">
@@ -109,11 +162,7 @@ const Home: React.FC = () => {
             <h2 className="card__title">{t("home.card1.title")}</h2>
             <p className="card__text">{t("home.card1.text")}</p>
             <div style={{ marginTop: 16 }}>
-              <button
-                className="btn btn--primary"
-                onClick={() => navigate("/instructions", { state: { username } })}
-                type="button"
-              >
+              <button className="btn btn--primary" onClick={goInstructions} type="button">
                 {t("home.instructions")}
               </button>
             </div>
@@ -123,11 +172,7 @@ const Home: React.FC = () => {
             <h2 className="card__title">{t("home.card2.title")}</h2>
             <p className="card__text">{t("home.card2.text")}</p>
             <div style={{ marginTop: 16 }}>
-              <button
-                className="btn btn--primary"
-                onClick={goMultiplayer}
-                type="button"
-              >
+              <button className="btn btn--primary" onClick={goMultiplayer} type="button">
                 {t("home.card2.button")}
               </button>
             </div>
@@ -137,12 +182,18 @@ const Home: React.FC = () => {
             <h2 className="card__title">{t("home.card3.title")}</h2>
             <p className="card__text">{t("home.card3.text")}</p>
             <div style={{ marginTop: 16 }}>
-              <button
-                className="btn btn--primary"
-                onClick={() => navigate("/select-difficulty", { state: { username } })}
-                type="button"
-              >
+              <button className="btn btn--primary" onClick={goDifficulty} type="button">
                 {t("home.selectDifficulty")}
+              </button>
+            </div>
+          </article>
+
+          <article className="card">
+            <h2 className="card__title">{t("home.card4.title")}</h2>
+            <p className="card__text">{t("home.card4.text")}</p>
+            <div style={{ marginTop: 16 }}>
+              <button className="btn btn--primary" onClick={goSocial} type="button">
+                {t("home.card4.button")}
               </button>
             </div>
           </article>

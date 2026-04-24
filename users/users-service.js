@@ -5,15 +5,13 @@ const promBundle = require('express-prom-bundle');
 require('dotenv').config();
 require('./db');
 
-// IMPORT MODELS
 const User = require('./models/User');
 const GameResult = require('./models/GameResult');
+const Notification = require('./models/Notification');
 
-// CONFIGURATION
 const app = express();
 app.use(express.json());
 
-// PROMETHEUS METRICS MIDDLEWARE
 const metricsMiddleware = promBundle({
     includeMethod: true,
     includePath: true,
@@ -24,14 +22,13 @@ const metricsMiddleware = promBundle({
         ['^/stats/.*', '/stats/:username'],
         ['^/profile/.*', '/profile/:username'],
         ['^/friends/.*', '/friends/:username'],
+        ['^/notifications/.*', '/notifications/:id'],
     ],
 });
 app.use(metricsMiddleware);
 
 const PORT = process.env.PORT || 3000;
 const SALT_ROUNDS = 10;
-
-// ── JWT helper ────────────────────────────────────────────────────────────────
 
 function getUsernameFromToken(authHeader) {
     if (!authHeader?.startsWith('Bearer ')) return null;
@@ -44,30 +41,20 @@ function getUsernameFromToken(authHeader) {
     }
 }
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
-
 function normalizeUsername(value) {
     if (typeof value !== 'string') return null;
 
     const username = value.trim();
     if (!username) return null;
 
-    const usernameRegex = /^[A-Za-z0-9_]{1,30}$/;
-    if (!usernameRegex.test(username)) return null;
-
-    return username;
+    return /^[A-Za-z0-9_]{1,30}$/.test(username) ? username : null;
 }
 
 function normalizeLooseUsername(value) {
     if (typeof value !== 'string') return null;
 
     const username = value.trim();
-
-    if (!/^[A-Za-z0-9_-]{1,30}$/.test(username)) {
-        return null;
-    }
-
-    return username;
+    return /^[A-Za-z0-9_-]{1,30}$/.test(username) ? username : null;
 }
 
 function execMaybe(query) {
@@ -76,10 +63,9 @@ function execMaybe(query) {
 
 async function findUserByUsername(username, projection) {
     const safeUsername = normalizeUsername(username);
-
     if (!safeUsername) return null;
 
-    return execMaybe(User.findOne( //NOSONAR
+    return execMaybe(User.findOne(
         { username: { $eq: safeUsername } },
         projection
     ));
@@ -87,10 +73,9 @@ async function findUserByUsername(username, projection) {
 
 function findGamesByUsername(username) {
     const safeUsername = normalizeUsername(username);
-
     if (!safeUsername) return null;
 
-    return GameResult.find({ // NOSONAR
+    return GameResult.find({
         username: { $eq: safeUsername }
     });
 }
@@ -107,8 +92,7 @@ function normalizeSearchText(value, maxLength = 50) {
     if (typeof value !== 'string') return null;
 
     const text = value.trim();
-    if (!text) return null;
-    if (text.length > maxLength) return null;
+    if (!text || text.length > maxLength) return null;
 
     return text;
 }
@@ -149,7 +133,15 @@ function buildWinLossStats(games) {
     };
 }
 
-// =============================   USERS ENDPOINTS    ============================================
+function publicNotificationView(notification) {
+    return {
+        id: notification._id,
+        type: notification.type,
+        from: notification.from,
+        read: notification.read,
+        createdAt: notification.createdAt,
+    };
+}
 
 app.post('/createuser', async (req, res) => {
     try {
@@ -176,6 +168,13 @@ app.post('/createuser', async (req, res) => {
         });
 
         const savedUser = await newUser.save();
+
+        Notification.create({
+            recipient: savedUser.username,
+            type: 'welcome',
+            from: null,
+            read: false,
+        }).catch(error => console.error('Failed to create welcome notification:', error));
 
         res.status(201).json({
             success: true,
@@ -254,10 +253,9 @@ app.get('/search', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Query parameter q is required' });
         }
 
-        const escaped = escapeRegex(safeQuery);
-        const regex = new RegExp(escaped, 'i');
+        const regex = new RegExp(escapeRegex(safeQuery), 'i');
 
-        const users = await User.find( //NOSONAR
+        const users = await User.find(
             {
                 $or: [
                     { username: { $regex: regex } },
@@ -282,8 +280,6 @@ app.get('/search', async (req, res) => {
         res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
-
-// =========================   GAME RESULTS ENDPOINTS   =====================
 
 app.post('/gameresult', async (req, res) => {
     try {
@@ -601,8 +597,6 @@ app.patch('/profile/:username', async (req, res) => {
     }
 });
 
-// =========================   FRIENDS ENDPOINTS   ===========================
-
 app.post('/friends/request/:username', async (req, res) => {
     try {
         const targetUsername = normalizeUsername(req.params.username);
@@ -638,6 +632,13 @@ app.post('/friends/request/:username', async (req, res) => {
 
         target.friendRequests.push(senderUsername);
         await target.save();
+
+        Notification.create({
+            recipient: targetUsername,
+            type: 'friend_request',
+            from: senderUsername,
+            read: false,
+        }).catch(error => console.error('Failed to create friend_request notification:', error));
 
         res.status(201).json({ success: true, message: `Friend request sent to ${targetUsername}` });
 
@@ -752,7 +753,69 @@ app.get('/friends', async (req, res) => {
     }
 });
 
-// ── Health ────────────────────────────────────────────────────────────────────
+app.get('/notifications', async (req, res) => {
+    try {
+        const username = normalizeUsername(getUsernameFromToken(req.headers.authorization));
+
+        if (!username) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const notifications = await Notification.find({ recipient: { $eq: username } })
+            .sort({ createdAt: -1 })
+            .limit(50);
+
+        const unreadCount = notifications.filter(n => !n.read).length;
+
+        res.json({
+            success: true,
+            notifications: notifications.map(publicNotificationView),
+            unreadCount,
+        });
+
+    } catch (error) {
+        console.error('Error in GET /notifications:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+app.patch('/notifications/:id/read', async (req, res) => {
+    try {
+        const username = normalizeUsername(getUsernameFromToken(req.headers.authorization));
+
+        if (!username) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, error: 'Invalid notification id' });
+        }
+
+        const notification = await Notification.findById(id);
+
+        if (!notification) {
+            return res.status(404).json({ success: false, error: 'Notification not found' });
+        }
+
+        if (notification.recipient !== username) {
+            return res.status(403).json({ success: false, error: 'Forbidden' });
+        }
+
+        notification.read = true;
+        await notification.save();
+
+        res.json({
+            success: true,
+            notification: publicNotificationView(notification)
+        });
+
+    } catch (error) {
+        console.error('Error in PATCH /notifications/:id/read:', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
 
 app.get('/health', async (_req, res) => {
     const dbState = mongoose.connection.readyState;
@@ -762,9 +825,7 @@ app.get('/health', async (_req, res) => {
 
 module.exports = app;
 
-// =============================== START THE SERVER ================================
-
-if (require.main?.filename === __filename) {
+if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`🚀 Server running on http://localhost:${PORT}`);
     });

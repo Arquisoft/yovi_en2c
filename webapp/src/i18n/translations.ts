@@ -1,20 +1,20 @@
-/* NOSONAR */
-// Sonar is confusing I18n with credentials 
 export type Lang = "es" | "en";
 
 export type Dict = Record<string, string>;
 
 export const translations: Record<Lang, Dict> = {
   es: {
-    // Common
     "app.brand": "GameY",
     "common.home": "Inicio",
     "common.game": "Nuevo Juego",
     "common.logout": "Salir",
     "common.language": "Idioma",
     "common.user": "Usuario",
+    "common.stats": "Estadísticas",
+    "common.social": "Social",
+    "common.lightMode": "Cambiar a tema claro",
+    "common.darkMode": "Cambiar a tema oscuro",
 
-    // Register
     "register.title": "GameY",
     "register.label": "¿Cómo te llamas?",
     "register.placeholder": "Nombre de usuario",
@@ -23,52 +23,49 @@ export const translations: Record<Lang, Dict> = {
     "register.error.empty": "Por favor, introduce un nombre de usuario.",
     "register.error.server": "Error del servidor",
     "register.error.network": "Error de red",
+
     "registration.aria": "Registro de usuario",
     "registration.username": "Usuario",
     "registration.email": "Correo electrónico",
-    "registration.password": "Contraseña", //NOSONAR
-    "registration.repeatPassword": "Repetir contraseña", //NOSONAR
-    "registration.error.repeatPassword": "Debes repetir la contraseña.", //NOSONAR
+    "registration.password": "Contraseña",
+    "registration.repeatPassword": "Repetir contraseña",
+    "registration.error.repeatPassword": "Debes repetir la contraseña.",
     "registration.button": "Registrarse",
     "registration.loading": "Registrando…",
     "registration.error.username": "El nombre de usuario es obligatorio.",
-    "registration.error.password": "La contraseña es obligatoria.", //NOSONAR
+    "registration.error.password": "La contraseña es obligatoria.",
     "registration.error.generic": "Error de registro",
     "registration.error.network": "Error de red",
     "registration.goLogin": "¿Ya tienes cuenta? Volver al login",
 
-    // Login
     "login.aria": "Inicio de sesión",
     "login.username": "Usuario",
-    "login.password": "Contraseña", //NOSONAR
+    "login.password": "Contraseña",
     "login.button": "Iniciar sesión",
     "login.loading": "Entrando…",
     "login.error.username": "Por favor, introduce un nombre de usuario.",
-    "login.error.password": "Por favor, introduce una contraseña.", //NOSONAR
+    "login.error.password": "Por favor, introduce una contraseña.",
     "login.error.invalid": "Error de inicio de sesión",
     "login.error.network": "Error de red",
     "login.goRegister": "¿No tienes cuenta? Regístrate",
 
-    // Home
     "home.badge": "Estás en Gamey - Yovi_EN2C",
     "home.welcome": "Hola {username}",
-    "home.subtitle":
-      "Juega al juego Y",
-    "home.quickgame": "Partida rapida",
+    "home.subtitle": "Juega al juego Y",
+    "home.quickgame": "Partida rápida",
     "home.goBoard": "Ir al tablero",
     "home.changeUser": "Cambiar usuario",
     "home.card1.title": "📘 Instrucciones",
     "home.card1.text": "Aprende cómo se juega antes de empezar una partida.",
     "home.instructions": "Instrucciones",
-    "home.card2.title": "🧑‍🤝‍🧑 Multijugador",
-    "home.card2.text": "Crea una sala o únete con un código para jugar contra otra persona.",
+    "home.card2.title": "🎮 Multijugador",
+    "home.card2.text": "Crea una sala o únete a una partida contra otro jugador.",
+    "home.card2.pill": "Juega online",
     "home.card3.title": "🤖 Distintos bots!",
     "home.card3.text": "Algunos son más listos que otros",
     "home.card3.pill": "Diferentes dificultades",
     "home.selectDifficulty": "Seleccionar dificultad",
 
-
-    // Game
     "game.new": "Nueva partida",
     "game.send": "Enviar jugada",
     "game.sending": "Enviando…",
@@ -77,14 +74,15 @@ export const translations: Record<Lang, Dict> = {
     "game.ok": "Conectado correctamente → {msg}",
     "game.fail": "Error de conexión → {msg}",
     "game.back": "Volver al Inicio",
-
-    // Game Ends
     "game.finished.win": "Partida terminada: Has ganado",
     "game.finished.lost": "Partida terminada: Has perdido",
     "game.finished.draw": "Partida terminada: Empate",
     "game.finished.back": "Volver al Inicio",
+    "game.hint": "💡 Pista",
+    "game.hintLoading": "Calculando…",
+    "game.undo": "Deshacer",
+    "game.undoDone": "Movimiento deshecho",
 
-    // Dificultades
     "difficulty.title": "Selecciona la dificultad",
     "difficulty.subtitle": "Elige el nivel del bot",
     "difficulty.random": "Muy fácil",
@@ -95,14 +93,12 @@ export const translations: Record<Lang, Dict> = {
     "difficulty.extreme": "Extremo",
     "difficulty.start": "Jugar",
 
-    // Tamaño del tablero
     "boardsize.title": "Tamaño del tablero",
     "boardsize.subtitle": "Elige el tamaño o introduce uno personalizado",
     "boardsize.custom.placeholder": "Tamaño personalizado",
     "boardsize.warning.small": "El tablero es muy pequeño, la partida puede no ser divertida",
     "boardsize.warning.large": "Los tableros grandes pueden ralentizar la respuesta del bot",
-  
-    // Instructions
+
     "instructions.title": "Instrucciones",
     "instructions.subtitle": "Aprende las reglas básicas de GameY y elige la dificultad que mejor se adapte a ti",
     "instructions.howToPlay.title": "Cómo se juega",
@@ -117,7 +113,6 @@ export const translations: Record<Lang, Dict> = {
     "instructions.board.p2": "Los tableros más grandes ofrecen partidas más largas y complejas, aunque algunos bots pueden tardar más en calcular su movimiento.",
     "instructions.back": "Volver al inicio",
 
-    //Estadisticas
     "stats.title": "Mis Estadísticas",
     "stats.subtitle": "Resumen de partidas de {username}",
     "stats.totalGames": "Partidas jugadas",
@@ -143,15 +138,9 @@ export const translations: Record<Lang, Dict> = {
     "stats.playFirst": "¡Juega tu primera partida!",
     "stats.error.generic": "Error al cargar las estadísticas",
     "stats.error.network": "Error de red",
-    "common.stats": "Estadísticas",
     "stats.history": "Historial de partidas",
     "stats.page": "Página {page} de {total}",
 
-    //Tema (colores )
-    "common.lightMode": "Cambiar a tema claro",
-    "common.darkMode":  "Cambiar a tema oscuro",
-    
-    //Timer
     "timer.title": "Tiempo por turno",
     "timer.subtitle": "El jugador pierde si no mueve a tiempo. 0 = sin límite.",
     "timer.noLimit": "Sin límite",
@@ -163,11 +152,6 @@ export const translations: Record<Lang, Dict> = {
     "timer.timeout.lost": "¡Se acabó el tiempo! Has perdido",
     "timer.timeout.description": "No realizaste un movimiento a tiempo.",
 
-    //Pistas
-    "game.hint": "💡 Pista",
-    "game.hintLoading": "Calculando…",
-
-    //Profile
     "profile.joinDate": "Se unió el",
     "profile.error.generic": "Error al cargar el perfil",
     "profile.error.network": "Error de red",
@@ -185,97 +169,91 @@ export const translations: Record<Lang, Dict> = {
     "profile.edit.save": "Guardar",
     "profile.edit.saving": "Guardando…",
     "profile.edit.cancel": "Cancelar",
-
-    // Navbar
-    "common.social": "Social",
-
-    // Página Social
-    "social.title":           "Social",
-    "social.subtitle":        "Encuentra jugadores y envía solicitudes de amistad",
-    "social.searchLabel":     "Buscar jugadores",
-    "social.searchPlaceholder": "Nombre de usuario o correo electrónico…",
-    "social.searching":       "Buscando…",
-    "social.resultsLabel":    "Resultados",
-    "social.noResults":       "Sin resultados para esa búsqueda",
-    "social.searchError":     "Error al buscar usuarios",
-    "social.viewProfile":     "Ver perfil",
-    "social.sendRequest":     "Enviar solicitud",
-    "social.requestSent":     "Solicitud enviada",
-    "social.alreadyFriends":  "Ya son amigos",
-    "social.requestError":    "Error al enviar solicitud",
-    "social.groupsTitle":     "Grupos",
-    "social.groupsSubtitle":  "Próximamente",
-
-    // UserProfile — send friend request (visitante)
-    "profile.friends.sendRequest":   "Enviar solicitud de amistad",
-    "profile.friends.requestSent":   "Solicitud enviada",
-    "profile.friends.requestError":  "Error al enviar solicitud",
-    "profile.friends.alreadyFriends":"Ya sois amigos",
-
-    // UserProfile — friends list card (owner)
+    "profile.friends.sendRequest": "Enviar solicitud de amistad",
+    "profile.friends.requestSent": "Solicitud enviada",
+    "profile.friends.requestError": "Error al enviar solicitud",
+    "profile.friends.alreadyFriends": "Ya sois amigos",
     "profile.friends.title": "Amigos",
     "profile.friends.empty": "Aún no tienes amigos",
-
-    // UserProfile — friend requests card (owner)
-    "profile.friendRequests.title":  "Solicitudes de amistad",
-    "profile.friendRequests.empty":  "Sin solicitudes pendientes",
+    "profile.friendRequests.title": "Solicitudes de amistad",
+    "profile.friendRequests.empty": "Sin solicitudes pendientes",
     "profile.friendRequests.accept": "Aceptar",
     "profile.friendRequests.acceptError": "Error al aceptar solicitud",
 
-    //Multiplayer
-    "common.multiplayer": "Multijugador",
-    "home.multiplayer": "Multijugador",
-    "home.card2.button": "Abrir multijugador",
+    "social.title": "Social",
+    "social.subtitle": "Encuentra jugadores y envía solicitudes de amistad",
+    "social.searchLabel": "Buscar jugadores",
+    "social.searchPlaceholder": "Nombre de usuario o correo electrónico…",
+    "social.searching": "Buscando…",
+    "social.resultsLabel": "Resultados",
+    "social.noResults": "Sin resultados para esa búsqueda",
+    "social.searchError": "Error al buscar usuarios",
+    "social.viewProfile": "Ver perfil",
+    "social.sendRequest": "Enviar solicitud",
+    "social.requestSent": "Solicitud enviada",
+    "social.alreadyFriends": "Ya son amigos",
+    "social.requestError": "Error al enviar solicitud",
+    "social.groupsTitle": "Grupos",
+    "social.groupsSubtitle": "Próximamente",
 
-    "multiplayer.title": "Multijugador online",
-    "multiplayer.subtitle": "Crea una sala o únete a una partida con código.",
-    "multiplayer.create": "Crear sala",
-    "multiplayer.join": "Unirse",
-    "multiplayer.createTitle": "Crear una nueva sala",
-    "multiplayer.createText": "Elige el tamaño del tablero y comparte el código con tu rival.",
-    "multiplayer.joinTitle": "Unirse a una sala",
-    "multiplayer.joinText": "Introduce el código que te haya pasado tu rival.",
+    "multiplayer.title": "Multijugador",
+    "multiplayer.subtitle": "Crea una sala o únete a una partida contra otro jugador",
     "multiplayer.createRoom": "Crear sala",
-    "multiplayer.joinRoom": "Unirse a la sala",
-    "multiplayer.creating": "Creando…",
-    "multiplayer.joining": "Uniéndose…",
+    "multiplayer.joinRoom": "Unirse a sala",
     "multiplayer.roomCode": "Código de sala",
-    "multiplayer.roomCodePlaceholder": "Ej. ABC123",
-    "multiplayer.howItWorksTitle": "⚡ Cómo funciona",
-    "multiplayer.howItWorksText": "Una persona crea la sala y la otra se une con el código.",
-    "multiplayer.howItWorksPill": "Tiempo real",
-    "multiplayer.keepFeaturesTitle": "💡 Misma experiencia",
-    "multiplayer.keepFeaturesText": "Se mantiene el tamaño del tablero y también puedes pedir pista.",
-    "multiplayer.keepFeaturesPill": "Tablero + pista",
-    "multiplayer.gameTitle": "Partida multijugador",
+    "multiplayer.roomCodePlaceholder": "Introduce el código",
+    "multiplayer.boardSize": "Tamaño del tablero",
+    "multiplayer.username": "Usuario",
+    "multiplayer.start": "Empezar",
+    "multiplayer.join": "Unirse",
+    "multiplayer.leave": "Salir de la sala",
+    "multiplayer.waiting": "Esperando rival…",
     "multiplayer.connected": "Conectado",
     "multiplayer.connecting": "Conectando…",
+    "multiplayer.gameTitle": "Partida multijugador",
     "multiplayer.players": "Jugadores",
-    "multiplayer.yourTurn": "Es tu turno",
+    "multiplayer.playerOne": "Jugador azul",
+    "multiplayer.playerTwo": "Jugador rojo",
+    "multiplayer.yourTurn": "Tu turno",
     "multiplayer.opponentTurn": "Turno del rival",
-    "multiplayer.leave": "Salir de la sala",
-    "multiplayer.opponentLeft": "El rival se ha desconectado o ha abandonado la sala.",
-    "multiplayer.error.create": "No se pudo crear la sala.",
-    "multiplayer.error.join": "No se pudo unir a la sala.",
-    "multiplayer.error.move": "No se pudo realizar la jugada.",
-    "multiplayer.error.hint": "No se pudo calcular la pista.",
+    "multiplayer.winner": "Ganador",
+    "multiplayer.opponentLeft": "El rival ha abandonado la partida",
+    "multiplayer.error.create": "Error al crear la sala",
+    "multiplayer.error.join": "Error al unirse a la sala",
+    "multiplayer.error.move": "Error al realizar la jugada",
+    "multiplayer.error.hint": "Error al calcular la pista",
     "multiplayer.error.network": "Error de red",
-    "multiplayer.playerOne": "Jugador 1",
-    "multiplayer.playerTwo": "Jugador 2",
-    "multiplayer.winner": "Ganador"
 
+    "notifications.bellLabel": "Notificaciones",
+    "notifications.title": "Notificaciones",
+    "notifications.close": "Cerrar",
+    "notifications.empty": "Sin notificaciones",
+    "notifications.unread": "sin leer",
+    "notifications.markRead": "Marcar como leído",
+    "notifications.panelLabel": "Panel de notificaciones",
+    "notifications.welcomeText": "¡Bienvenido al equipo YOVI!",
+    "notifications.friendRequestText": "{{from}} te ha enviado una solicitud de amistad",
+
+    "undo.title": "Deshacer movimientos",
+    "undo.subtitle": "Permite revertir tu último movimiento",
+    "undo.toggle.label": "Permitir deshacer",
+    "undo.limit.label": "Límite de veces",
+    "undo.limit.moves": "movimientos",
+    "undo.limit.unlimited": "Sin límite",
   },
 
   en: {
-    // Common
     "app.brand": "GameY",
     "common.home": "Home",
     "common.game": "New Game",
     "common.logout": "Logout",
     "common.language": "Language",
     "common.user": "User",
+    "common.stats": "Statistics",
+    "common.social": "Social",
+    "common.lightMode": "Switch to light theme",
+    "common.darkMode": "Switch to dark theme",
 
-    // Register
     "register.title": "GameY",
     "register.label": "What’s your name?",
     "register.placeholder": "Username",
@@ -284,33 +262,32 @@ export const translations: Record<Lang, Dict> = {
     "register.error.empty": "Please enter a username.",
     "register.error.server": "Server error",
     "register.error.network": "Network error",
+
     "registration.aria": "User registration",
     "registration.username": "Username",
     "registration.email": "Email",
-    "registration.password": "Password", //NOSONAR
-    "registration.repeatPassword": "Repeat password", //NOSONAR
-    "registration.error.repeatPassword": "Repeat password is required.", //NOSONAR
+    "registration.password": "Password",
+    "registration.repeatPassword": "Repeat password",
+    "registration.error.repeatPassword": "Repeat password is required.",
     "registration.button": "Register",
     "registration.loading": "Loading...",
     "registration.error.username": "Username is mandatory.",
-    "registration.error.password": "Password is mandatory.", //NOSONAR
+    "registration.error.password": "Password is mandatory.",
     "registration.error.generic": "Registration failed",
     "registration.error.network": "Network error",
     "registration.goLogin": "Already have an account? Back to login",
 
-    // Login
     "login.aria": "User login",
     "login.username": "Username",
-    "login.password": "Password", //NOSONAR
+    "login.password": "Password",
     "login.button": "Login",
     "login.loading": "Loading...",
     "login.error.username": "Please enter a username.",
-    "login.error.password": "Please enter a password.", //NOSONAR
+    "login.error.password": "Please enter a password.",
     "login.error.invalid": "Login failed",
     "login.error.network": "Network error",
     "login.goRegister": "Don’t have an account? Register",
 
-    // Home
     "home.badge": "You are in Gamey - Yovi_EN2C",
     "home.welcome": "Hello {username}",
     "home.subtitle": "Play the Game of Y",
@@ -320,14 +297,14 @@ export const translations: Record<Lang, Dict> = {
     "home.card1.title": "📘 Instructions",
     "home.card1.text": "Learn how to play before starting a match.",
     "home.instructions": "Instructions",
-    "home.card2.title": "🧑‍🤝‍🧑 Multiplayer",
-    "home.card2.text": "Create a room or join with a code to play against another person.",
+    "home.card2.title": "🎮 Multiplayer",
+    "home.card2.text": "Create a room or join a match against another player.",
+    "home.card2.pill": "Play online",
     "home.card3.title": "🤖 Different bots!",
     "home.card3.text": "Some are smarter than others",
-    "home.card3.pill": "Different difficultites",
+    "home.card3.pill": "Different difficulties",
     "home.selectDifficulty": "Select difficulty",
 
-    // Game
     "game.new": "New game",
     "game.send": "Send move",
     "game.sending": "Sending…",
@@ -336,14 +313,15 @@ export const translations: Record<Lang, Dict> = {
     "game.ok": "Connected → {msg}",
     "game.fail": "Connection error → {msg}",
     "game.back": "Back To Home",
-
-    // Game Ends
     "game.finished.win": "Game Finished: You win",
     "game.finished.lost": "Game Finished: You lost",
     "game.finished.draw": "Game Finished: Draw",
     "game.finished.back": "Back to Home",
+    "game.hint": "💡 Hint",
+    "game.hintLoading": "Thinking…",
+    "game.undo": "Undo",
+    "game.undoDone": "Move undone",
 
-    // Difficulties
     "difficulty.title": "Select Difficulty",
     "difficulty.subtitle": "Choose the bot level",
     "difficulty.random": "Very easy",
@@ -351,17 +329,15 @@ export const translations: Record<Lang, Dict> = {
     "difficulty.medium": "Medium",
     "difficulty.hard": "Hard",
     "difficulty.expert": "Expert",
-    "difficulty.extreme": "Extreme ",
+    "difficulty.extreme": "Extreme",
     "difficulty.start": "Play",
 
-    //Board size
     "boardsize.title": "Board Size",
     "boardsize.subtitle": "Choose a size or enter a custom one",
     "boardsize.custom.placeholder": "Custom size",
     "boardsize.warning.small": "Board too small, the game may not be fun",
     "boardsize.warning.large": "Large boards may cause slow bot responses",
-  
-    // Instructions
+
     "instructions.title": "Instructions",
     "instructions.subtitle": "Learn the basic rules of GameY and choose the difficulty that fits you best",
     "instructions.howToPlay.title": "How to play",
@@ -376,7 +352,6 @@ export const translations: Record<Lang, Dict> = {
     "instructions.board.p2": "Larger boards offer longer and more complex matches, although some bots may take longer to calculate their move.",
     "instructions.back": "Back to home",
 
-    //Stats
     "stats.title": "My Statistics",
     "stats.subtitle": "Game summary for {username}",
     "stats.totalGames": "Games played",
@@ -402,15 +377,9 @@ export const translations: Record<Lang, Dict> = {
     "stats.playFirst": "Play your first game!",
     "stats.error.generic": "Failed to load statistics",
     "stats.error.network": "Network error",
-    "common.stats": "Statistics",
     "stats.history": "Match history",
     "stats.page": "Page {page} of {total}",
 
-    //Theme
-    "common.lightMode": "Switch to light theme",
-    "common.darkMode":  "Switch to dark theme",
-    
-    //Timer
     "timer.title": "Turn Timer",
     "timer.subtitle": "Player loses if they don't move in time. 0 = no limit.",
     "timer.noLimit": "No limit",
@@ -422,11 +391,6 @@ export const translations: Record<Lang, Dict> = {
     "timer.timeout.lost": "Time's up! You lost",
     "timer.timeout.description": "You didn't make a move in time.",
 
-    //HInts
-    "game.hint": "💡 Hint",
-    "game.hintLoading": "Thinking…",
-
-    //Profile
     "profile.joinDate": "Joined on",
     "profile.error.generic": "Failed to load profile",
     "profile.error.network": "Network error",
@@ -444,83 +408,76 @@ export const translations: Record<Lang, Dict> = {
     "profile.edit.save": "Save",
     "profile.edit.saving": "Saving…",
     "profile.edit.cancel": "Cancel",
-
-    "common.social": "Social",
-
-    // Social page
-    "social.title":           "Social",
-    "social.subtitle":        "Find players and send friend requests",
-    "social.searchLabel":     "Search players",
-    "social.searchPlaceholder": "Username or email address…",
-    "social.searching":       "Searching…",
-    "social.resultsLabel":    "Results",
-    "social.noResults":       "No results for that search",
-    "social.searchError":     "Error searching users",
-    "social.viewProfile":     "View profile",
-    "social.sendRequest":     "Send request",
-    "social.requestSent":     "Request sent",
-    "social.alreadyFriends":  "Already friends",
-    "social.requestError":    "Error sending request",
-    "social.groupsTitle":     "Groups",
-    "social.groupsSubtitle":  "Coming soon",
-
-    // UserProfile — send friend request (visitor)
-    "profile.friends.sendRequest":   "Send friend request",
-    "profile.friends.requestSent":   "Request sent",
-    "profile.friends.requestError":  "Error sending request",
-    "profile.friends.alreadyFriends":"Already friends",
-
-    // UserProfile — friends list card (owner)
+    "profile.friends.sendRequest": "Send friend request",
+    "profile.friends.requestSent": "Request sent",
+    "profile.friends.requestError": "Error sending request",
+    "profile.friends.alreadyFriends": "Already friends",
     "profile.friends.title": "Friends",
     "profile.friends.empty": "No friends yet",
-
-    // UserProfile — friend requests card (owner)
-    "profile.friendRequests.title":  "Incoming friend requests",
-    "profile.friendRequests.empty":  "No pending requests",
+    "profile.friendRequests.title": "Incoming friend requests",
+    "profile.friendRequests.empty": "No pending requests",
     "profile.friendRequests.accept": "Accept",
     "profile.friendRequests.acceptError": "Error accepting request",
 
-    //Multiplayer
-    "common.multiplayer": "Multiplayer",
+    "social.title": "Social",
+    "social.subtitle": "Find players and send friend requests",
+    "social.searchLabel": "Search players",
+    "social.searchPlaceholder": "Username or email address…",
+    "social.searching": "Searching…",
+    "social.resultsLabel": "Results",
+    "social.noResults": "No results for that search",
+    "social.searchError": "Error searching users",
+    "social.viewProfile": "View profile",
+    "social.sendRequest": "Send request",
+    "social.requestSent": "Request sent",
+    "social.alreadyFriends": "Already friends",
+    "social.requestError": "Error sending request",
+    "social.groupsTitle": "Groups",
+    "social.groupsSubtitle": "Coming soon",
 
-    "home.multiplayer": "Multiplayer",
-    "home.card2.button": "Open multiplayer",
-
-    "multiplayer.title": "Online multiplayer",
-    "multiplayer.subtitle": "Create a room or join a match using a code.",
-    "multiplayer.create": "Create room",
-    "multiplayer.join": "Join",
-    "multiplayer.createTitle": "Create a new room",
-    "multiplayer.createText": "Choose the board size and share the code with your opponent.",
-    "multiplayer.joinTitle": "Join a room",
-    "multiplayer.joinText": "Enter the code shared by your opponent.",
+    "multiplayer.title": "Multiplayer",
+    "multiplayer.subtitle": "Create a room or join a match against another player",
     "multiplayer.createRoom": "Create room",
     "multiplayer.joinRoom": "Join room",
-    "multiplayer.creating": "Creating…",
-    "multiplayer.joining": "Joining…",
     "multiplayer.roomCode": "Room code",
-    "multiplayer.roomCodePlaceholder": "E.g. ABC123",
-    "multiplayer.howItWorksTitle": "⚡ How it works",
-    "multiplayer.howItWorksText": "One player creates the room and the other joins with the code.",
-    "multiplayer.howItWorksPill": "Real time",
-    "multiplayer.keepFeaturesTitle": "💡 Same experience",
-    "multiplayer.keepFeaturesText": "Board size is preserved and you can also ask for a hint.",
-    "multiplayer.keepFeaturesPill": "Board + hint",
-    "multiplayer.gameTitle": "Multiplayer match",
+    "multiplayer.roomCodePlaceholder": "Enter room code",
+    "multiplayer.boardSize": "Board size",
+    "multiplayer.username": "Username",
+    "multiplayer.start": "Start",
+    "multiplayer.join": "Join",
+    "multiplayer.leave": "Leave room",
+    "multiplayer.waiting": "Waiting for opponent…",
     "multiplayer.connected": "Connected",
     "multiplayer.connecting": "Connecting…",
+    "multiplayer.gameTitle": "Multiplayer game",
     "multiplayer.players": "Players",
+    "multiplayer.playerOne": "Blue player",
+    "multiplayer.playerTwo": "Red player",
     "multiplayer.yourTurn": "Your turn",
     "multiplayer.opponentTurn": "Opponent's turn",
-    "multiplayer.leave": "Leave room",
-    "multiplayer.opponentLeft": "Your opponent disconnected or left the room.",
-    "multiplayer.error.create": "Could not create room.",
-    "multiplayer.error.join": "Could not join room.",
-    "multiplayer.error.move": "Could not make move.",
-    "multiplayer.error.hint": "Could not compute hint.",
+    "multiplayer.winner": "Winner",
+    "multiplayer.opponentLeft": "Your opponent left the game",
+    "multiplayer.error.create": "Error creating room",
+    "multiplayer.error.join": "Error joining room",
+    "multiplayer.error.move": "Error making move",
+    "multiplayer.error.hint": "Error calculating hint",
     "multiplayer.error.network": "Network error",
-    "multiplayer.playerOne": "Player 1",
-    "multiplayer.playerTwo": "Player 2",
-    "multiplayer.winner": "Winner"
+
+    "notifications.bellLabel": "Notifications",
+    "notifications.title": "Notifications",
+    "notifications.close": "Close",
+    "notifications.empty": "No notifications",
+    "notifications.unread": "unread",
+    "notifications.markRead": "Mark as read",
+    "notifications.panelLabel": "Notifications panel",
+    "notifications.welcomeText": "Welcome to the YOVI team!",
+    "notifications.friendRequestText": "{{from}} sent you a friend request",
+
+    "undo.title": "Undo moves",
+    "undo.subtitle": "Allows you to revert your last move",
+    "undo.toggle.label": "Allow undo",
+    "undo.limit.label": "Limit",
+    "undo.limit.moves": "moves",
+    "undo.limit.unlimited": "Unlimited",
   },
 };

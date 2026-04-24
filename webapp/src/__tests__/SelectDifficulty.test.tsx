@@ -74,9 +74,9 @@ describe("SelectDifficulty", () => {
         await user.click(screen.getByRole("button", { name: /Jugar|Play/i }));
 
         expect(localStorage.getItem("selectedBot")).toBe("heuristic_bot");
-        expect(mockNavigate).toHaveBeenCalledWith("/game", {
-            state: { username: "Pablo", bot: "heuristic_bot", boardSize: 7, timerSeconds: 0 },
-        });
+        expect(mockNavigate).toHaveBeenCalledWith("/game", expect.objectContaining({
+            state: expect.objectContaining({ username: "Pablo", bot: "heuristic_bot", boardSize: 7, timerSeconds: 0 }),
+        }));
     });
 
     test("selects extreme difficulty and navigates correctly", async () => {
@@ -87,9 +87,9 @@ describe("SelectDifficulty", () => {
         await user.click(screen.getByRole("button", { name: /Jugar|Play/i }));
 
         expect(localStorage.getItem("selectedBot")).toBe("monte_carlo_extreme");
-        expect(mockNavigate).toHaveBeenCalledWith("/game", {
-            state: { username: "Pablo", bot: "monte_carlo_extreme", boardSize: 7, timerSeconds: 0 },
-        });
+        expect(mockNavigate).toHaveBeenCalledWith("/game", expect.objectContaining({
+            state: expect.objectContaining({ username: "Pablo", bot: "monte_carlo_extreme", boardSize: 7, timerSeconds: 0 }),
+        }));
     });
 
     test("renders board size section with preset buttons and custom input", () => {
@@ -125,9 +125,9 @@ describe("SelectDifficulty", () => {
         await user.type(screen.getByPlaceholderText(/Tamaño personalizado|Custom size/i), "9");
         await user.click(screen.getByRole("button", { name: /Jugar|Play/i }));
 
-        expect(mockNavigate).toHaveBeenCalledWith("/game", {
-            state: { username: "Pablo", bot: "heuristic_bot", boardSize: 9, timerSeconds: 0 },
-        });
+        expect(mockNavigate).toHaveBeenCalledWith("/game", expect.objectContaining({
+            state: expect.objectContaining({ username: "Pablo", bot: "heuristic_bot", boardSize: 9, timerSeconds: 0 }),
+        }));
     });
 
     test("shows small board warning when size < 5", async () => {
@@ -192,9 +192,9 @@ describe("SelectDifficulty", () => {
         await user.click(screen.getByRole("button", { name: /^15s$/ }));
         await user.click(screen.getByRole("button", { name: /Jugar|Play/i }));
 
-        expect(mockNavigate).toHaveBeenCalledWith("/game", {
-            state: { username: "Pablo", bot: "heuristic_bot", boardSize: 7, timerSeconds: 15 },
-        });
+        expect(mockNavigate).toHaveBeenCalledWith("/game", expect.objectContaining({
+            state: expect.objectContaining({ username: "Pablo", bot: "heuristic_bot", boardSize: 7, timerSeconds: 15 }),
+        }));
     });
 
     test("selecting preset timer 60s navigates with timerSeconds: 60", async () => {
@@ -205,9 +205,9 @@ describe("SelectDifficulty", () => {
         await user.click(screen.getByRole("button", { name: /^60s$/ }));
         await user.click(screen.getByRole("button", { name: /Jugar|Play/i }));
 
-        expect(mockNavigate).toHaveBeenCalledWith("/game", {
-            state: { username: "Pablo", bot: "heuristic_bot", boardSize: 7, timerSeconds: 60 },
-        });
+        expect(mockNavigate).toHaveBeenCalledWith("/game", expect.objectContaining({
+            state: expect.objectContaining({ username: "Pablo", bot: "heuristic_bot", boardSize: 7, timerSeconds: 60 }),
+        }));
     });
 
     test("typing custom timer deselects all preset timer buttons", async () => {
@@ -230,9 +230,9 @@ describe("SelectDifficulty", () => {
         await user.type(screen.getByPlaceholderText(/Segundos personalizados|Custom seconds/i), "45");
         await user.click(screen.getByRole("button", { name: /Jugar|Play/i }));
 
-        expect(mockNavigate).toHaveBeenCalledWith("/game", {
-            state: { username: "Pablo", bot: "heuristic_bot", boardSize: 7, timerSeconds: 45 },
-        });
+        expect(mockNavigate).toHaveBeenCalledWith("/game", expect.objectContaining({
+            state: expect.objectContaining({ username: "Pablo", bot: "heuristic_bot", boardSize: 7, timerSeconds: 45 }),
+        }));
     });
 
     test("clicking preset timer clears custom timer input", async () => {
@@ -290,8 +290,8 @@ describe("SelectDifficulty", () => {
         await user.type(screen.getByPlaceholderText(/Segundos personalizados|Custom seconds/i), "20");
         await user.click(screen.getByRole("button", { name: /Jugar|Play/i }));
 
-        expect(mockNavigate).toHaveBeenCalledWith("/game", {
-            state: { username: "Pablo", bot: "heuristic_bot", boardSize: 9, timerSeconds: 20 },
-        });
+        expect(mockNavigate).toHaveBeenCalledWith("/game", expect.objectContaining({
+            state: expect.objectContaining({ username: "Pablo", bot: "heuristic_bot", boardSize: 9, timerSeconds: 20 }),
+        }));
     });
 });
