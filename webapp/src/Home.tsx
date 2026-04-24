@@ -105,7 +105,7 @@ const Home: React.FC = () => {
   };
 
   const goLocalGame = () => {
-    navigate("/game", {
+    navigate("/select-difficulty", {
       state: { username, bot: "local", boardSize: 7, localGame: true },
     });
   };

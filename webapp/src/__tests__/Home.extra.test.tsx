@@ -90,7 +90,7 @@ describe("Home — cobertura adicional", () => {
 
     await user.click(await screen.findByRole("button", { name: /Jugar en local|Play locally/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith("/game", {
+    expect(mockNavigate).toHaveBeenCalledWith("/select-difficulty", {
       state: { username: "Pablo", bot: "local", boardSize: 7, localGame: true },
     });
   });
