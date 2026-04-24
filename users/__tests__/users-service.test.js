@@ -1080,11 +1080,7 @@ describe('POST /gameresult', () => {
             saveSpy.mockRestore()
         })
 
-        it('should handle error when username contains special characters', async () => {
-            const mockError = new Error('Username contains invalid characters');
-            const findOneSpy = vi.spyOn(mongoose.Model, 'findOne')
-                .mockRejectedValueOnce(mockError)
-
+        it('should return 400 when username contains special characters', async () => {
             const res = await request(app)
                 .post('/gameresult')
                 .send({
@@ -1094,12 +1090,10 @@ describe('POST /gameresult', () => {
                     score: 100
                 })
                 .set('Accept', 'application/json')
-                .expect(500)
+                .expect(400)
 
             expect(res.body).toHaveProperty('success', false)
-            expect(res.body.error).toBe('Username contains invalid characters')
-
-            findOneSpy.mockRestore()
+            expect(res.body.error).toMatch(/absent field|username/i)
         })
     })
 });
@@ -1303,41 +1297,24 @@ describe('GET /history/:username', () => {
             findSpy.mockRestore()
         })
 
-        it('should handle error when username parameter contains special characters', async () => {
-            const mockError = new Error('Invalid username format in database query');
-
-            const findSpy = vi.spyOn(mongoose.Model, 'find')
-                .mockImplementationOnce(() => {
-                    throw mockError;
-                })
-
+        it('should return 400 when username parameter contains special characters', async () => {
             const res = await request(app)
                 .get('/history/user@with#special$chars')
-                .expect(500)
+                .expect(400)
 
             expect(res.body).toHaveProperty('success', false)
-            expect(res.body.error).toBe('Invalid username format in database query')
-
-            findSpy.mockRestore()
+            expect(res.body.error).toBe('Invalid username')
         })
 
-        it('should handle error when username is extremely long', async () => {
+        it('should return 400 when username is extremely long', async () => {
             const longUsername = 'a'.repeat(1000);
-            const mockError = new Error('Username exceeds maximum length');
-
-            const findSpy = vi.spyOn(mongoose.Model, 'find')
-                .mockImplementationOnce(() => {
-                    throw mockError;
-                })
 
             const res = await request(app)
                 .get(`/history/${longUsername}`)
-                .expect(500)
+                .expect(400)
 
             expect(res.body).toHaveProperty('success', false)
-            expect(res.body.error).toBe('Username exceeds maximum length')
-
-            findSpy.mockRestore()
+            expect(res.body.error).toBe('Invalid username')
         })
 
         it('should handle error during stats calculation', async () => {

@@ -32,6 +32,7 @@ pub mod bot {
 
 pub mod game {
     pub mod pvb;
+    pub mod pvp;
     pub mod new;
     pub mod check;
 }
@@ -75,6 +76,10 @@ pub fn create_router(state: AppState) -> axum::Router {
         .route(
             "/{api_version}/game/pvb/{bot_id}",
             axum::routing::post(game::pvb::pvb_move),
+        )
+        .route(
+            "/{api_version}/game/pvp/move",
+            axum::routing::post(game::pvp::pvp_move),
         )
         .route(
             "/game/new",
