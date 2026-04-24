@@ -30,12 +30,20 @@ app.use(metricsMiddleware);
 const PORT = process.env.PORT || 3000;
 const SALT_ROUNDS = 10;
 
+function getErrorMessage(error) {
+    return typeof error?.message === 'string' ? error.message : 'Internal server error';
+}
+
 function getUsernameFromToken(authHeader) {
     if (!authHeader?.startsWith('Bearer ')) return null;
 
     try {
-        const payload = authHeader.split('.')[1];
-        const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+        const tokenParts = authHeader.split(' ');
+        const jwtParts = tokenParts[1]?.split('.');
+
+        if (!jwtParts || jwtParts.length < 2) return null;
+
+        const decoded = JSON.parse(Buffer.from(jwtParts[1], 'base64url').toString('utf8'));
         return decoded.username ?? decoded.sub ?? null;
     } catch {
         return null;
@@ -55,6 +63,8 @@ function normalizeLooseUsername(value) {
     if (typeof value !== 'string') return null;
 
     const username = value.trim();
+    if (!username) return null;
+
     return /^[A-Za-z0-9_-]{1,30}$/.test(username) ? username : null;
 }
 
@@ -66,19 +76,14 @@ async function findUserByUsername(username, projection) {
     const safeUsername = normalizeUsername(username);
     if (!safeUsername) return null;
 
-    return execMaybe(User.findOne(
-        { username: { $eq: safeUsername } },
-        projection
-    ));
+    return execMaybe(User.findOne({ username: safeUsername }, projection));
 }
 
 function findGamesByUsername(username) {
     const safeUsername = normalizeUsername(username);
     if (!safeUsername) return null;
 
-    return GameResult.find({
-        username: { $eq: safeUsername }
-    });
+    return GameResult.find({ username: safeUsername });
 }
 
 function normalizeEmail(value) {
@@ -129,8 +134,23 @@ function publicGameView(game) {
 
 function buildWinLossStats(games) {
     return {
-        wins: games.filter(g => g.result === 'win').length,
-        losses: games.filter(g => g.result === 'loss').length,
+        wins: games.filter(game => game.result === 'win').length,
+        losses: games.filter(game => game.result === 'loss').length,
+    };
+}
+
+function buildFullStats(games) {
+    const totalGames = games.length;
+    const wins = games.filter(game => game.result === 'win').length;
+    const losses = games.filter(game => game.result === 'loss').length;
+
+    return {
+        totalGames,
+        wins,
+        losses,
+        winRate: totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0,
+        pvbGames: games.filter(game => game.gameMode === 'pvb').length,
+        pvpGames: games.filter(game => game.gameMode === 'pvp').length,
     };
 }
 
@@ -144,11 +164,16 @@ function publicNotificationView(notification) {
     };
 }
 
+function createNotificationSilently(notification, errorMessage) {
+    Notification.create(notification).catch(error => console.error(errorMessage, error));
+}
+
 app.post('/createuser', async (req, res) => {
     try {
-        const username = normalizeUsername(req.body?.username);
+        const rawUsername = req.body?.username;
         const { password } = req.body;
         const processedEmail = normalizeEmail(req.body?.email);
+        const username = typeof rawUsername === 'string' ? rawUsername.trim() : '';
 
         if (!username) {
             return res.status(400).json({ success: false, error: 'Username is a mandatory field' });
@@ -163,45 +188,47 @@ app.post('/createuser', async (req, res) => {
         const newUser = new User({
             username,
             email: processedEmail,
-            password: hashedPassword
+            password: hashedPassword,
         });
 
         const savedUser = await newUser.save();
 
-        Notification.create({
-            recipient: savedUser.username,
-            type: 'welcome',
-            from: null,
-            read: false,
-        }).catch(error => console.error('Failed to create welcome notification:', error));
+        createNotificationSilently(
+            {
+                recipient: savedUser.username,
+                type: 'welcome',
+                from: null,
+                read: false,
+            },
+            'Failed to create welcome notification:'
+        );
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: `User ${savedUser.username} created`,
             user: {
                 id: savedUser._id,
                 username: savedUser.username,
                 email: savedUser.email || null,
-                createdAt: savedUser.createdAt
-            }
+                createdAt: savedUser.createdAt,
+            },
         });
-
     } catch (error) {
-        if (error.code === 11000) {
+        if (error?.code === 11000) {
             const field = Object.keys(error.keyPattern || {})[0] || 'field';
             return res.status(400).json({
                 success: false,
-                error: `The ${field} field is already in the data base`
+                error: `The ${field} field is already in the data base`,
             });
         }
 
-        if (error.name === 'ValidationError') {
-            const errors = Object.values(error.errors || {}).map(e => e.message);
+        if (error?.name === 'ValidationError') {
+            const errors = Object.values(error.errors || {}).map(validationError => validationError.message);
             return res.status(400).json({ success: false, error: errors.join(', ') });
         }
 
         console.error('Error en POST /createuser:', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -219,28 +246,28 @@ app.get('/users/:username', async (req, res) => {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
 
-        res.json({
+        return res.json({
             success: true,
             user: {
                 id: user._id,
                 username: user.username,
                 email: user.email || null,
                 password: user.password,
-                createdAt: user.createdAt
-            }
+                createdAt: user.createdAt,
+            },
         });
     } catch (error) {
         console.error('Error in GET /users/:username:', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
 app.get('/users', async (_req, res) => {
     try {
         const users = await User.find({}, { password: 0 }).sort({ createdAt: -1 });
-        res.json({ success: true, count: users.length, users });
+        return res.json({ success: true, count: users.length, users });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
 });
 
@@ -258,25 +285,24 @@ app.get('/search', async (req, res) => {
             {
                 $or: [
                     { username: { $regex: regex } },
-                    { email: { $regex: regex } }
-                ]
+                    { email: { $regex: regex } },
+                ],
             },
             { password: 0, friendRequests: 0 }
         ).limit(20);
 
-        res.json({
+        return res.json({
             success: true,
             count: users.length,
-            users: users.map(u => ({
-                username: u.username,
-                email: u.email ?? null,
-                realName: u.realName ?? null,
-            }))
+            users: users.map(user => ({
+                username: user.username,
+                email: user.email ?? null,
+                realName: user.realName ?? null,
+            })),
         });
-
     } catch (error) {
         console.error('Error in GET /search:', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -289,7 +315,7 @@ app.post('/gameresult', async (req, res) => {
         if (!username || !opponent || !result) {
             return res.status(400).json({
                 success: false,
-                error: 'The are absent field/s : username, opponent, result are mandatory'
+                error: 'The are absent field/s : username, opponent, result are mandatory',
             });
         }
 
@@ -307,15 +333,14 @@ app.post('/gameresult', async (req, res) => {
             winner: normalizedWinner,
             score: score || 0,
             boardSize: parseBoardSize(boardSize, 7),
-            gameMode: gameMode || 'pvb'
+            gameMode: gameMode || 'pvb',
         });
 
         const savedGame = await game.save();
-        res.status(201).json({ success: true, message: 'Game result saved', game: savedGame });
-
+        return res.status(201).json({ success: true, message: 'Game result saved', game: savedGame });
     } catch (error) {
         console.error('Error in POST /gameresult:', error);
-        res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
 });
 
@@ -329,40 +354,40 @@ app.post('/gameresult/multiplayer', async (req, res) => {
         if (!player1 || !player2 || !winner) {
             return res.status(400).json({
                 success: false,
-                error: 'player1, player2 and winner are mandatory'
+                error: 'player1, player2 and winner are mandatory',
             });
         }
 
         if (player1 === player2) {
             return res.status(400).json({
                 success: false,
-                error: 'player1 and player2 must be different users'
+                error: 'player1 and player2 must be different users',
             });
         }
 
         if (winner !== player1 && winner !== player2) {
             return res.status(400).json({
                 success: false,
-                error: 'winner must be one of the two players'
+                error: 'winner must be one of the two players',
             });
         }
 
         const [user1Exists, user2Exists] = await Promise.all([
             ensureExistingUser(player1),
-            ensureExistingUser(player2)
+            ensureExistingUser(player2),
         ]);
 
         if (!user1Exists) {
             return res.status(404).json({
                 success: false,
-                error: `The user ${player1} does not exist`
+                error: `The user ${player1} does not exist`,
             });
         }
 
         if (!user2Exists) {
             return res.status(404).json({
                 success: false,
-                error: `The user ${player2} does not exist`
+                error: `The user ${player2} does not exist`,
             });
         }
 
@@ -377,7 +402,7 @@ app.post('/gameresult/multiplayer', async (req, res) => {
                 winner,
                 score: player1Won ? normalizedBoardSize : 0,
                 boardSize: normalizedBoardSize,
-                gameMode: 'pvp'
+                gameMode: 'pvp',
             },
             {
                 username: player2,
@@ -386,21 +411,20 @@ app.post('/gameresult/multiplayer', async (req, res) => {
                 winner,
                 score: player2Won ? normalizedBoardSize : 0,
                 boardSize: normalizedBoardSize,
-                gameMode: 'pvp'
-            }
+                gameMode: 'pvp',
+            },
         ]);
 
         return res.status(201).json({
             success: true,
             message: 'Multiplayer game result saved',
-            games: results
+            games: results,
         });
-
     } catch (error) {
         console.error('Error in POST /gameresult/multiplayer:', error);
         return res.status(500).json({
             success: false,
-            error: error.message
+            error: getErrorMessage(error),
         });
     }
 });
@@ -419,13 +443,16 @@ app.get('/history/:username', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid username' });
         }
 
-        const games = await gamesQuery.sort({ date: -1 }).limit(limit);
+        const games = await gamesQuery
+            .sort({ date: -1 })
+            .limit(limit);
+
         const stats = buildWinLossStats(games);
 
-        res.json({ success: true, username, stats, total: games.length, games });
+        return res.json({ success: true, username, stats, total: games.length, games });
     } catch (error) {
         console.error('Error in GET /history/:username:', error);
-        res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
 });
 
@@ -436,12 +463,13 @@ app.get('/ranking', async (_req, res) => {
             { $group: { _id: '$username', wins: { $sum: 1 }, lastGame: { $max: '$date' } } },
             { $sort: { wins: -1 } },
             { $limit: 10 },
-            { $project: { username: '$_id', wins: 1, lastGame: 1, _id: 0 } }
+            { $project: { username: '$_id', wins: 1, lastGame: 1, _id: 0 } },
         ]);
-        res.json({ success: true, ranking });
+
+        return res.json({ success: true, ranking });
     } catch (error) {
         console.error('Error in GET /ranking:', error);
-        res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
 });
 
@@ -466,37 +494,26 @@ app.get('/stats/:username', async (req, res) => {
         }
 
         const games = await gamesQuery.sort({ date: -1 });
-        const totalGames = games.length;
-        const wins = games.filter(g => g.result === 'win').length;
-        const losses = games.filter(g => g.result === 'loss').length;
-        const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
-        const pvbGames = games.filter(g => g.gameMode === 'pvb').length;
-        const pvpGames = games.filter(g => g.gameMode === 'pvp').length;
+        const stats = buildFullStats(games);
 
         const start = (page - 1) * pageSize;
         const paginatedGames = games.slice(start, start + pageSize).map(publicGameView);
         const lastFive = games.slice(0, 5).map(publicGameView);
 
-        res.json({
+        return res.json({
             success: true,
             username,
             stats: {
-                totalGames,
-                wins,
-                losses,
-                winRate,
-                pvbGames,
-                pvpGames,
-                lastFive
+                ...stats,
+                lastFive,
             },
             games: paginatedGames,
             page,
             pageSize,
         });
-
     } catch (error) {
         console.error('Error in GET /stats/:username:', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -519,13 +536,10 @@ app.get('/profile/:username', async (req, res) => {
         }
 
         const games = await gamesQuery.sort({ date: -1 });
-        const totalGames = games.length;
-        const wins = games.filter(g => g.result === 'win').length;
-        const losses = games.filter(g => g.result === 'loss').length;
-        const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+        const stats = buildFullStats(games);
         const recentMatches = games.slice(0, 5).map(publicGameView);
 
-        res.json({
+        return res.json({
             success: true,
             profile: {
                 username: user.username,
@@ -534,16 +548,20 @@ app.get('/profile/:username', async (req, res) => {
                 location: user.location ?? {},
                 preferredLanguage: user.preferredLanguage ?? 'en',
                 joinDate: user.createdAt,
-                stats: { totalGames, wins, losses, winRate },
+                stats: {
+                    totalGames: stats.totalGames,
+                    wins: stats.wins,
+                    losses: stats.losses,
+                    winRate: stats.winRate,
+                },
                 recentMatches,
                 friends: user.friends ?? [],
                 friendRequests: user.friendRequests ?? [],
-            }
+            },
         });
-
     } catch (error) {
         console.error('Error in GET /profile/:username:', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -570,7 +588,7 @@ app.patch('/profile/:username', async (req, res) => {
 
         await user.save();
 
-        res.json({
+        return res.json({
             success: true,
             message: 'Profile updated',
             profile: {
@@ -578,18 +596,17 @@ app.patch('/profile/:username', async (req, res) => {
                 realName: user.realName ?? null,
                 bio: user.bio ?? null,
                 location: user.location ?? {},
-                preferredLanguage: user.preferredLanguage ?? 'en'
-            }
+                preferredLanguage: user.preferredLanguage ?? 'en',
+            },
         });
-
     } catch (error) {
-        if (error.name === 'ValidationError') {
-            const errors = Object.values(error.errors || {}).map(e => e.message);
+        if (error?.name === 'ValidationError') {
+            const errors = Object.values(error.errors || {}).map(validationError => validationError.message);
             return res.status(400).json({ success: false, error: errors.join(', ') });
         }
 
         console.error('Error in PATCH /profile/:username:', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -629,18 +646,20 @@ app.post('/friends/request/:username', async (req, res) => {
         target.friendRequests.push(senderUsername);
         await target.save();
 
-        Notification.create({
-            recipient: targetUsername,
-            type: 'friend_request',
-            from: senderUsername,
-            read: false,
-        }).catch(error => console.error('Failed to create friend_request notification:', error));
+        createNotificationSilently(
+            {
+                recipient: targetUsername,
+                type: 'friend_request',
+                from: senderUsername,
+                read: false,
+            },
+            'Failed to create friend_request notification:'
+        );
 
-        res.status(201).json({ success: true, message: `Friend request sent to ${targetUsername}` });
-
+        return res.status(201).json({ success: true, message: `Friend request sent to ${targetUsername}` });
     } catch (error) {
         console.error('Error in POST /friends/request/:username:', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -676,18 +695,23 @@ app.post('/friends/accept/:username', async (req, res) => {
 
         sender.friends = sender.friends || [];
 
-        acceptor.friendRequests = acceptor.friendRequests.filter(u => u !== senderUsername);
-        if (!acceptor.friends.includes(senderUsername)) acceptor.friends.push(senderUsername);
-        if (!sender.friends.includes(acceptorUsername)) sender.friends.push(acceptorUsername);
+        acceptor.friendRequests = acceptor.friendRequests.filter(user => user !== senderUsername);
+
+        if (!acceptor.friends.includes(senderUsername)) {
+            acceptor.friends.push(senderUsername);
+        }
+
+        if (!sender.friends.includes(acceptorUsername)) {
+            sender.friends.push(acceptorUsername);
+        }
 
         await acceptor.save();
         await sender.save();
 
-        res.json({ success: true, message: `You are now friends with ${senderUsername}` });
-
+        return res.json({ success: true, message: `You are now friends with ${senderUsername}` });
     } catch (error) {
         console.error('Error in POST /friends/accept/:username:', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -714,17 +738,16 @@ app.delete('/friends/:username', async (req, res) => {
         current.friends = current.friends || [];
         target.friends = target.friends || [];
 
-        current.friends = current.friends.filter(u => u !== targetUsername);
-        target.friends = target.friends.filter(u => u !== currentUsername);
+        current.friends = current.friends.filter(user => user !== targetUsername);
+        target.friends = target.friends.filter(user => user !== currentUsername);
 
         await current.save();
         await target.save();
 
-        res.json({ success: true, message: `${targetUsername} removed from your friends` });
-
+        return res.json({ success: true, message: `${targetUsername} removed from your friends` });
     } catch (error) {
         console.error('Error in DELETE /friends/:username:', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -741,11 +764,10 @@ app.get('/friends', async (req, res) => {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
 
-        res.json({ success: true, friends: user.friends || [] });
-
+        return res.json({ success: true, friends: user.friends || [] });
     } catch (error) {
         console.error('Error in GET /friends:', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -757,23 +779,20 @@ app.get('/notifications', async (req, res) => {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const notifications = await Notification.find({
-            recipient: { $eq: username }
-        })
+        const notifications = await Notification.find({ recipient: username })
             .sort({ createdAt: -1 })
             .limit(50);
 
-        const unreadCount = notifications.filter(n => !n.read).length;
+        const unreadCount = notifications.filter(notification => !notification.read).length;
 
-        res.json({
+        return res.json({
             success: true,
             notifications: notifications.map(publicNotificationView),
             unreadCount,
         });
-
     } catch (error) {
         console.error('Error in GET /notifications:', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -791,33 +810,39 @@ app.patch('/notifications/:id/read', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid notification id' });
         }
 
-        const notification = await Notification.findOne({
-            _id: { $eq: new mongoose.Types.ObjectId(id) },
-            recipient: { $eq: username }
-        });
+        const notification = await Notification.findById(id);
 
         if (!notification) {
             return res.status(404).json({ success: false, error: 'Notification not found' });
         }
 
+        if (notification.recipient !== username) {
+            return res.status(403).json({ success: false, error: 'Forbidden' });
+        }
+
         notification.read = true;
         await notification.save();
 
-        res.json({
+        return res.json({
             success: true,
-            notification: publicNotificationView(notification)
+            notification: publicNotificationView(notification),
         });
-
     } catch (error) {
         console.error('Error in PATCH /notifications/:id/read:', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        return res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
 app.get('/health', async (_req, res) => {
     const dbState = mongoose.connection.readyState;
     const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
-    res.json({ status: 'OK', server: 'running', database: states[dbState], timestamp: new Date() });
+
+    return res.json({
+        status: 'OK',
+        server: 'running',
+        database: states[dbState],
+        timestamp: new Date(),
+    });
 });
 
 module.exports = app;
@@ -828,6 +853,6 @@ if (require.main === module) {
     });
 }
 
-process.on('unhandledRejection', (error) => {
+process.on('unhandledRejection', error => {
     console.error('❌ Unhandled Rejection:', error);
 });
