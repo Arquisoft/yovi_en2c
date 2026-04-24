@@ -104,7 +104,7 @@ const Home: React.FC = () => {
   };
 
   const startQuickGame = () => {
-    navigate("/game", { state: { username, bot: "minimax_bot", boardSize: 7 } });
+    navigate("/game", { state: { username, bot: "minimax_bot", boardSize: 7, mode: "bot" } });
   };
 
   if (checkingSession || !username || !token) return null;
@@ -158,10 +158,19 @@ const Home: React.FC = () => {
               </div>
             </article>
 
+            {/* Card 2: Local multiplayer — now links to the game setup screen */}
             <article className="card">
               <h2 className="card__title">{t("home.card2.title")}</h2>
               <p className="card__text">{t("home.card2.text")}</p>
-              <span className="pill">{t("home.card2.pill")}</span>
+              <div style={{ marginTop: 16 }}>
+                <button
+                    className="btn btn--primary"
+                    onClick={() => navigate("/select-difficulty")}
+                    type="button"
+                >
+                  {t("home.card2.cta")}
+                </button>
+              </div>
             </article>
 
             <article className="card">
