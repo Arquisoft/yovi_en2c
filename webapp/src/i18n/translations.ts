@@ -65,6 +65,10 @@ export const translations: Record<Lang, Dict> = {
     "home.card3.text": "Algunos son más listos que otros",
     "home.card3.pill": "Diferentes dificultades",
     "home.selectDifficulty": "Seleccionar dificultad",
+    "home.card4.title": "👥 Social",
+    "home.card4.text": "Busca jugadores, visita perfiles y gestiona tus amistades.",
+    "home.card4.pill": "Amigos y perfiles",
+    "home.card4.button": "Ir a Social",
 
     "game.new": "Nueva partida",
     "game.send": "Enviar jugada",
@@ -223,6 +227,9 @@ export const translations: Record<Lang, Dict> = {
     "multiplayer.error.move": "Error al realizar la jugada",
     "multiplayer.error.hint": "Error al calcular la pista",
     "multiplayer.error.network": "Error de red",
+    "common.multiplayer": "Multijugador",
+    "home.multiplayer": "Multijugador",
+    "home.card2.button": "Jugar multijugador",
 
     "notifications.bellLabel": "Notificaciones",
     "notifications.title": "Notificaciones",
@@ -304,6 +311,10 @@ export const translations: Record<Lang, Dict> = {
     "home.card3.text": "Some are smarter than others",
     "home.card3.pill": "Different difficulties",
     "home.selectDifficulty": "Select difficulty",
+    "home.card4.title": "👥 Social",
+    "home.card4.text": "Find players, visit profiles and manage your friends.",
+    "home.card4.pill": "Friends and profiles",
+    "home.card4.button": "Go to Social",
 
     "game.new": "New game",
     "game.send": "Send move",
@@ -462,6 +473,9 @@ export const translations: Record<Lang, Dict> = {
     "multiplayer.error.move": "Error making move",
     "multiplayer.error.hint": "Error calculating hint",
     "multiplayer.error.network": "Network error",
+    "common.multiplayer": "Multiplayer",
+    "home.multiplayer": "Multiplayer",
+    "home.card2.button": "Play multiplayer",
 
     "notifications.bellLabel": "Notifications",
     "notifications.title": "Notifications",
