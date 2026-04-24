@@ -33,6 +33,9 @@ const SelectDifficulty: React.FC = () => {
     const [allowUndo, setAllowUndo] = useState<boolean>(false);
     const [undoLimit, setUndoLimit] = useState<number>(3);
 
+    // ── Pie Rule config ───────────────────────────────────────────────────────
+    const [pieRule, setPieRule] = useState<boolean>(false);
+
     const boardSize = customSize !== "" ? parseInt(customSize, 10) : (presetSize ?? 7);
     const timerSeconds: number =
         customTimer !== ""
@@ -54,10 +57,10 @@ const SelectDifficulty: React.FC = () => {
         navigate("/", { replace: true });
     };
 
-    const handlePresetSize  = (size: number)                          => { setPresetSize(size);  setCustomSize(""); };
-    const handleCustomSize  = (e: React.ChangeEvent<HTMLInputElement>) => { setPresetSize(null);  setCustomSize(e.target.value); };
-    const handlePresetTimer = (seconds: number)                        => { setPresetTimer(seconds); setCustomTimer(""); };
-    const handleCustomTimer = (e: React.ChangeEvent<HTMLInputElement>) => { setPresetTimer(null); setCustomTimer(e.target.value); };
+    const handlePresetSize  = (size: number)                           => { setPresetSize(size);      setCustomSize(""); };
+    const handleCustomSize  = (e: React.ChangeEvent<HTMLInputElement>) => { setPresetSize(null);      setCustomSize(e.target.value); };
+    const handlePresetTimer = (seconds: number)                        => { setPresetTimer(seconds);  setCustomTimer(""); };
+    const handleCustomTimer = (e: React.ChangeEvent<HTMLInputElement>) => { setPresetTimer(null);     setCustomTimer(e.target.value); };
 
     const sizeWarning = (): string | null => {
         if (!boardSize || isNaN(boardSize))    return null;
@@ -84,6 +87,7 @@ const SelectDifficulty: React.FC = () => {
                     timerSeconds: isNaN(timerSeconds) ? 0 : timerSeconds,
                     allowUndo,
                     undoLimit:    allowUndo ? undoLimit : 0,
+                    pieRule,
                 },
             });
         }
@@ -184,7 +188,6 @@ const SelectDifficulty: React.FC = () => {
                         <h2 className="card__title">{t("undo.title")}</h2>
                         <p className="card__text">{t("undo.subtitle")}</p>
 
-                        {/* Toggle */}
                         <div className="sd-toggle-row">
                             <span className="sd-toggle-label">{t("undo.toggle.label")}</span>
                             <button
@@ -199,7 +202,6 @@ const SelectDifficulty: React.FC = () => {
                             </button>
                         </div>
 
-                        {/* Limit selector */}
                         {allowUndo && (
                             <div className="sd-undo-limits">
                                 <p className="sd-undo-limits__label">{t("undo.limit.label")}</p>
@@ -218,6 +220,32 @@ const SelectDifficulty: React.FC = () => {
                                     ))}
                                 </div>
                             </div>
+                        )}
+                    </div>
+
+                    {/* ── Pie Rule ──────────────────────────────────────────── */}
+                    <div className="card">
+                        <h2 className="card__title">{t("pieRule.title")}</h2>
+                        <p className="card__text">{t("pieRule.subtitle")}</p>
+
+                        <div className="sd-toggle-row">
+                            <span className="sd-toggle-label">{t("pieRule.toggle.label")}</span>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={pieRule}
+                                aria-label={t("pieRule.toggle.label")}
+                                data-testid="pie-rule-toggle"
+                                onClick={() => setPieRule(prev => !prev)}
+                                className={`sd-toggle ${pieRule ? "sd-toggle--on" : ""}`}
+                            >
+                                <span className="sd-toggle__thumb" />
+                            </button>
+                        </div>
+
+                        {/* Hint pill — only visible when Pie Rule is ON */}
+                        {pieRule && (
+                            <p className="sd-pie-hint">{t("pieRule.hint")}</p>
                         )}
                     </div>
 

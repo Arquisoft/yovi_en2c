@@ -76,10 +76,10 @@ function getHexagonPoints(cx: number, cy: number, radius: number) {
 // ── TurnTimer ─────────────────────────────────────────────────────────────────
 interface TurnTimerProps { secondsLeft: number; totalSeconds: number; }
 
-const TIMER_SIZE = 64;
+const TIMER_SIZE   = 64;
 const TIMER_STROKE = 5;
-const TIMER_R = (TIMER_SIZE - TIMER_STROKE) / 2;
-const TIMER_CIRC = 2 * Math.PI * TIMER_R;
+const TIMER_R      = (TIMER_SIZE - TIMER_STROKE) / 2;
+const TIMER_CIRC   = 2 * Math.PI * TIMER_R;
 
 const TurnTimer: React.FC<TurnTimerProps> = ({ secondsLeft, totalSeconds }) => {
   const ratio      = totalSeconds > 0 ? secondsLeft / totalSeconds : 1;
@@ -115,6 +115,57 @@ const BotTimer: React.FC<BotTimerProps> = ({ size }) => {
       </div>
   );
 };
+
+// ── PieRuleModal ──────────────────────────────────────────────────────────────
+// Shown after the first human move when Pie Rule is active.
+// The second player (in PvB = same person) can swap sides or continue.
+
+interface PieRuleModalProps {
+  onSwap:  () => void;
+  onKeep:  () => void;
+  loading: boolean;
+  t: (key: string) => string;
+}
+
+const PieRuleModal: React.FC<PieRuleModalProps> = ({ onSwap, onKeep, loading, t }) => (
+    <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pie-rule-title"
+        className="pie-modal-backdrop"
+    >
+      <div className="pie-modal-card">
+        <div className="pie-modal-emoji">🥧</div>
+
+        <h2 id="pie-rule-title" className="pie-modal-title">
+          {t("pieRule.modal.title")}
+        </h2>
+        <p className="pie-modal-desc">
+          {t("pieRule.modal.description")}
+        </p>
+
+        <div className="pie-modal-actions">
+          <button
+              onClick={onSwap}
+              disabled={loading}
+              aria-label={t("pieRule.modal.swap")}
+              className="pie-modal-btn pie-modal-btn--swap"
+          >
+            {loading ? t("pieRule.modal.swapping") : t("pieRule.modal.swap")}
+          </button>
+
+          <button
+              onClick={onKeep}
+              disabled={loading}
+              aria-label={t("pieRule.modal.keep")}
+              className="pie-modal-btn pie-modal-btn--keep"
+          >
+            {t("pieRule.modal.keep")}
+          </button>
+        </div>
+      </div>
+    </div>
+);
 
 // ── Game ──────────────────────────────────────────────────────────────────────
 
@@ -152,16 +203,21 @@ const Game: React.FC = () => {
 
   const timerEnabled = timerSeconds > 0;
 
-  // ── Undo config (read from navigation state) ──────────────────────────────
+  // ── Undo config ───────────────────────────────────────────────────────────
   const allowUndo = useMemo(() => {
     const st = (location.state as { allowUndo?: boolean } | null) ?? null;
     return st?.allowUndo ?? false;
   }, [location.state]);
 
-  // undoLimit: 0 = unlimited, >0 = max undos per game
   const undoLimit = useMemo(() => {
     const st = (location.state as { undoLimit?: number } | null) ?? null;
     return st?.undoLimit ?? 0;
+  }, [location.state]);
+
+  // ── Pie Rule config ───────────────────────────────────────────────────────
+  const pieRuleEnabled = useMemo(() => {
+    const st = (location.state as { pieRule?: boolean } | null) ?? null;
+    return st?.pieRule ?? false;
   }, [location.state]);
 
   const [showInstructions, setShowInstructions] = useState(false);
@@ -180,12 +236,19 @@ const Game: React.FC = () => {
   const hintTimerRef = useRef<number | null>(null);
 
   // ── Undo state ────────────────────────────────────────────────────────────
-  // yenHistory: array of YEN states BEFORE each human move (index 0 = oldest).
-  // Each entry is the complete yen object the player could revert to.
   const [yenHistory,  setYenHistory]  = useState<any[]>([]);
-  const [undoCount,   setUndoCount]   = useState(0);   // how many undos used this game
+  const [undoCount,   setUndoCount]   = useState(0);
   const [undoToast,   setUndoToast]   = useState(false);
   const undoToastTimerRef = useRef<number | null>(null);
+
+  // ── Pie Rule state ────────────────────────────────────────────────────────
+  // showPieModal: shown after the 1st human move when pieRuleEnabled=true.
+  // In PvB the same player sees it (they act as "the second player" deciding
+  // whether to swap the colour they just placed against themselves).
+  const [showPieModal, setShowPieModal] = useState(false);
+  const [swapLoading,  setSwapLoading]  = useState(false);
+  // pieRuleUsed: true when a swap was confirmed → shows the badge indicator
+  const [pieRuleUsed,  setPieRuleUsed]  = useState(false);
 
   const [fixedPlayers, setFixedPlayersState] = useState<[string, string] | null>(null);
   const fixedPlayersRef = useRef<[string, string] | null>(null);
@@ -264,6 +327,7 @@ const Game: React.FC = () => {
     setError(null); setMoveCount(0); setShowInstructions(false);
     setHintCell(null); setHintLoading(false);
     setYenHistory([]); setUndoCount(0); setUndoToast(false);
+    setShowPieModal(false); setSwapLoading(false); setPieRuleUsed(false);
     stopTimer(); setTimeLeft(timerSeconds);
   }, [botId, boardSizeFromState, stopTimer, timerSeconds]);
 
@@ -371,8 +435,8 @@ const Game: React.FC = () => {
     clearPendingFinish(); setMoveCount(0); stopTimer(); setTimeLeft(timerSeconds);
     clearHint(); setHintLoading(false);
     fixedPlayersRef.current = null; setFixedPlayersState(null);
-    // Reset undo state for new game
     setYenHistory([]); setUndoCount(0); setUndoToast(false);
+    setShowPieModal(false); setSwapLoading(false); setPieRuleUsed(false);
     try {
       const res  = await fetch(`${API_URL}/game/new`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -412,7 +476,6 @@ const Game: React.FC = () => {
     setMoveCount(newMoveCount);
     setYen(optimisticYen);
 
-    // ── Push to undo history before the move is sent ──────────────────────
     if (allowUndo) {
       setYenHistory(prev => [...prev, previousYen]);
     }
@@ -429,9 +492,16 @@ const Game: React.FC = () => {
       if (!fixedPlayersRef.current) setFixedPlayers(players);
       setYen(nextYen);
       applyFinishFromGateway(data, players, newMoveCount, boardSizeFromState);
+
+      // ── Pie Rule: show modal after exactly the 1st human move ─────────────
+      if (pieRuleEnabled && newMoveCount === 1 && !(data as any).finished) {
+        // Timer stays stopped — game is paused while the modal is on screen
+        setShowPieModal(true);
+        return;
+      }
+
       if (!(data as any).finished) startTimer();
     } catch (e: any) {
-      // Revert on error — also pop the history entry we just pushed
       setYen(previousYen);
       setMoveCount((c) => Math.max(0, c - 1));
       if (allowUndo) {
@@ -444,15 +514,48 @@ const Game: React.FC = () => {
     }
   };
 
+  // ── Pie Rule: perform the swap via the backend ────────────────────────────
+  const handlePieSwap = async () => {
+    if (!yen) return;
+    setSwapLoading(true);
+    try {
+      const res  = await fetch(`${API_URL}/game/swap`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ yen }),
+      });
+      const data = await readGatewayResponse(res);
+      if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Swap failed");
+
+      const swappedYen = (data as any).yen;
+      setYen(swappedYen);
+
+      // After swap the players array is reversed in the YEN — update fixedPlayers
+      const newPlayers = extractPlayers(swappedYen);
+      setFixedPlayers(newPlayers);
+
+      setPieRuleUsed(true);
+      setShowPieModal(false);
+      applyFinishFromGateway(data, newPlayers, moveCount, boardSizeFromState);
+      if (!(data as any).finished) startTimer();
+    } catch (e: any) {
+      setError(e?.message ?? "Swap failed");
+      setShowPieModal(false);
+      startTimer();
+    } finally {
+      setSwapLoading(false);
+    }
+  };
+
+  // ── Pie Rule: keep sides, continue playing ────────────────────────────────
+  const handlePieKeep = () => {
+    setShowPieModal(false);
+    startTimer();
+  };
+
   // ── Undo move ─────────────────────────────────────────────────────────────
-  // Restores the board to the state before the last human move.
-  // The bot's response move is also rolled back because the history stores
-  // the YEN BEFORE the human moved (which is also BEFORE the bot responded).
   const undoMove = () => {
-    if (!allowUndo) return;
-    if (yenHistory.length === 0) return;
-    if (gameOver) return;
-    if (busy) return;
+    if (!allowUndo || yenHistory.length === 0 || gameOver || busy) return;
     if (undoLimit > 0 && undoCount >= undoLimit) return;
 
     const previousYen = yenHistory[yenHistory.length - 1];
@@ -464,7 +567,6 @@ const Game: React.FC = () => {
     stopTimer();
     startTimer();
 
-    // Show brief "Move undone" toast
     setUndoToast(true);
     if (undoToastTimerRef.current !== null) window.clearTimeout(undoToastTimerRef.current);
     undoToastTimerRef.current = window.setTimeout(() => {
@@ -529,21 +631,14 @@ const Game: React.FC = () => {
     return 1.4;
   };
 
-  // ── Button visibility / disabled logic ────────────────────────────────────
   const showHintButton = !!yen && !gameOver && !busy;
-
   const showUndoButton = allowUndo && !!yen && !gameOver;
+  const undoDisabled   = busy || yenHistory.length === 0 || (undoLimit > 0 && undoCount >= undoLimit);
+  const undoRemaining  = undoLimit > 0 ? undoLimit - undoCount : null;
 
-  // The undo button is disabled when:
-  //  - the game is busy (waiting for bot)
-  //  - no moves have been made yet (history is empty)
-  //  - the undo limit has been reached
-  const undoDisabled =
-      busy ||
-      yenHistory.length === 0 ||
-      (undoLimit > 0 && undoCount >= undoLimit);
-
-  const undoRemaining = undoLimit > 0 ? undoLimit - undoCount : null;
+  // Board cells are not clickable while the Pie Rule modal is shown
+  const boardClickable = (cell: string) =>
+      cell === "." && !busy && !!yen && !gameOver && !showPieModal;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -578,6 +673,16 @@ const Game: React.FC = () => {
             </button>
 
             <h1 style={{ margin: 0, textAlign: "center", paddingTop: 6 }}>{t("app.brand")}</h1>
+
+            {/* ── Pie Rule indicator badge — shows after a swap was made ──── */}
+            {pieRuleUsed && (
+                <div
+                    aria-label={t("pieRule.indicator")}
+                    className="pie-indicator"
+                >
+                  🥧 {t("pieRule.indicator")}
+                </div>
+            )}
 
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 10 }}>
               <button
@@ -632,7 +737,7 @@ const Game: React.FC = () => {
                   return row.map((cell, colIndex) => {
                     const x        = offsetX + colIndex * cellSpacing;
                     const y        = padding + rowIndex * rowHeight;
-                    const clickable = cell === "." && !busy && !!yen && !gameOver;
+                    const clickable = boardClickable(cell);
                     const isHinted  = hintCell === `${rowIndex}-${colIndex}`;
                     return (
                         <polygon
@@ -658,7 +763,6 @@ const Game: React.FC = () => {
             {/* Side panel — timer + hint + undo */}
             {yen && !gameOver && (
                 <div className="game-side-panel">
-                  {/* Timer section */}
                   {timerEnabled && (
                       <>
                         {busy ? (
@@ -675,7 +779,6 @@ const Game: React.FC = () => {
                       </>
                   )}
 
-                  {/* Hint button */}
                   {showHintButton && (
                       <button
                           onClick={requestHint}
@@ -687,28 +790,17 @@ const Game: React.FC = () => {
                       </button>
                   )}
 
-                  {/* Undo button — below hint, only when undo is enabled */}
                   {showUndoButton && (
                       <button
                           onClick={undoMove}
                           disabled={undoDisabled}
                           aria-label={t("game.undo")}
-                          className="game-hint-btn"
-                          style={{
-                            marginTop: 8,
-                            opacity: undoDisabled ? 0.45 : 1,
-                            cursor: undoDisabled ? "not-allowed" : "pointer",
-                          }}
+                          className="game-hint-btn game-undo-btn"
+                          style={{ opacity: undoDisabled ? 0.45 : 1, cursor: undoDisabled ? "not-allowed" : "pointer" }}
                       >
                         {t("game.undo")}
                         {undoRemaining !== null && (
-                            <span style={{
-                              marginLeft: 6,
-                              fontSize: "0.72rem",
-                              opacity: 0.75,
-                            }}>
-                              ({undoRemaining})
-                            </span>
+                            <span className="game-undo-btn__count">({undoRemaining})</span>
                         )}
                       </button>
                   )}
@@ -716,30 +808,21 @@ const Game: React.FC = () => {
             )}
           </div>
 
-          {/* Undo toast — brief "Move undone" notification */}
+          {/* Undo toast */}
           {undoToast && (
-              <div
-                  role="status"
-                  aria-live="polite"
-                  style={{
-                    position: "fixed",
-                    bottom: 28,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    zIndex: 200,
-                    background: "rgba(30,40,60,0.92)",
-                    border: "1px solid rgba(67,195,221,.45)",
-                    color: "#fff",
-                    borderRadius: 10,
-                    padding: "10px 22px",
-                    fontWeight: 700,
-                    fontSize: "0.9rem",
-                    pointerEvents: "none",
-                    whiteSpace: "nowrap",
-                  }}
-              >
+              <div role="status" aria-live="polite" className="game-undo-toast">
                 {t("game.undoDone")}
               </div>
+          )}
+
+          {/* Pie Rule modal */}
+          {showPieModal && (
+              <PieRuleModal
+                  onSwap={handlePieSwap}
+                  onKeep={handlePieKeep}
+                  loading={swapLoading}
+                  t={t}
+              />
           )}
 
           {/* Game over overlay */}
