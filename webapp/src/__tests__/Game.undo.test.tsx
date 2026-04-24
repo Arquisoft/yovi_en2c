@@ -28,6 +28,13 @@ vi.mock("react-router-dom", async () => {
     return { ...actual, useNavigate: () => mockNavigate };
 });
 
+
+// JSDOM no implementa ResizeObserver — mock global requerido por Game.tsx
+global.ResizeObserver = class ResizeObserver {
+    observe()    {}
+    unobserve()  {}
+    disconnect() {}
+};
 // ── YEN fixtures ──────────────────────────────────────────────────────────────
 
 const BASE_YEN = {

@@ -3,7 +3,7 @@
 // Tests the undo configuration card added to SelectDifficulty.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
@@ -36,21 +36,30 @@ function renderSelectDifficulty(username = "pablo") {
 // Busca un botón de límite de undo por número o por "unlimited".
 // Los botones tienen aria-label explícito: "N movimientos" / "N moves" / "Sin límite" / "Unlimited".
 // También acepta match por texto visible para robustez.
+// Los botones de límite de undo viven en .sd-undo-limits.
+// "Sin límite" también existe en el preset de timer — scoping con within evita ambigüedad.
+function getUndoCard() {
+    // El card de undo es el único que contiene el switch role=switch
+    return screen.getByRole("switch").closest(".card") as HTMLElement;
+}
+
 function getUndoLimitBtn(value: number | "unlimited") {
+    const card = getUndoCard();
     if (value === "unlimited") {
-        return screen.getByRole("button", { name: /sin l[íi]mite|unlimited/i });
+        return within(card).getByRole("button", { name: /sin l[íi]mite|unlimited/i });
     }
-    return screen.getByRole("button", {
-        name: new RegExp(`^${value}$|${value}\\s*(movimiento|move)`, "i"),
+    return within(card).getByRole("button", {
+        name: new RegExp(`^${value}$|${value}\s*(movimiento|move)`, "i"),
     });
 }
 
 function queryUndoLimitBtn(value: number | "unlimited") {
+    const card = getUndoCard();
     if (value === "unlimited") {
-        return screen.queryByRole("button", { name: /sin l[íi]mite|unlimited/i });
+        return within(card).queryByRole("button", { name: /sin l[íi]mite|unlimited/i });
     }
-    return screen.queryByRole("button", {
-        name: new RegExp(`^${value}$|${value}\\s*(movimiento|move)`, "i"),
+    return within(card).queryByRole("button", {
+        name: new RegExp(`^${value}$|${value}\s*(movimiento|move)`, "i"),
     });
 }
 
@@ -73,7 +82,10 @@ describe("SelectDifficulty — undo card", () => {
 
     test("renders the undo card title", () => {
         renderSelectDifficulty();
-        expect(screen.getByText(/deshacer|undo/i)).toBeInTheDocument();
+        // Múltiples elementos contienen "deshacer" — buscamos el h2 del card
+        const titles = screen.getAllByText(/deshacer|undo/i);
+        expect(titles.length).toBeGreaterThan(0);
+        expect(titles.some(el => el.tagName === "H2")).toBe(true);
     });
 
     test("renders the undo toggle switch", () => {
