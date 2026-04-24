@@ -1077,3 +1077,136 @@ body {
   color: var(--muted);
   margin-bottom: 10px;
 }
+
+/* PIE RULE — SelectDifficulty hint pill */
+
+/* Info pill shown when Pie Rule toggle is ON */
+.sd-pie-hint {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(67, 195, 221, 0.08);
+  border: 1px solid rgba(67, 195, 221, 0.30);
+  color: var(--aqua);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+/*  PIE RULE — Game modal */
+
+/* Full-screen blurred backdrop */
+.pie-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Modal card */
+.pie-modal-card {
+  background: linear-gradient(135deg, rgba(18, 24, 38, 0.92), rgba(18, 24, 38, 0.80));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--r);
+  padding: 36px 44px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 280px;
+  max-width: 380px;
+  width: 90vw;
+}
+
+[data-theme="light"] .pie-modal-card {
+  background: linear-gradient(135deg, #ffffff, #f0f4f8);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+/* Big emoji */
+.pie-modal-emoji {
+  font-size: 48px;
+  line-height: 1;
+}
+
+/* Title */
+.pie-modal-title {
+  margin: 0;
+  font-size: 22px;
+  color: var(--text);
+}
+
+/* Description */
+.pie-modal-desc {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+/* Action buttons row */
+.pie-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* Shared button base */
+.pie-modal-btn {
+  padding: 12px 24px;
+  border-radius: var(--r2);
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: opacity 0.12s ease, transform 0.08s ease;
+}
+
+.pie-modal-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+.pie-modal-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Swap (confirm) variant — aqua tint */
+.pie-modal-btn--swap {
+  background: rgba(67, 195, 221, 0.20);
+  color: var(--text);
+  border: 1px solid rgba(67, 195, 221, 0.55);
+}
+
+.pie-modal-btn--keep {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+[data-theme="light"] .pie-modal-btn--keep {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+
+  /* PIE RULE — Game indicator badge*/
+.pie-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(67, 195, 221, 0.12);
+  border: 1px solid rgba(67, 195, 221, 0.35);
+  color: var(--aqua);
+  font-size: 0.78rem;
+  font-weight: 700;
+}

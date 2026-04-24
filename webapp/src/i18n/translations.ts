@@ -243,6 +243,18 @@ export const translations: Record<Lang, Dict> = {
     "undo.limit.unlimited": "Sin límite",
     "game.undo": "Deshacer",
     "game.undoDone": "Movimiento deshecho",
+
+    //regla del pastel ? (no se como llamarla en español)
+    "pieRule.title":              "Regla del Pastel",
+    "pieRule.subtitle":           "Tras el primer movimiento, el segundo jugador puede intercambiar colores para equilibrar la partida.",
+    "pieRule.toggle.label":       "Activar Regla del Pastel",
+    "pieRule.hint":               "Después del primer movimiento verás un aviso preguntando si quieres cambiar de lado.",
+    "pieRule.modal.title":        "¿Cambiar de lado?",
+    "pieRule.modal.description":  "El primer jugador ha colocado su ficha. Puedes tomar ese color y ceder el turno, o continuar como segundo jugador.",
+    "pieRule.modal.swap":         "Cambiar de lado",
+    "pieRule.modal.swapping":     "Cambiando…",
+    "pieRule.modal.keep":         "Continuar así",
+    "pieRule.indicator":          "Regla del Pastel aplicada",
   },
 
   en: {
@@ -480,5 +492,16 @@ export const translations: Record<Lang, Dict> = {
     "undo.limit.unlimited": "Unlimited",
     "game.undo": "Undo",
     "game.undoDone": "Move undone",
+
+    "pieRule.title":              "Pie Rule",
+    "pieRule.subtitle":           "After the first move, the second player can swap colours to balance the game.",
+    "pieRule.toggle.label":       "Enable Pie Rule",
+    "pieRule.hint":               "After the first move you will be asked whether you want to swap sides.",
+    "pieRule.modal.title":        "Swap sides?",
+    "pieRule.modal.description":  "The first player has placed their piece. You can take that colour and give up the turn, or continue as the second player.",
+    "pieRule.modal.swap":         "Swap sides",
+    "pieRule.modal.swapping":     "Swapping…",
+    "pieRule.modal.keep":         "Keep playing",
+    "pieRule.indicator":          "Pie Rule used",
   },
 };
