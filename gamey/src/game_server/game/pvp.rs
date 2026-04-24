@@ -1,17 +1,9 @@
-use axum::{
-    extract::Path,
-    Json,
-};
-use axum::http::StatusCode;
+use axum::{extract::Path, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
-
-use crate::{Coordinates, GameY, Movement, YEN};
-use crate::game_server::{
-    error::ErrorResponse,
-    version::check_api_version,
-};
-
 use std::collections::{HashSet, VecDeque};
+
+use crate::game_server::{error::ErrorResponse, version::check_api_version};
+use crate::{Coordinates, GameY, Movement, YEN};
 
 #[derive(Deserialize)]
 pub struct PvpParams {
@@ -25,8 +17,6 @@ pub struct PvpMoveRequest {
     pub col: usize,
 }
 
-/// Response payload for PVP move endpoint.
-/// Keeps the frontend decoupled from internal engine details.
 #[derive(Serialize, Deserialize)]
 pub struct PvpMoveResponse {
     pub yen: YEN,
@@ -35,10 +25,10 @@ pub struct PvpMoveResponse {
     pub winning_edges: Vec<[[usize; 2]; 2]>,
 }
 
-/// Convenience alias for the handler error type.
 type HandlerError = (StatusCode, Json<ErrorResponse>);
+type Cell = (usize, usize);
+type Edge = [[usize; 2]; 2];
 
-/// Builds a 400 Bad Request error response with a message tied to the current API version.
 fn bad_request(message: &str, api_version: &str) -> HandlerError {
     (
         StatusCode::BAD_REQUEST,
@@ -46,30 +36,26 @@ fn bad_request(message: &str, api_version: &str) -> HandlerError {
     )
 }
 
-fn row_col_to_coords(
-    layout: &str,
-    size: u32,
-    row: usize,
-    col: usize,
-) -> Result<Coordinates, String> {
+fn row_col_to_coords(layout: &str, size: u32, row: usize, col: usize) -> Result<Coordinates, String> {
     let rows: Vec<&str> = layout.split('/').collect();
 
-    if row >= rows.len() {
-        return Err(format!("row out of bounds: {} (rows={})", row, rows.len()));
-    }
+    let selected_row = rows
+        .get(row)
+        .ok_or_else(|| format!("row out of bounds: {} (rows={})", row, rows.len()))?;
 
-    let row_len = rows[row].chars().count();
+    let row_len = selected_row.chars().count();
     if col >= row_len {
         return Err(format!("col out of bounds: {} (row_len={})", col, row_len));
     }
 
-    let mut index: usize = 0;
-    for row_str in rows.iter().take(row) {
-        index += row_str.chars().count();
-    }
-    index += col;
+    let index = rows
+        .iter()
+        .take(row)
+        .map(|row_str| row_str.chars().count())
+        .sum::<usize>()
+        + col;
 
-    let total_cells: usize = rows.iter().map(|r| r.chars().count()).sum();
+    let total_cells = rows.iter().map(|row_str| row_str.chars().count()).sum::<usize>();
     if index >= total_cells {
         return Err("Invalid coordinate conversion".to_string());
     }
@@ -77,95 +63,110 @@ fn row_col_to_coords(
     Ok(Coordinates::from_index(index as u32, size))
 }
 
-/// Parses YEN layout string into a 2D matrix of chars.
 fn parse_layout(layout: &str) -> Vec<Vec<char>> {
     if layout.is_empty() {
         return vec![];
     }
+
     layout.split('/').map(|row| row.chars().collect()).collect()
 }
 
-/// Returns neighbors for the triangular/hex-like adjacency used by the frontend.
-fn neighbors(layout: &[Vec<char>], r: isize, c: isize) -> Vec<(usize, usize)> {
-    let n = layout.len() as isize;
-    let in_bounds = |rr: isize, cc: isize| -> bool {
-        if rr < 0 || rr >= n {
-            return false;
-        }
-        let row_len = layout[rr as usize].len() as isize;
-        cc >= 0 && cc < row_len
-    };
-
-    let candidates = [
-        (r, c - 1),
-        (r, c + 1),
-        (r - 1, c - 1),
-        (r - 1, c),
-        (r + 1, c),
-        (r + 1, c + 1),
-    ];
-
-    candidates
-        .iter()
-        .copied()
-        .filter(|(rr, cc)| in_bounds(*rr, *cc))
-        .map(|(rr, cc)| (rr as usize, cc as usize))
-        .collect()
-}
-
-/// Computes the winning connected component for a token, if any.
-/// Win condition: touches left + right + bottom.
-fn compute_winner_component(
-    layout: &[Vec<char>],
-    token: char,
-) -> Option<HashSet<(usize, usize)>> {
-    let n = layout.len();
-    if n == 0 {
-        return None;
+fn is_cell_in_bounds(layout: &[Vec<char>], row: isize, col: isize) -> bool {
+    if row < 0 || row >= layout.len() as isize {
+        return false;
     }
 
-    let mut visited: HashSet<(usize, usize)> = HashSet::new();
+    let row_len = layout[row as usize].len() as isize;
+    col >= 0 && col < row_len
+}
 
-    for r in 0..n {
-        for c in 0..layout[r].len() {
-            if layout[r][c] != token || visited.contains(&(r, c)) {
+fn neighbors(layout: &[Vec<char>], row: isize, col: isize) -> Vec<Cell> {
+    [
+        (row, col - 1),
+        (row, col + 1),
+        (row - 1, col - 1),
+        (row - 1, col),
+        (row + 1, col),
+        (row + 1, col + 1),
+    ]
+    .into_iter()
+    .filter(|(candidate_row, candidate_col)| {
+        is_cell_in_bounds(layout, *candidate_row, *candidate_col)
+    })
+    .map(|(candidate_row, candidate_col)| (candidate_row as usize, candidate_col as usize))
+    .collect()
+}
+
+fn touches_all_winning_edges(layout: &[Vec<char>], row: usize, col: usize) -> (bool, bool, bool) {
+    (
+        col == 0,
+        col == layout[row].len().saturating_sub(1),
+        row == layout.len().saturating_sub(1),
+    )
+}
+
+fn merge_touched_edges(
+    current: (bool, bool, bool),
+    next: (bool, bool, bool),
+) -> (bool, bool, bool) {
+    (current.0 || next.0, current.1 || next.1, current.2 || next.2)
+}
+
+fn has_won(touched_edges: (bool, bool, bool)) -> bool {
+    touched_edges.0 && touched_edges.1 && touched_edges.2
+}
+
+fn explore_component(
+    layout: &[Vec<char>],
+    token: char,
+    start: Cell,
+    visited: &mut HashSet<Cell>,
+) -> Option<HashSet<Cell>> {
+    let mut queue = VecDeque::from([start]);
+    let mut component = HashSet::from([start]);
+    let mut touched_edges = (false, false, false);
+
+    visited.insert(start);
+
+    while let Some((row, col)) = queue.pop_front() {
+        touched_edges = merge_touched_edges(
+            touched_edges,
+            touches_all_winning_edges(layout, row, col),
+        );
+
+        if has_won(touched_edges) {
+            return Some(component);
+        }
+
+        for neighbor in neighbors(layout, row as isize, col as isize) {
+            let (next_row, next_col) = neighbor;
+
+            if layout[next_row][next_col] != token || visited.contains(&neighbor) {
                 continue;
             }
 
-            let mut touches_left = false;
-            let mut touches_right = false;
-            let mut touches_bottom = false;
+            visited.insert(neighbor);
+            component.insert(neighbor);
+            queue.push_back(neighbor);
+        }
+    }
 
-            let mut queue: VecDeque<(usize, usize)> = VecDeque::new();
-            let mut component: HashSet<(usize, usize)> = HashSet::new();
+    None
+}
 
-            visited.insert((r, c));
-            component.insert((r, c));
-            queue.push_back((r, c));
+fn compute_winner_component(layout: &[Vec<char>], token: char) -> Option<HashSet<Cell>> {
+    let mut visited = HashSet::new();
 
-            while let Some((rr, cc)) = queue.pop_front() {
-                if cc == 0 {
-                    touches_left = true;
-                }
-                if cc == layout[rr].len().saturating_sub(1) {
-                    touches_right = true;
-                }
-                if rr == n - 1 {
-                    touches_bottom = true;
-                }
+    for row in 0..layout.len() {
+        for col in 0..layout[row].len() {
+            let cell = (row, col);
 
-                if touches_left && touches_right && touches_bottom {
-                    return Some(component);
-                }
+            if layout[row][col] != token || visited.contains(&cell) {
+                continue;
+            }
 
-                for (nr, nc) in neighbors(layout, rr as isize, cc as isize) {
-                    if layout[nr][nc] != token || visited.contains(&(nr, nc)) {
-                        continue;
-                    }
-                    visited.insert((nr, nc));
-                    component.insert((nr, nc));
-                    queue.push_back((nr, nc));
-                }
+            if let Some(component) = explore_component(layout, token, cell, &mut visited) {
+                return Some(component);
             }
         }
     }
@@ -173,62 +174,65 @@ fn compute_winner_component(
     None
 }
 
-/// Builds unique edges between adjacent cells within a component.
-fn build_edges(
-    layout: &[Vec<char>],
-    component: &HashSet<(usize, usize)>,
-) -> Vec<[[usize; 2]; 2]> {
-    let mut edges: Vec<[[usize; 2]; 2]> = vec![];
-    let mut seen: HashSet<((usize, usize), (usize, usize))> = HashSet::new();
+fn ordered_pair(a: Cell, b: Cell) -> (Cell, Cell) {
+    if a <= b {
+        (a, b)
+    } else {
+        (b, a)
+    }
+}
 
-    for &(r, c) in component {
-        for (nr, nc) in neighbors(layout, r as isize, c as isize) {
-            if !component.contains(&(nr, nc)) {
+fn build_edges(layout: &[Vec<char>], component: &HashSet<Cell>) -> Vec<Edge> {
+    let mut edges = vec![];
+    let mut seen = HashSet::new();
+
+    for &(row, col) in component {
+        for neighbor in neighbors(layout, row as isize, col as isize) {
+            if !component.contains(&neighbor) {
                 continue;
             }
 
-            let a = (r, c);
-            let b = (nr, nc);
-            let (p, q) = if a <= b { (a, b) } else { (b, a) };
-
-            if seen.contains(&(p, q)) {
+            let pair = ordered_pair((row, col), neighbor);
+            if !seen.insert(pair) {
                 continue;
             }
-            seen.insert((p, q));
 
-            edges.push([[p.0, p.1], [q.0, q.1]]);
+            edges.push([[pair.0 .0, pair.0 .1], [pair.1 .0, pair.1 .1]]);
         }
     }
 
     edges
 }
 
-/// Computes finished/winner/edges from a YEN state.
-fn compute_result_from_yen(yen: &YEN) -> (bool, Option<char>, Vec<[[usize; 2]; 2]>) {
+fn result_for_token(layout: &[Vec<char>], token: char) -> Option<(bool, Option<char>, Vec<Edge>)> {
+    compute_winner_component(layout, token)
+        .map(|component| (true, Some(token), build_edges(layout, &component)))
+}
+
+fn compute_result_from_yen(yen: &YEN) -> (bool, Option<char>, Vec<Edge>) {
     let layout = parse_layout(yen.layout());
     if layout.is_empty() {
         return (false, None, vec![]);
     }
 
-    let any_empty = layout.iter().any(|row| row.iter().any(|&ch| ch == '.'));
-
     let players = yen.players();
-    let p0 = players.first().copied().unwrap_or('B');
-    let p1 = players.get(1).copied().unwrap_or('R');
+    let player_tokens = [
+        players.first().copied().unwrap_or('B'),
+        players.get(1).copied().unwrap_or('R'),
+    ];
 
-    if let Some(comp) = compute_winner_component(&layout, p0) {
-        return (true, Some(p0), build_edges(&layout, &comp));
+    for token in player_tokens {
+        if let Some(result) = result_for_token(&layout, token) {
+            return result;
+        }
     }
 
-    if let Some(comp) = compute_winner_component(&layout, p1) {
-        return (true, Some(p1), build_edges(&layout, &comp));
+    let any_empty = layout.iter().flatten().any(|&cell| cell == '.');
+    if any_empty {
+        (false, None, vec![])
+    } else {
+        (true, None, vec![])
     }
-
-    if !any_empty {
-        return (true, None, vec![]);
-    }
-
-    (false, None, vec![])
 }
 
 #[axum::debug_handler]
@@ -242,7 +246,7 @@ pub async fn pvp_move(
         return Err((StatusCode::BAD_REQUEST, Json(err)));
     }
 
-    let layout_str = req.yen.layout().to_string();
+    let layout = req.yen.layout().to_string();
     let size = req.yen.size();
 
     let mut game = GameY::try_from(req.yen)
@@ -252,20 +256,18 @@ pub async fn pvp_move(
         return Err(bad_request("Game is already over", version));
     }
 
-    let coords = row_col_to_coords(&layout_str, size, req.row, req.col)
+    let coords = row_col_to_coords(&layout, size, req.row, req.col)
         .map_err(|msg| bad_request(&format!("Invalid coordinates: {}", msg), version))?;
 
     let current_player = game
         .next_player()
         .ok_or_else(|| bad_request("No next player available", version))?;
 
-    let movement = Movement::Placement {
+    game.add_move(Movement::Placement {
         player: current_player,
         coords,
-    };
-
-    game.add_move(movement)
-        .map_err(|err| bad_request(&format!("Invalid move: {}", err), version))?;
+    })
+    .map_err(|err| bad_request(&format!("Invalid move: {}", err), version))?;
 
     let new_yen: YEN = (&game).into();
     let (finished, winner, winning_edges) = compute_result_from_yen(&new_yen);
@@ -288,9 +290,19 @@ mod tests {
     use crate::game_server::{create_router, state::AppState};
     use crate::YBotRegistry;
 
+    const API_VERSION: &str = "v1";
+
     fn test_app() -> axum::Router {
-        let state = AppState::new(YBotRegistry::new());
-        create_router(state)
+        create_router(AppState::new(YBotRegistry::new()))
+    }
+
+    fn new_yen(size: u32) -> crate::YEN {
+        let game = crate::GameY::new(size);
+        (&game).into()
+    }
+
+    fn request_body(yen: crate::YEN, row: usize, col: usize) -> PvpMoveRequest {
+        PvpMoveRequest { yen, row, col }
     }
 
     fn post_pvp(body: &PvpMoveRequest, version: &str) -> Request<Body> {
@@ -300,30 +312,19 @@ mod tests {
             .unwrap()
     }
 
-    fn new_yen(size: u32) -> crate::YEN {
-        let game = crate::GameY::new(size);
-        (&game).into()
+    async fn send_pvp(body: &PvpMoveRequest, version: &str) -> axum::response::Response {
+        test_app().oneshot(post_pvp(body, version)).await.unwrap()
     }
 
-    async fn send_pvp(
-        app: axum::Router,
-        body: &PvpMoveRequest,
-        version: &str,
-    ) -> axum::response::Response {
-        app.oneshot(post_pvp(body, version)).await.unwrap()
+    async fn assert_pvp_status(body: PvpMoveRequest, version: &str, expected: StatusCode) {
+        let response = send_pvp(&body, version).await;
+        assert_eq!(response.status(), expected);
     }
 
     #[tokio::test]
     async fn test_pvp_valid_request() {
-        let app = test_app();
-
-        let body = PvpMoveRequest {
-            yen: new_yen(3),
-            row: 0,
-            col: 0,
-        };
-
-        let response = send_pvp(app, &body, "v1").await;
+        let body = request_body(new_yen(3), 0, 0);
+        let response = send_pvp(&body, API_VERSION).await;
 
         assert_eq!(response.status(), StatusCode::OK);
 
@@ -338,53 +339,36 @@ mod tests {
 
     #[tokio::test]
     async fn test_pvp_invalid_api_version() {
-        let app = test_app();
-
-        let body = PvpMoveRequest {
-            yen: new_yen(3),
-            row: 0,
-            col: 0,
-        };
-
-        let response = send_pvp(app, &body, "v2").await;
-
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_pvp_status(
+            request_body(new_yen(3), 0, 0),
+            "v2",
+            StatusCode::BAD_REQUEST,
+        )
+        .await;
     }
 
     #[tokio::test]
     async fn test_pvp_row_out_of_bounds() {
-        let app = test_app();
-
-        let body = PvpMoveRequest {
-            yen: new_yen(3),
-            row: 99,
-            col: 0,
-        };
-
-        let response = send_pvp(app, &body, "v1").await;
-
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_pvp_status(
+            request_body(new_yen(3), 99, 0),
+            API_VERSION,
+            StatusCode::BAD_REQUEST,
+        )
+        .await;
     }
 
     #[tokio::test]
     async fn test_pvp_col_out_of_bounds() {
-        let app = test_app();
-
-        let body = PvpMoveRequest {
-            yen: new_yen(3),
-            row: 0,
-            col: 99,
-        };
-
-        let response = send_pvp(app, &body, "v1").await;
-
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_pvp_status(
+            request_body(new_yen(3), 0, 99),
+            API_VERSION,
+            StatusCode::BAD_REQUEST,
+        )
+        .await;
     }
 
     #[tokio::test]
     async fn test_pvp_rejects_finished_game() {
-        let app = test_app();
-
         let mut game = crate::GameY::new(1);
         game.add_move(crate::Movement::Placement {
             player: crate::PlayerId::new(0),
@@ -393,29 +377,29 @@ mod tests {
         .unwrap();
 
         let yen: crate::YEN = (&game).into();
-        let body = PvpMoveRequest { yen, row: 0, col: 0 };
 
-        let response = send_pvp(app, &body, "v1").await;
-
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_pvp_status(
+            request_body(yen, 0, 0),
+            API_VERSION,
+            StatusCode::BAD_REQUEST,
+        )
+        .await;
     }
 
     #[tokio::test]
     async fn test_pvp_rejects_invalid_yen_format() {
-        let app = test_app();
-
         let yen = crate::YEN::new(3, 0, vec!['B', 'R'], "X/../...".to_string());
-        let body = PvpMoveRequest { yen, row: 0, col: 0 };
 
-        let response = send_pvp(app, &body, "v1").await;
-
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_pvp_status(
+            request_body(yen, 0, 0),
+            API_VERSION,
+            StatusCode::BAD_REQUEST,
+        )
+        .await;
     }
 
     #[tokio::test]
     async fn test_pvp_rejects_occupied_cell() {
-        let app = test_app();
-
         let mut game = crate::GameY::new(3);
         game.add_move(crate::Movement::Placement {
             player: crate::PlayerId::new(0),
@@ -424,23 +408,23 @@ mod tests {
         .unwrap();
 
         let yen: crate::YEN = (&game).into();
-        let body = PvpMoveRequest { yen, row: 0, col: 0 };
 
-        let response = send_pvp(app, &body, "v1").await;
-
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_pvp_status(
+            request_body(yen, 0, 0),
+            API_VERSION,
+            StatusCode::BAD_REQUEST,
+        )
+        .await;
     }
 
     #[test]
     fn test_parse_layout_empty() {
-        let parsed = parse_layout("");
-        assert!(parsed.is_empty());
+        assert!(parse_layout("").is_empty());
     }
 
     #[test]
     fn test_compute_result_from_yen_ongoing_game() {
         let yen = crate::YEN::new(3, 0, vec!['B', 'R'], "./../...".to_string());
-
         let (finished, winner, winning_edges) = compute_result_from_yen(&yen);
 
         assert!(!finished);
@@ -451,7 +435,6 @@ mod tests {
     #[test]
     fn test_compute_result_from_yen_finished_with_winner() {
         let yen = crate::YEN::new(3, 1, vec!['B', 'R'], "B/BB/BBR".to_string());
-
         let (finished, winner, winning_edges) = compute_result_from_yen(&yen);
 
         assert!(finished);
