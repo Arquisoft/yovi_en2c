@@ -50,10 +50,10 @@ function normalizeUsername(value) {
     if (typeof value !== 'string') return null;
 
     const username = value.trim();
+    if (!username) return null;
 
-    if (!/^[A-Za-z0-9_-]{1,30}$/.test(username)) {
-        return null;
-    }
+    const usernameRegex = /^[A-Za-z0-9_]{1,30}$/;
+    if (!usernameRegex.test(username)) return null;
 
     return username;
 }
@@ -68,6 +68,26 @@ function normalizeLooseUsername(value) {
     }
 
     return username;
+}
+
+function execMaybe(query) {
+    return query && typeof query.exec === 'function' ? query.exec() : query;
+}
+
+async function findUserByUsername(username, projection) {
+    const safeUsername = normalizeUsername(username);
+
+    if (!safeUsername) return null;
+
+    return execMaybe(User.findOne({ username: safeUsername }, projection));
+}
+
+function findGamesByUsername(username) {
+    const safeUsername = normalizeUsername(username);
+
+    if (!safeUsername) return null;
+
+    return GameResult.find({ username: safeUsername });
 }
 
 function normalizeEmail(value) {
@@ -102,37 +122,9 @@ function parseBoardSize(value, fallback = 7) {
     return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-async function findUserByUsername(username, projection = null) {
-    const safeUsername = normalizeUsername(username);
-
-    if (!safeUsername) return null;
-
-    const query = User.findOne()
-        .where('username')
-        .equals(safeUsername);
-
-    if (projection) {
-        query.select(projection);
-    }
-
-    return query.exec();
-}
-
 async function ensureExistingUser(username) {
     const user = await findUserByUsername(username);
     return user || null;
-}
-
-function findGamesByUsername(username) {
-    const safeUsername = normalizeUsername(username);
-
-    if (!safeUsername) {
-        return null;
-    }
-
-    return GameResult.find()
-        .where('username')
-        .equals(safeUsername);
 }
 
 function publicGameView(game) {
@@ -160,10 +152,7 @@ app.post('/createuser', async (req, res) => {
         const { password } = req.body;
         const processedEmail = normalizeEmail(req.body?.email);
 
-        const username =
-            typeof rawUsername === 'string'
-                ? rawUsername.trim()
-                : '';
+        const username = typeof rawUsername === 'string' ? rawUsername.trim() : '';
 
         if (!username) {
             return res.status(400).json({ success: false, error: 'Username is a mandatory field' });
@@ -479,8 +468,8 @@ app.get('/stats/:username', async (req, res) => {
         const wins = games.filter(g => g.result === 'win').length;
         const losses = games.filter(g => g.result === 'loss').length;
         const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
-        const pvbGames = games.filter(g => g.gameMode === 'pvb');
-        const pvpGames = games.filter(g => g.gameMode === 'pvp');
+        const pvbGames = games.filter(g => g.gameMode === 'pvb').length;
+        const pvpGames = games.filter(g => g.gameMode === 'pvp').length;
 
         const start = (page - 1) * pageSize;
         const paginatedGames = games.slice(start, start + pageSize).map(publicGameView);
@@ -494,8 +483,8 @@ app.get('/stats/:username', async (req, res) => {
                 wins,
                 losses,
                 winRate,
-                pvbGames: pvbGames.length,
-                pvpGames: pvpGames.length,
+                pvbGames,
+                pvpGames,
                 lastFive
             },
             games: paginatedGames,
@@ -573,8 +562,8 @@ app.patch('/profile/:username', async (req, res) => {
 
         if (realName !== undefined) user.realName = realName;
         if (bio !== undefined) user.bio = bio;
-        if (city !== undefined) user.location = { ...user.location, city };
-        if (country !== undefined) user.location = { ...user.location, country };
+        if (city !== undefined) user.location = { ...(user.location || {}), city };
+        if (country !== undefined) user.location = { ...(user.location || {}), country };
         if (preferredLanguage !== undefined) user.preferredLanguage = preferredLanguage;
 
         await user.save();
@@ -587,15 +576,16 @@ app.patch('/profile/:username', async (req, res) => {
                 realName: user.realName ?? null,
                 bio: user.bio ?? null,
                 location: user.location ?? {},
-                preferredLanguage: user.preferredLanguage
+                preferredLanguage: user.preferredLanguage ?? 'en'
             }
         });
 
     } catch (error) {
         if (error.name === 'ValidationError') {
-            const errors = Object.values(error.errors).map(e => e.message);
+            const errors = Object.values(error.errors || {}).map(e => e.message);
             return res.status(400).json({ success: false, error: errors.join(', ') });
         }
+
         console.error('Error in PATCH /profile/:username:', error);
         res.status(500).json({ success: false, error: 'Internal server error' });
     }
@@ -624,6 +614,9 @@ app.post('/friends/request/:username', async (req, res) => {
         if (!target) {
             return res.status(404).json({ success: false, error: `User ${targetUsername} not found` });
         }
+
+        target.friends = target.friends || [];
+        target.friendRequests = target.friendRequests || [];
 
         if (target.friends.includes(senderUsername)) {
             return res.status(409).json({ success: false, error: 'You are already friends' });
@@ -662,6 +655,9 @@ app.post('/friends/accept/:username', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Acceptor user not found' });
         }
 
+        acceptor.friends = acceptor.friends || [];
+        acceptor.friendRequests = acceptor.friendRequests || [];
+
         if (!acceptor.friendRequests.includes(senderUsername)) {
             return res.status(404).json({ success: false, error: 'No pending request from that user' });
         }
@@ -670,6 +666,8 @@ app.post('/friends/accept/:username', async (req, res) => {
         if (!sender) {
             return res.status(404).json({ success: false, error: `User ${senderUsername} not found` });
         }
+
+        sender.friends = sender.friends || [];
 
         acceptor.friendRequests = acceptor.friendRequests.filter(u => u !== senderUsername);
         if (!acceptor.friends.includes(senderUsername)) acceptor.friends.push(senderUsername);
@@ -706,6 +704,9 @@ app.delete('/friends/:username', async (req, res) => {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
 
+        current.friends = current.friends || [];
+        target.friends = target.friends || [];
+
         current.friends = current.friends.filter(u => u !== targetUsername);
         target.friends = target.friends.filter(u => u !== currentUsername);
 
@@ -733,7 +734,7 @@ app.get('/friends', async (req, res) => {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
 
-        res.json({ success: true, friends: user.friends });
+        res.json({ success: true, friends: user.friends || [] });
 
     } catch (error) {
         console.error('Error in GET /friends:', error);
@@ -753,7 +754,7 @@ module.exports = app;
 
 // =============================== START THE SERVER ================================
 
-if (require.main == module) {
+if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
