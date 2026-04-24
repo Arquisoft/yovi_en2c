@@ -32,6 +32,7 @@ const SALT_ROUNDS = 10;
 
 function getUsernameFromToken(authHeader) {
     if (!authHeader?.startsWith('Bearer ')) return null;
+
     try {
         const payload = authHeader.split('.')[1];
         const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
@@ -145,11 +146,9 @@ function publicNotificationView(notification) {
 
 app.post('/createuser', async (req, res) => {
     try {
-        const rawUsername = req.body?.username;
+        const username = normalizeUsername(req.body?.username);
         const { password } = req.body;
         const processedEmail = normalizeEmail(req.body?.email);
-
-        const username = typeof rawUsername === 'string' ? rawUsername.trim() : '';
 
         if (!username) {
             return res.status(400).json({ success: false, error: 'Username is a mandatory field' });
@@ -420,10 +419,7 @@ app.get('/history/:username', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid username' });
         }
 
-        const games = await gamesQuery
-            .sort({ date: -1 })
-            .limit(limit);
-
+        const games = await gamesQuery.sort({ date: -1 }).limit(limit);
         const stats = buildWinLossStats(games);
 
         res.json({ success: true, username, stats, total: games.length, games });
@@ -761,7 +757,9 @@ app.get('/notifications', async (req, res) => {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const notifications = await Notification.find({ recipient: { $eq: username } })
+        const notifications = await Notification.find({
+            recipient: { $eq: username }
+        })
             .sort({ createdAt: -1 })
             .limit(50);
 
@@ -793,14 +791,13 @@ app.patch('/notifications/:id/read', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid notification id' });
         }
 
-        const notification = await Notification.findById(id);
+        const notification = await Notification.findOne({
+            _id: { $eq: new mongoose.Types.ObjectId(id) },
+            recipient: { $eq: username }
+        });
 
         if (!notification) {
             return res.status(404).json({ success: false, error: 'Notification not found' });
-        }
-
-        if (notification.recipient !== username) {
-            return res.status(403).json({ success: false, error: 'Forbidden' });
         }
 
         notification.read = true;

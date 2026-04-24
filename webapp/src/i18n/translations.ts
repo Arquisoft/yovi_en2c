@@ -27,8 +27,8 @@ export const translations: Record<Lang, Dict> = {
     "registration.aria": "Registro de usuario",
     "registration.username": "Usuario",
     "registration.email": "Correo electrónico",
-    "registration.password": "Contraseña",
-    "registration.repeatPassword": "Repetir contraseña",
+    "registration.password": "Contraseña", //NOSONAR
+    "registration.repeatPassword": "Repetir contraseña", //NOSONAR
     "registration.error.repeatPassword": "Debes repetir la contraseña.",
     "registration.button": "Registrarse",
     "registration.loading": "Registrando…",
@@ -40,7 +40,7 @@ export const translations: Record<Lang, Dict> = {
 
     "login.aria": "Inicio de sesión",
     "login.username": "Usuario",
-    "login.password": "Contraseña",
+    "login.password": "Contraseña", //NOSONAR
     "login.button": "Iniciar sesión",
     "login.loading": "Entrando…",
     "login.error.username": "Por favor, introduce un nombre de usuario.",
@@ -285,8 +285,8 @@ export const translations: Record<Lang, Dict> = {
     "registration.aria": "User registration",
     "registration.username": "Username",
     "registration.email": "Email",
-    "registration.password": "Password",
-    "registration.repeatPassword": "Repeat password",
+    "registration.password": "Password", //NOSONAR
+    "registration.repeatPassword": "Repeat password", //NOSONAR
     "registration.error.repeatPassword": "Repeat password is required.",
     "registration.button": "Register",
     "registration.loading": "Loading...",
@@ -298,7 +298,7 @@ export const translations: Record<Lang, Dict> = {
 
     "login.aria": "User login",
     "login.username": "Username",
-    "login.password": "Password",
+    "login.password": "Password", //NOSONAR
     "login.button": "Login",
     "login.loading": "Loading...",
     "login.error.username": "Please enter a username.",
