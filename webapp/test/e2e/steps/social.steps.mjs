@@ -396,3 +396,11 @@ Then("I should be on the profile page of {string}", async function (username) {
   const visible = await visibleUserText.isVisible();
   assert.equal(visible, true);
 });
+
+Then("I should see a social request error", async function () {
+  if (this.lastFriendRequestResponseStatus !== 409) {
+    throw new Error(
+      `Expected friend request status 409, got ${this.lastFriendRequestResponseStatus}`
+    );
+  }
+});
