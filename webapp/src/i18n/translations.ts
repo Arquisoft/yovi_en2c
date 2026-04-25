@@ -269,6 +269,43 @@ export const translations: Record<Lang, Dict> = {
         "undo.limit.label": "Límite de veces",
         "undo.limit.moves": "movimientos",
         "undo.limit.unlimited": "Sin límite",
+
+        // Modo de juego (selector)
+        "gamemode.title": "Modo de juego",
+        "gamemode.subtitle": "Elige cómo quieres jugar esta partida",
+        "gamemode.vsBot": "🤖 Contra el bot",
+        "gamemode.local": "👥 Multijugador local",
+
+        // Multijugador local — jugadores
+        "local.player1.label": "Jugador 1",
+        "local.player2.label": "Jugador 2",
+        "local.player2.title": "Nombre del segundo jugador",
+        "local.player2.subtitle": "El jugador 1 es el usuario con sesión iniciada",
+        "local.player2.placeholder": "Nombre del jugador 2",
+
+        // Multijugador local — quién empieza
+        "local.firstplayer.title": "¿Quién empieza?",
+        "local.firstplayer.subtitle": "Elige qué jugador realiza el primer movimiento",
+        "local.firstplayer.random": "🎲 Aleatorio",
+
+        // Multijugador local — indicador de turno en partida
+        "local.activeturn": "Turno",
+
+        // Regla del pastel
+        "pierule.title": "🥧 Regla del pastel",
+        "pierule.description": "Tras el primer movimiento, el jugador 2 puede intercambiar los colores con el jugador 1 para equilibrar la ventaja del primer turno.",
+        "pierule.toggle.label": "Activar regla del pastel",
+        "pierule.used": "Regla del pastel aplicada",
+        "pierule.modal.title": "¿Intercambiar colores?",
+        "pierule.modal.description": "{player} puede tomar el color del jugador 1 como propio o continuar como jugador 2.",
+        "pierule.modal.accept": "Sí, intercambiar",
+        "pierule.modal.decline": "No, continuar",
+
+        // Home — card 2 actualizada
+        "home.card2.cta": "Jugar en local",
+
+        // Fin de partida — modo local
+        "game.finished.wins": "¡ha ganado!",
     },
 
     en: {
@@ -537,5 +574,40 @@ export const translations: Record<Lang, Dict> = {
         "undo.limit.label": "Limit",
         "undo.limit.moves": "moves",
         "undo.limit.unlimited": "Unlimited",
+
+        // Game mode (selector)
+        "gamemode.title": "Game Mode",
+        "gamemode.subtitle": "Choose how you want to play this match",
+        "gamemode.vsBot": "🤖 vs Bot",
+        "gamemode.local": "👥 Local Multiplayer",
+
+        // Local multiplayer — players
+        "local.player1.label": "Player 1",
+        "local.player2.label": "Player 2",
+        "local.player2.title": "Second player's name",
+        "local.player2.subtitle": "Player 1 is the logged-in user",
+        "local.player2.placeholder": "Player 2 name",
+
+        // Local multiplayer — who starts
+        "local.firstplayer.title": "Who goes first?",
+        "local.firstplayer.subtitle": "Choose which player makes the first move",
+        "local.firstplayer.random": "🎲 Random",
+
+        // Local multiplayer — active turn indicator in game
+        "local.activeturn": "Turn",
+
+        // Pie rule
+        "pierule.title": "🥧 Pie Rule",
+        "pierule.description": "After the first move, player 2 can swap colors with player 1 to balance the first-move advantage.",
+        "pierule.toggle.label": "Enable pie rule",
+        "pierule.used": "Pie rule applied",
+        "pierule.modal.title": "Swap colors?",
+        "pierule.modal.description": "{player} can take player 1's color as their own or continue as player 2.",
+        "pierule.modal.accept": "Yes, swap",
+        "pierule.modal.decline": "No, continue",
+
+
+        // Game over — local mode
+        "game.finished.wins": "wins!",
     },
 };

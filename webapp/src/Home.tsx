@@ -204,6 +204,16 @@ const Home: React.FC = () => {
                             </button>
                         </div>
                     </article>
+
+                    <article className="card">
+                        <div className="hero__badge">
+                            <span aria-hidden="true" />
+                            {t("home.card6.pill")}
+                        </div>
+                        <h2 className="card__title">{t("home.card6.title")}</h2>
+                        <p className="card__text">{t("home.card6.text")}</p>
+                    </article>
+
                 </section>
             </main>
         </div>
