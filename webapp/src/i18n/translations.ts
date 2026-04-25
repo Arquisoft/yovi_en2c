@@ -269,6 +269,25 @@ export const translations: Record<Lang, Dict> = {
     "undo.limit.label": "Límite de veces",
     "undo.limit.moves": "movimientos",
     "undo.limit.unlimited": "Sin límite",
+
+        "gamemode.title":   "Modo de juego",
+        "gamemode.subtitle": "Elige si juegas contra el bot o en local con otro jugador",
+        "gamemode.vsBot":   "vs Bot",
+        "gamemode.local":   "Local",
+
+        "local.player2.title":       "Nombre del jugador 2",
+        "local.player2.subtitle":    "Introduce el nombre del segundo jugador",
+        "local.player2.placeholder": "Jugador 2",
+        "local.player1.label":       "Jugador 1",
+        "local.player2.label":       "Jugador 2",
+
+        "local.firstplayer.title":    "¿Quién empieza?",
+        "local.firstplayer.subtitle": "Elige quién hace el primer movimiento",
+        "local.firstplayer.random":   "Aleatorio",
+
+        "pierule.title":        "Regla del pastel",
+        "pierule.description":  "El segundo jugador puede intercambiar colores tras el primer movimiento, equilibrando la ventaja de salir primero.",
+        "pierule.toggle.label": "Activar regla del pastel",
   },
 
   en: {
@@ -537,5 +556,24 @@ export const translations: Record<Lang, Dict> = {
     "undo.limit.label": "Limit",
     "undo.limit.moves": "moves",
     "undo.limit.unlimited": "Unlimited",
+
+      "gamemode.title":   "Game mode",
+      "gamemode.subtitle": "Choose whether to play against the bot or locally with another player",
+      "gamemode.vsBot":   "vs Bot",
+      "gamemode.local":   "Local",
+
+      "local.player2.title":       "Player 2 name",
+      "local.player2.subtitle":    "Enter the name of the second player",
+      "local.player2.placeholder": "Player 2",
+      "local.player1.label":       "Player 1",
+      "local.player2.label":       "Player 2",
+
+      "local.firstplayer.title":    "Who goes first?",
+      "local.firstplayer.subtitle": "Choose who makes the first move",
+      "local.firstplayer.random":   "Random",
+
+      "pierule.title":        "Pie rule",
+      "pierule.description":  "The second player may swap colours after the first move, balancing the first-move advantage.",
+      "pierule.toggle.label": "Enable pie rule",
   },
 };
