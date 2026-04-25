@@ -30,6 +30,37 @@ app.use(metricsMiddleware);
 const PORT = process.env.PORT || 3000;
 const SALT_ROUNDS = 10;
 
+const ROOT_ADMIN_USERNAME = 'admin';
+
+async function requireAdmin(req, res) {
+  const username = normalizeUsername(getUsernameFromToken(req.headers.authorization));
+
+  if (!username) {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+    return null;
+  }
+
+  const user = await findUserByUsername(username);
+  if (!user || user.role !== 'admin') {
+    res.status(403).json({ success: false, error: 'Forbidden' });
+    return null;
+  }
+
+  return user;
+}
+
+function publicAdminUserView(user) {
+  return {
+    id: user._id,
+    username: user.username,
+    email: user.email ?? null,
+    realName: user.realName ?? null,
+    role: user.role ?? 'user',
+    isRootAdmin: user.username === ROOT_ADMIN_USERNAME,
+    createdAt: user.createdAt,
+  };
+}
+
 function getErrorMessage(error) {
     return typeof error?.message === 'string' ? error.message : 'Internal server error';
 }
@@ -843,6 +874,94 @@ app.get('/health', async (_req, res) => {
         database: states[dbState],
         timestamp: new Date(),
     });
+});
+
+app.get('/admin/me', async (req, res) => {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+
+  return res.json({
+    success: true,
+    user: publicAdminUserView(admin),
+  });
+});
+
+app.get('/admin/users', async (req, res) => {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+
+  const users = await User.find({}, { password: 0 }).sort({ username: 1 });
+  return res.json({
+    success: true,
+    users: users.map(publicAdminUserView),
+  });
+});
+
+app.patch('/admin/users/:username/role', async (req, res) => {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+
+  const targetUsername = normalizeUsername(req.params.username);
+  const nextRole = req.body?.role;
+
+  if (!targetUsername || !['user', 'admin'].includes(nextRole)) {
+    return res.status(400).json({ success: false, error: 'Invalid payload' });
+  }
+
+  if (targetUsername === ROOT_ADMIN_USERNAME && nextRole !== 'admin') {
+    return res.status(400).json({
+      success: false,
+      error: 'Root admin cannot be demoted',
+    });
+  }
+
+  const target = await findUserByUsername(targetUsername);
+  if (!target) {
+    return res.status(404).json({ success: false, error: 'User not found' });
+  }
+
+  const previousRole = target.role ?? 'user';
+  target.role = nextRole;
+  await target.save();
+
+  if (previousRole !== nextRole) {
+    createNotificationSilently(
+      {
+        recipient: target.username,
+        type: nextRole === 'admin' ? 'admin_granted' : 'admin_revoked',
+        from: admin.username,
+        read: false,
+      },
+      'Failed to create admin role notification:'
+    );
+  }
+
+  return res.json({
+    success: true,
+    user: publicAdminUserView(target),
+  });
+});
+
+app.delete('/admin/users/:username/history', async (req, res) => {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+
+  const targetUsername = normalizeUsername(req.params.username);
+  if (!targetUsername) {
+    return res.status(400).json({ success: false, error: 'Invalid username' });
+  }
+
+  const target = await findUserByUsername(targetUsername);
+  if (!target) {
+    return res.status(404).json({ success: false, error: 'User not found' });
+  }
+
+  const result = await GameResult.deleteMany({ username: targetUsername });
+
+  return res.json({
+    success: true,
+    deletedCount: result.deletedCount,
+  });
 });
 
 module.exports = app;
