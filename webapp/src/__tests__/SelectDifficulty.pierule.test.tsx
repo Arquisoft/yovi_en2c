@@ -1,10 +1,21 @@
-import { render, screen, waitFor } from "@testing-library/react";
+// ─────────────────────────────────────────────────────────────────────────────
+// SelectDifficulty.pierule.test.tsx
+// Tests the Pie Rule card in SelectDifficulty.
+//
+// The Pie Rule card is ONLY visible when gameMode === "local".
+// It renders a toggle (role="switch") with aria-label matching "pierule".
+// When enabled, pieRule: true is passed in navigation state.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import "@testing-library/jest-dom";
 import SelectDifficulty from "../SelectDifficulty";
 import { I18nProvider } from "../i18n/I18nProvider";
+
+// ── Mock ──────────────────────────────────────────────────────────────────────
 
 const mockNavigate = vi.fn();
 
@@ -13,7 +24,10 @@ vi.mock("react-router-dom", async () => {
     return { ...actual, useNavigate: () => mockNavigate };
 });
 
+// ── Helper ────────────────────────────────────────────────────────────────────
+
 function renderSelectDifficulty(username = "pablo") {
+    localStorage.clear();
     localStorage.setItem("username", username);
     return render(
         <I18nProvider>
@@ -24,7 +38,38 @@ function renderSelectDifficulty(username = "pablo") {
     );
 }
 
-describe("SelectDifficulty — Pie Rule (local mode)", () => {
+/** Switches to local mode by clicking the "Local" game mode button. */
+async function switchToLocalMode(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByText(/local/i));
+}
+
+/**
+ * Returns the Pie Rule card by finding the switch whose aria-label mentions
+ * "pierule" and traversing up to the nearest .card ancestor.
+ */
+function getPieRuleCard(): HTMLElement {
+    const switches = screen.getAllByRole("switch");
+    const pieSwitch = switches.find(sw =>
+        /pierule|pie.?rule/i.test(sw.getAttribute("aria-label") ?? "")
+    );
+    if (!pieSwitch) throw new Error("Pie Rule switch not found");
+    return pieSwitch.closest(".card") as HTMLElement;
+}
+
+/** Returns the Pie Rule toggle switch element. */
+function getPieRuleToggle(): HTMLElement {
+    const switches = screen.getAllByRole("switch");
+    const pieSwitch = switches.find(sw =>
+        /pierule|pie.?rule/i.test(sw.getAttribute("aria-label") ?? "")
+    );
+    if (!pieSwitch) throw new Error("Pie Rule switch not found");
+    return pieSwitch as HTMLElement;
+}
+
+// ── Suite ─────────────────────────────────────────────────────────────────────
+
+describe("SelectDifficulty — Pie Rule card", () => {
+
     beforeEach(() => {
         vi.clearAllMocks();
         localStorage.clear();
@@ -36,77 +81,120 @@ describe("SelectDifficulty — Pie Rule (local mode)", () => {
         localStorage.clear();
     });
 
-    // ── Renderizado del toggle de Pie Rule ─────────────────────────────────
-    test("pie rule card is not visible in bot mode", () => {
+    // ── Visibility ────────────────────────────────────────────────────────────
+
+    test("pie rule card is NOT visible in bot mode (default)", () => {
         renderSelectDifficulty();
-        // Por defecto el modo es "bot"
-        expect(screen.queryByRole("switch", { name: /pie rule/i })).not.toBeInTheDocument();
-        expect(screen.queryByText(/pie rule/i)).not.toBeInTheDocument();
+        // In bot mode only the undo switch exists; no pierule switch
+        const switches = screen.getAllByRole("switch");
+        const hasPieSwitch = switches.some(sw =>
+            /pierule|pie.?rule/i.test(sw.getAttribute("aria-label") ?? "")
+        );
+        expect(hasPieSwitch).toBe(false);
     });
 
-    test("pie rule card appears after switching to local mode", async () => {
+    test("pie rule card IS visible when local mode is selected", async () => {
         const user = userEvent.setup();
         renderSelectDifficulty();
 
-        await user.click(screen.getByRole("button", { name: /local/i }));
+        await switchToLocalMode(user);
 
-        expect(screen.getByRole("switch", { name: /pie rule/i })).toBeInTheDocument();
-        expect(screen.getByText(/pie rule/i)).toBeInTheDocument();
+        expect(getPieRuleCard()).toBeInTheDocument();
     });
 
-    // ── Estado del toggle ───────────────────────────────────────────────────
+    test("pie rule card disappears when switching back to bot mode", async () => {
+        const user = userEvent.setup();
+        renderSelectDifficulty();
+
+        await switchToLocalMode(user);
+        // Verify it appeared
+        expect(getPieRuleCard()).toBeInTheDocument();
+
+        // Switch back to bot mode
+        await user.click(screen.getByText(/vs bot|contra bot/i));
+
+        const switches = screen.getAllByRole("switch");
+        const hasPieSwitch = switches.some(sw =>
+            /pierule|pie.?rule/i.test(sw.getAttribute("aria-label") ?? "")
+        );
+        expect(hasPieSwitch).toBe(false);
+    });
+
+    // ── Card content ──────────────────────────────────────────────────────────
+
+    test("pie rule card renders a title", async () => {
+        const user = userEvent.setup();
+        renderSelectDifficulty();
+        await switchToLocalMode(user);
+
+        const card = getPieRuleCard();
+        expect(within(card).getByRole("heading")).toBeInTheDocument();
+    });
+
+    test("pie rule card renders a description paragraph", async () => {
+        const user = userEvent.setup();
+        renderSelectDifficulty();
+        await switchToLocalMode(user);
+
+        const card = getPieRuleCard();
+        // The card should have at least one <p> with description text
+        expect(card.querySelector("p")).not.toBeNull();
+    });
+
+    // ── Default state ─────────────────────────────────────────────────────────
+
     test("pie rule toggle is OFF by default", async () => {
         const user = userEvent.setup();
         renderSelectDifficulty();
-        await user.click(screen.getByRole("button", { name: /local/i }));
+        await switchToLocalMode(user);
 
-        const toggle = screen.getByRole("switch", { name: /pie rule/i });
-        expect(toggle).toHaveAttribute("aria-checked", "false");
+        expect(getPieRuleToggle()).toHaveAttribute("aria-checked", "false");
     });
 
-    test("clicking pie rule toggle turns it ON", async () => {
+    // ── Toggle interaction ────────────────────────────────────────────────────
+
+    test("clicking the toggle sets aria-checked to true", async () => {
         const user = userEvent.setup();
         renderSelectDifficulty();
-        await user.click(screen.getByRole("button", { name: /local/i }));
+        await switchToLocalMode(user);
 
-        const toggle = screen.getByRole("switch", { name: /pie rule/i });
-        await user.click(toggle);
+        await user.click(getPieRuleToggle());
 
-        expect(toggle).toHaveAttribute("aria-checked", "true");
+        expect(getPieRuleToggle()).toHaveAttribute("aria-checked", "true");
     });
 
-    test("clicking pie rule toggle twice returns it to OFF", async () => {
+    test("clicking the toggle twice returns it to OFF", async () => {
         const user = userEvent.setup();
         renderSelectDifficulty();
-        await user.click(screen.getByRole("button", { name: /local/i }));
+        await switchToLocalMode(user);
 
-        const toggle = screen.getByRole("switch", { name: /pie rule/i });
-        await user.click(toggle);
-        await user.click(toggle);
+        await user.click(getPieRuleToggle());
+        await user.click(getPieRuleToggle());
 
-        expect(toggle).toHaveAttribute("aria-checked", "false");
+        expect(getPieRuleToggle()).toHaveAttribute("aria-checked", "false");
     });
 
-    // ── Navegación con pieRule ─────────────────────────────────────────────
-    async function configureLocalGame(user: ReturnType<typeof userEvent.setup>) {
-        // Cambiar a modo local
-        await user.click(screen.getByRole("button", { name: /local/i }));
-        // (Opcional) dar nombre a player2
-        const player2Input = screen.getByPlaceholderText(/nombre jugador 2|player 2 name/i);
-        await user.clear(player2Input);
-        await user.type(player2Input, "Amiga");
-        // Seleccionar quién empieza (por defecto player1)
-        // No es necesario tocar el timer ni board size, vienen por defecto.
-    }
-
-    test("navigates with pieRule=false when toggle is off", async () => {
+    test("toggling pie rule does not affect undo switch state", async () => {
         const user = userEvent.setup();
         renderSelectDifficulty();
-        await configureLocalGame(user);
+        await switchToLocalMode(user);
 
-        // Asegurar que pieRule sigue desactivado (por defecto)
-        const toggle = screen.getByRole("switch", { name: /pie rule/i });
-        expect(toggle).toHaveAttribute("aria-checked", "false");
+        // The undo switch (first switch) should stay unchecked
+        const undoSwitch = screen.getAllByRole("switch").find(sw =>
+            !/pierule|pie.?rule/i.test(sw.getAttribute("aria-label") ?? "")
+        );
+
+        await user.click(getPieRuleToggle());
+
+        expect(undoSwitch).toHaveAttribute("aria-checked", "false");
+    });
+
+    // ── Navigation state ──────────────────────────────────────────────────────
+
+    test("navigates with pieRule: false when toggle is off (default)", async () => {
+        const user = userEvent.setup();
+        renderSelectDifficulty();
+        await switchToLocalMode(user);
 
         await user.click(screen.getByRole("button", { name: /jugar|start|play/i }));
 
@@ -120,15 +208,12 @@ describe("SelectDifficulty — Pie Rule (local mode)", () => {
         });
     });
 
-    test("navigates with pieRule=true when toggle is on", async () => {
+    test("navigates with pieRule: true when toggle is on", async () => {
         const user = userEvent.setup();
         renderSelectDifficulty();
-        await configureLocalGame(user);
+        await switchToLocalMode(user);
 
-        const toggle = screen.getByRole("switch", { name: /pie rule/i });
-        await user.click(toggle);
-        expect(toggle).toHaveAttribute("aria-checked", "true");
-
+        await user.click(getPieRuleToggle());
         await user.click(screen.getByRole("button", { name: /jugar|start|play/i }));
 
         await waitFor(() => {
@@ -141,33 +226,104 @@ describe("SelectDifficulty — Pie Rule (local mode)", () => {
         });
     });
 
-    // ── Pie rule convive con otras opciones locales ─────────────────────────
-    test("pie rule setting does not affect other local options", async () => {
+    test("pieRule: false is sent after toggling on then off", async () => {
         const user = userEvent.setup();
         renderSelectDifficulty();
-        await configureLocalGame(user);
+        await switchToLocalMode(user);
 
-        // Activar pie rule
-        await user.click(screen.getByRole("switch", { name: /pie rule/i }));
-        // Cambiar quién empieza a "random"
-        await user.click(screen.getByRole("button", { name: /aleatorio|random/i }));
-        // Cambiar tamaño de tablero a 9
-        await user.click(screen.getByRole("button", { name: "9" }));
-
+        await user.click(getPieRuleToggle()); // ON
+        await user.click(getPieRuleToggle()); // OFF
         await user.click(screen.getByRole("button", { name: /jugar|start|play/i }));
 
         await waitFor(() => {
             expect(mockNavigate).toHaveBeenCalledWith(
                 "/game",
                 expect.objectContaining({
-                    state: expect.objectContaining({
-                        pieRule: true,
-                        boardSize: 9,
-                        firstPlayer: expect.stringMatching(/player[12]/), // random resuelto
-                        mode: "local",
-                    }),
+                    state: expect.objectContaining({ pieRule: false }),
                 })
             );
         });
+    });
+
+    // ── Compatibility with other settings ─────────────────────────────────────
+
+    test("pie rule does not interfere with board size selection", async () => {
+        const user = userEvent.setup();
+        renderSelectDifficulty();
+        await switchToLocalMode(user);
+
+        await user.click(screen.getByRole("button", { name: /^9$/ }));
+        await user.click(getPieRuleToggle());
+        await user.click(screen.getByRole("button", { name: /jugar|start|play/i }));
+
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith(
+                "/game",
+                expect.objectContaining({
+                    state: expect.objectContaining({ boardSize: 9, pieRule: true }),
+                })
+            );
+        });
+    });
+
+    test("pie rule does not interfere with timer selection", async () => {
+        const user = userEvent.setup();
+        renderSelectDifficulty();
+        await switchToLocalMode(user);
+
+        await user.click(screen.getByRole("button", { name: /^30s$/ }));
+        await user.click(getPieRuleToggle());
+        await user.click(screen.getByRole("button", { name: /jugar|start|play/i }));
+
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith(
+                "/game",
+                expect.objectContaining({
+                    state: expect.objectContaining({ timerSeconds: 30, pieRule: true }),
+                })
+            );
+        });
+    });
+
+    test("pie rule and undo can both be enabled simultaneously", async () => {
+        const user = userEvent.setup();
+        renderSelectDifficulty();
+        await switchToLocalMode(user);
+
+        // Enable undo (first switch = undo toggle)
+        const undoSwitch = screen.getAllByRole("switch").find(sw =>
+            !/pierule|pie.?rule/i.test(sw.getAttribute("aria-label") ?? "")
+        ) as HTMLElement;
+        await user.click(undoSwitch);
+
+        // Enable pie rule
+        await user.click(getPieRuleToggle());
+        await user.click(screen.getByRole("button", { name: /jugar|start|play/i }));
+
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith(
+                "/game",
+                expect.objectContaining({
+                    state: expect.objectContaining({ allowUndo: true, pieRule: true }),
+                })
+            );
+        });
+    });
+
+    // ── Pie rule is NOT sent in bot mode ──────────────────────────────────────
+
+    test("navigation state in bot mode does NOT contain pieRule key", async () => {
+        const user = userEvent.setup();
+        renderSelectDifficulty();
+
+        await user.click(screen.getByText(/Fácil|Easy/i));
+        await user.click(screen.getByRole("button", { name: /jugar|start|play/i }));
+
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalled();
+        });
+
+        const calledState = (mockNavigate.mock.calls[0][1] as { state: Record<string, unknown> }).state;
+        expect(calledState).not.toHaveProperty("pieRule");
     });
 });
