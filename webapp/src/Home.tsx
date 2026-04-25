@@ -9,198 +9,208 @@ type LocationState = { username?: string };
 const API_URL = "/api";
 
 const Home: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { t } = useI18n();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { t } = useI18n();
 
-  const [checkingSession, setCheckingSession] = useState(true);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [checkingSession, setCheckingSession] = useState(true);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const username = useMemo(() => {
-    const st = (location.state as LocationState | null) ?? null;
-    return st?.username ?? localStorage.getItem("username") ?? "";
-  }, [location.state]);
+    const username = useMemo(() => {
+        const st = (location.state as LocationState | null) ?? null;
+        return st?.username ?? localStorage.getItem("username") ?? "";
+    }, [location.state]);
 
-  const token = useMemo(() => localStorage.getItem("token") ?? "", []);
+    const token = useMemo(() => localStorage.getItem("token") ?? "", []);
 
-  const fetchNotifications = useCallback(async () => {
-    if (!token) return;
+    const fetchNotifications = useCallback(async () => {
+        if (!token) return;
 
-    try {
-      const res = await fetch(`${API_URL}/notifications`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        try {
+            const res = await fetch(`${API_URL}/notifications`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
 
-      if (!res.ok) return;
+            if (!res.ok) return;
 
-      const data = await res.json();
-      if (data.success) setNotifications(data.notifications ?? []);
-    } catch {
-      // Non-critical
-    }
-  }, [token]);
-
-  const handleMarkRead = useCallback(async (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-
-    try {
-      await fetch(`${API_URL}/notifications/${id}/read`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    } catch {
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: false } : n))
-      );
-    }
-  }, [token]);
-
-  useEffect(() => {
-    const verifySession = async () => {
-      if (!username || !token) {
-        localStorage.removeItem("username");
-        localStorage.removeItem("token");
-        navigate("/", { replace: true });
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_URL}/verify`, {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!res.ok) {
-          localStorage.removeItem("username");
-          localStorage.removeItem("token");
-          navigate("/", { replace: true });
-          return;
+            const data = await res.json();
+            if (data.success) setNotifications(data.notifications ?? []);
+        } catch {
+            // Non-critical
         }
+    }, [token]);
 
-        setCheckingSession(false);
-        fetchNotifications();
-      } catch {
+    const handleMarkRead = useCallback(async (id: string) => {
+        setNotifications((prev) =>
+            prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+        );
+
+        try {
+            await fetch(`${API_URL}/notifications/${id}/read`, {
+                method: "PATCH",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+        } catch {
+            setNotifications((prev) =>
+                prev.map((n) => (n.id === id ? { ...n, read: false } : n))
+            );
+        }
+    }, [token]);
+
+    useEffect(() => {
+        const verifySession = async () => {
+            if (!username || !token) {
+                localStorage.removeItem("username");
+                localStorage.removeItem("token");
+                navigate("/", { replace: true });
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/verify`, {
+                    method: "GET",
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                if (!res.ok) {
+                    localStorage.removeItem("username");
+                    localStorage.removeItem("token");
+                    navigate("/", { replace: true });
+                    return;
+                }
+
+                setCheckingSession(false);
+                fetchNotifications();
+            } catch {
+                localStorage.removeItem("username");
+                localStorage.removeItem("token");
+                navigate("/", { replace: true });
+            }
+        };
+
+        verifySession();
+    }, [username, token, navigate, fetchNotifications]);
+
+    const logout = () => {
         localStorage.removeItem("username");
         localStorage.removeItem("token");
         navigate("/", { replace: true });
-      }
     };
 
-    verifySession();
-  }, [username, token, navigate, fetchNotifications]);
+    const startQuickGame = () => {
+        navigate("/game", { state: { username, bot: "minimax_bot", boardSize: 7 } });
+    };
 
-  const logout = () => {
-    localStorage.removeItem("username");
-    localStorage.removeItem("token");
-    navigate("/", { replace: true });
-  };
+    const goMultiplayer = () => {
+        navigate("/multiplayer", { state: { username } });
+    };
 
-  const startQuickGame = () => {
-    navigate("/game", { state: { username, bot: "minimax_bot", boardSize: 7 } });
-  };
+    const goInstructions = () => {
+        navigate("/instructions", { state: { username } });
+    };
 
-  const goMultiplayer = () => {
-    navigate("/multiplayer", { state: { username } });
-  };
+    const goDifficulty = () => {
+        navigate("/select-difficulty", { state: { username } });
+    };
 
-  const goInstructions = () => {
-    navigate("/instructions", { state: { username } });
-  };
+    const goSocial = () => {
+        navigate("/social", { state: { username } });
+    };
 
-  const goDifficulty = () => {
-    navigate("/select-difficulty", { state: { username } });
-  };
+    if (checkingSession || !username || !token) return null;
 
-  const goSocial = () => {
-    navigate("/social", { state: { username } });
-  };
+    return (
+        <div className="page">
+            <Navbar
+                username={username}
+                onLogout={logout}
+                notifications={notifications}
+                onMarkRead={handleMarkRead}
+            />
 
-  if (checkingSession || !username || !token) return null;
+            <main className="container">
+                <section className="hero" aria-label="Home panel">
+                    <div className="hero__top">
+                        <img src={logo} alt="GameY" className="hero__logo" />
 
-  return (
-    <div className="page">
-      <Navbar
-        username={username}
-        onLogout={logout}
-        notifications={notifications}
-        onMarkRead={handleMarkRead}
-      />
+                        <div className="hero__badge">
+                            <span aria-hidden="true" />
+                            {t("home.badge")}
+                        </div>
+                    </div>
 
-      <main className="container">
-        <section className="hero" aria-label="Home panel">
-          <div className="hero__top">
-            <img src={logo} alt="GameY" className="hero__logo" />
+                    <h1 className="hero__title">{t("home.welcome", { username })}</h1>
+                    <p className="hero__subtitle">{t("home.subtitle")}</p>
 
-            <div className="hero__badge">
-              <span aria-hidden="true" />
-              {t("home.badge")}
-            </div>
-          </div>
+                    <div className="hero__actions">
+                        <button className="btn btn--primary" onClick={startQuickGame} type="button">
+                            {t("home.quickgame")}
+                        </button>
 
-          <h1 className="hero__title">{t("home.welcome", { username })}</h1>
-          <p className="hero__subtitle">{t("home.subtitle")}</p>
+                        <button className="btn btn--secondary" onClick={goMultiplayer} type="button">
+                            {t("home.multiplayer")}
+                        </button>
 
-          <div className="hero__actions">
-            <button className="btn btn--primary" onClick={startQuickGame} type="button">
-              {t("home.quickgame")}
-            </button>
+                        <button className="btn btn--ghost" onClick={logout} type="button">
+                            {t("home.changeUser")}
+                        </button>
+                    </div>
+                </section>
 
-            <button className="btn btn--secondary" onClick={goMultiplayer} type="button">
-              {t("home.multiplayer")}
-            </button>
+                <section className="grid" aria-label="Info cards">
+                    <article className="card">
+                        <h2 className="card__title">{t("home.card1.title")}</h2>
+                        <p className="card__text">{t("home.card1.text")}</p>
+                        <div style={{ marginTop: 16 }}>
+                            <button className="btn btn--primary" onClick={goInstructions} type="button">
+                                {t("home.instructions")}
+                            </button>
+                        </div>
+                    </article>
 
-            <button className="btn btn--ghost" onClick={logout} type="button">
-              {t("home.changeUser")}
-            </button>
-          </div>
-        </section>
+                    <article className="card">
+                        <h2 className="card__title">{t("home.card2.title")}</h2>
+                        <p className="card__text">{t("home.card2.text")}</p>
+                        <div style={{ marginTop: 16 }}>
+                            <button className="btn btn--primary" onClick={goMultiplayer} type="button">
+                                {t("home.card2.button")}
+                            </button>
+                        </div>
+                    </article>
 
-        <section className="grid" aria-label="Info cards">
-          <article className="card">
-            <h2 className="card__title">{t("home.card1.title")}</h2>
-            <p className="card__text">{t("home.card1.text")}</p>
-            <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goInstructions} type="button">
-                {t("home.instructions")}
-              </button>
-            </div>
-          </article>
+                    <article className="card">
+                        <h2 className="card__title">{t("home.card3.title")}</h2>
+                        <p className="card__text">{t("home.card3.text")}</p>
+                        <div style={{ marginTop: 16 }}>
+                            <button className="btn btn--primary" onClick={goDifficulty} type="button">
+                                {t("home.selectDifficulty")}
+                            </button>
+                        </div>
+                    </article>
 
-          <article className="card">
-            <h2 className="card__title">{t("home.card2.title")}</h2>
-            <p className="card__text">{t("home.card2.text")}</p>
-            <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goMultiplayer} type="button">
-                {t("home.card2.button")}
-              </button>
-            </div>
-          </article>
+                    <article className="card">
+                        <h2 className="card__title">{t("home.card4.title")}</h2>
+                        <p className="card__text">{t("home.card4.text")}</p>
+                        <div style={{ marginTop: 16 }}>
+                            <button className="btn btn--primary" onClick={goSocial} type="button">
+                                {t("home.card4.button")}
+                            </button>
+                        </div>
+                    </article>
 
-          <article className="card">
-            <h2 className="card__title">{t("home.card3.title")}</h2>
-            <p className="card__text">{t("home.card3.text")}</p>
-            <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goDifficulty} type="button">
-                {t("home.selectDifficulty")}
-              </button>
-            </div>
-          </article>
-
-          <article className="card">
-            <h2 className="card__title">{t("home.card4.title")}</h2>
-            <p className="card__text">{t("home.card4.text")}</p>
-            <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goSocial} type="button">
-                {t("home.card4.button")}
-              </button>
-            </div>
-          </article>
-        </section>
-      </main>
-    </div>
-  );
+                    <article className="card">
+                        <h2 className="card__title">{t("home.card5.title")}</h2>
+                        <p className="card__text">{t("home.card5.text")}</p>
+                        <div style={{ marginTop: 16 }}>
+                            <button className="btn btn--primary" onClick={goDifficulty} type="button">
+                                {t("home.card5.button")}
+                            </button>
+                        </div>
+                    </article>
+                </section>
+            </main>
+        </div>
+    );
 };
 
 export default Home;
