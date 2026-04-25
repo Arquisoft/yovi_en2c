@@ -25,14 +25,11 @@ const Home: React.FC = () => {
 
     const fetchNotifications = useCallback(async () => {
         if (!token) return;
-
         try {
             const res = await fetch(`${API_URL}/notifications`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-
             if (!res.ok) return;
-
             const data = await res.json();
             if (data.success) setNotifications(data.notifications ?? []);
         } catch {
@@ -44,7 +41,6 @@ const Home: React.FC = () => {
         setNotifications((prev) =>
             prev.map((n) => (n.id === id ? { ...n, read: true } : n))
         );
-
         try {
             await fetch(`${API_URL}/notifications/${id}/read`, {
                 method: "PATCH",
@@ -65,20 +61,17 @@ const Home: React.FC = () => {
                 navigate("/", { replace: true });
                 return;
             }
-
             try {
                 const res = await fetch(`${API_URL}/verify`, {
                     method: "GET",
                     headers: { Authorization: `Bearer ${token}` },
                 });
-
                 if (!res.ok) {
                     localStorage.removeItem("username");
                     localStorage.removeItem("token");
                     navigate("/", { replace: true });
                     return;
                 }
-
                 setCheckingSession(false);
                 fetchNotifications();
             } catch {
@@ -87,7 +80,6 @@ const Home: React.FC = () => {
                 navigate("/", { replace: true });
             }
         };
-
         verifySession();
     }, [username, token, navigate, fetchNotifications]);
 
@@ -99,6 +91,11 @@ const Home: React.FC = () => {
 
     const startQuickGame = () => {
         navigate("/game", { state: { username, bot: "minimax_bot", boardSize: 7 } });
+    };
+
+    // Navega al selector en modo local
+    const goLocalGame = () => {
+        navigate("/select-difficulty", { state: { username } });
     };
 
     const goMultiplayer = () => {
@@ -132,25 +129,20 @@ const Home: React.FC = () => {
                 <section className="hero" aria-label="Home panel">
                     <div className="hero__top">
                         <img src={logo} alt="GameY" className="hero__logo" />
-
                         <div className="hero__badge">
                             <span aria-hidden="true" />
                             {t("home.badge")}
                         </div>
                     </div>
-
                     <h1 className="hero__title">{t("home.welcome", { username })}</h1>
                     <p className="hero__subtitle">{t("home.subtitle")}</p>
-
                     <div className="hero__actions">
                         <button className="btn btn--primary" onClick={startQuickGame} type="button">
                             {t("home.quickgame")}
                         </button>
-
                         <button className="btn btn--secondary" onClick={goMultiplayer} type="button">
                             {t("home.multiplayer")}
                         </button>
-
                         <button className="btn btn--ghost" onClick={logout} type="button">
                             {t("home.changeUser")}
                         </button>
@@ -159,6 +151,7 @@ const Home: React.FC = () => {
 
                 <section className="grid" aria-label="Info cards">
                     <article className="card">
+                        <div className="hero__badge"><span aria-hidden="true" />{t("home.card1.pill")}</div>
                         <h2 className="card__title">{t("home.card1.title")}</h2>
                         <p className="card__text">{t("home.card1.text")}</p>
                         <div style={{ marginTop: 16 }}>
@@ -169,6 +162,7 @@ const Home: React.FC = () => {
                     </article>
 
                     <article className="card">
+                        <div className="hero__badge"><span aria-hidden="true" />{t("home.card2.pill")}</div>
                         <h2 className="card__title">{t("home.card2.title")}</h2>
                         <p className="card__text">{t("home.card2.text")}</p>
                         <div style={{ marginTop: 16 }}>
@@ -179,6 +173,7 @@ const Home: React.FC = () => {
                     </article>
 
                     <article className="card">
+                        <div className="hero__badge"><span aria-hidden="true" />{t("home.card3.pill")}</div>
                         <h2 className="card__title">{t("home.card3.title")}</h2>
                         <p className="card__text">{t("home.card3.text")}</p>
                         <div style={{ marginTop: 16 }}>
@@ -189,6 +184,7 @@ const Home: React.FC = () => {
                     </article>
 
                     <article className="card">
+                        <div className="hero__badge"><span aria-hidden="true" />{t("home.card4.pill")}</div>
                         <h2 className="card__title">{t("home.card4.title")}</h2>
                         <p className="card__text">{t("home.card4.text")}</p>
                         <div style={{ marginTop: 16 }}>
@@ -199,10 +195,11 @@ const Home: React.FC = () => {
                     </article>
 
                     <article className="card">
+                        <div className="hero__badge"><span aria-hidden="true" />{t("home.card5.pill")}</div>
                         <h2 className="card__title">{t("home.card5.title")}</h2>
                         <p className="card__text">{t("home.card5.text")}</p>
                         <div style={{ marginTop: 16 }}>
-                            <button className="btn btn--primary" onClick={goDifficulty} type="button">
+                            <button className="btn btn--primary" onClick={goLocalGame} type="button">
                                 {t("home.card5.button")}
                             </button>
                         </div>

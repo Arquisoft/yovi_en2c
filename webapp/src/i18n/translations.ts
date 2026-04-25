@@ -4,7 +4,6 @@ export type Dict = Record<string, string>;
 
 export const translations: Record<Lang, Dict> = {
     es: {
-        // Common
         "app.brand": "GameY",
         "common.home": "Inicio",
         "common.game": "Nuevo Juego",
@@ -52,9 +51,8 @@ export const translations: Record<Lang, Dict> = {
 
         "home.badge": "Estás en Gamey - Yovi_EN2C",
         "home.welcome": "Hola {username}",
-        "home.subtitle":
-            "Juega al juego Y",
-        "home.quickgame": "Partida rapida",
+        "home.subtitle": "Juega al juego Y",
+        "home.quickgame": "Partida rápida",
         "home.goBoard": "Ir al tablero",
         "home.changeUser": "Cambiar usuario",
         "home.card1.title": "📘 Instrucciones",
@@ -71,6 +69,14 @@ export const translations: Record<Lang, Dict> = {
         "home.card4.text": "Busca jugadores, visita perfiles y gestiona tus amistades.",
         "home.card4.pill": "Amigos y perfiles",
         "home.card4.button": "Ir a Social",
+        "home.card1.pill": "Reglas básicas",
+        "home.card5.title": "🎲 Jugar en local",
+        "home.card5.text": "Juega una partida en el mismo dispositivo, ideal para probar el tablero o jugar rápido.",
+        "home.card5.pill": "Modo local",
+        "home.card5.button": "Jugar en local",
+        "home.card6.title": "🚧 Futuro",
+        "home.card6.text": "Nuevas funciones llegarán próximamente para ampliar la experiencia de GameY.",
+        "home.card6.pill": "Próximamente",
 
         "game.new": "Nueva partida",
         "game.send": "Enviar jugada",
@@ -147,7 +153,6 @@ export const translations: Record<Lang, Dict> = {
         "stats.history": "Historial de partidas",
         "stats.page": "Página {page} de {total}",
 
-        //Timer
         "timer.title": "Tiempo por turno",
         "timer.subtitle": "El jugador pierde si no mueve a tiempo. 0 = sin límite.",
         "timer.noLimit": "Sin límite",
@@ -159,7 +164,6 @@ export const translations: Record<Lang, Dict> = {
         "timer.timeout.lost": "¡Se acabó el tiempo! Has perdido",
         "timer.timeout.description": "No realizaste un movimiento a tiempo.",
 
-        //Profile
         "profile.joinDate": "Se unió el",
         "profile.error.generic": "Error al cargar el perfil",
         "profile.error.network": "Error de red",
@@ -188,23 +192,21 @@ export const translations: Record<Lang, Dict> = {
         "profile.friendRequests.accept": "Aceptar",
         "profile.friendRequests.acceptError": "Error al aceptar solicitud",
 
-
-        // Página Social
-        "social.title":           "Social",
-        "social.subtitle":        "Encuentra jugadores y envía solicitudes de amistad",
-        "social.searchLabel":     "Buscar jugadores",
+        "social.title": "Social",
+        "social.subtitle": "Encuentra jugadores y envía solicitudes de amistad",
+        "social.searchLabel": "Buscar jugadores",
         "social.searchPlaceholder": "Nombre de usuario o correo electrónico…",
-        "social.searching":       "Buscando…",
-        "social.resultsLabel":    "Resultados",
-        "social.noResults":       "Sin resultados para esa búsqueda",
-        "social.searchError":     "Error al buscar usuarios",
-        "social.viewProfile":     "Ver perfil",
-        "social.sendRequest":     "Enviar solicitud",
-        "social.requestSent":     "Solicitud enviada",
-        "social.alreadyFriends":  "Ya son amigos",
-        "social.requestError":    "Error al enviar solicitud",
-        "social.groupsTitle":     "Grupos",
-        "social.groupsSubtitle":  "Próximamente",
+        "social.searching": "Buscando…",
+        "social.resultsLabel": "Resultados",
+        "social.noResults": "Sin resultados para esa búsqueda",
+        "social.searchError": "Error al buscar usuarios",
+        "social.viewProfile": "Ver perfil",
+        "social.sendRequest": "Enviar solicitud",
+        "social.requestSent": "Solicitud enviada",
+        "social.alreadyFriends": "Ya son amigos",
+        "social.requestError": "Error al enviar solicitud",
+        "social.groupsTitle": "Grupos",
+        "social.groupsSubtitle": "Próximamente",
 
         "multiplayer.title": "Multijugador online",
         "multiplayer.subtitle": "Crea una sala o únete a una partida contra otro jugador",
@@ -249,11 +251,7 @@ export const translations: Record<Lang, Dict> = {
         "multiplayer.joining": "Uniéndose a la sala…",
         "common.multiplayer": "Multijugador",
         "home.multiplayer": "Multijugador",
-
-
-        "home.card5.title": "🖥️ Multijugador local",
-        "home.card5.text": "Juega contra un amigo en el mismo dispositivo, alternando turnos.",
-        "home.card5.button": "Jugar en local",
+        "home.card2.button": "Jugar multijugador",
 
         "notifications.bellLabel": "Notificaciones",
         "notifications.title": "Notificaciones",
@@ -265,54 +263,15 @@ export const translations: Record<Lang, Dict> = {
         "notifications.welcomeText": "¡Bienvenido al equipo YOVI!",
         "notifications.friendRequestText": "{{from}} te ha enviado una solicitud de amistad",
 
-        //deshacer movimiento en partida
         "undo.title": "Deshacer movimientos",
         "undo.subtitle": "Permite revertir tu último movimiento",
         "undo.toggle.label": "Permitir deshacer",
         "undo.limit.label": "Límite de veces",
         "undo.limit.moves": "movimientos",
         "undo.limit.unlimited": "Sin límite",
-
-        // Modo de juego (selector)
-        "gamemode.title": "Modo de juego",
-        "gamemode.subtitle": "Elige cómo quieres jugar esta partida",
-        "gamemode.vsBot": "🤖 Contra el bot",
-        "gamemode.local": "👥 Multijugador local",
-
-        // Multijugador local — jugadores
-        "local.player1.label": "Jugador 1",
-        "local.player2.label": "Jugador 2",
-        "local.player2.title": "Nombre del segundo jugador",
-        "local.player2.subtitle": "El jugador 1 es el usuario con sesión iniciada",
-        "local.player2.placeholder": "Nombre del jugador 2",
-
-        // Multijugador local — quién empieza
-        "local.firstplayer.title": "¿Quién empieza?",
-        "local.firstplayer.subtitle": "Elige qué jugador realiza el primer movimiento",
-        "local.firstplayer.random": "🎲 Aleatorio",
-
-        // Multijugador local — indicador de turno en partida
-        "local.activeturn": "Turno",
-
-        // Regla del pastel
-        "pierule.title": "🥧 Regla del pastel",
-        "pierule.description": "Tras el primer movimiento, el jugador 2 puede intercambiar los colores con el jugador 1 para equilibrar la ventaja del primer turno.",
-        "pierule.toggle.label": "Activar regla del pastel",
-        "pierule.used": "Regla del pastel aplicada",
-        "pierule.modal.title": "¿Intercambiar colores?",
-        "pierule.modal.description": "{player} puede tomar el color del jugador 1 como propio o continuar como jugador 2.",
-        "pierule.modal.accept": "Sí, intercambiar",
-        "pierule.modal.decline": "No, continuar",
-
-        // Home — card 2 actualizada
-        "home.card2.cta": "Jugar en local",
-
-        // Fin de partida — modo local
-        "game.finished.wins": "¡ha ganado!",
     },
 
     en: {
-        // Common
         "app.brand": "GameY",
         "common.home": "Home",
         "common.game": "New Game",
@@ -324,7 +283,6 @@ export const translations: Record<Lang, Dict> = {
         "common.lightMode": "Switch to light theme",
         "common.darkMode": "Switch to dark theme",
 
-        // Register
         "register.title": "GameY",
         "register.label": "What’s your name?",
         "register.placeholder": "Username",
@@ -348,7 +306,6 @@ export const translations: Record<Lang, Dict> = {
         "registration.error.network": "Network error",
         "registration.goLogin": "Already have an account? Back to login",
 
-        // Login
         "login.aria": "User login",
         "login.username": "Username",
         "login.password": "Password", //NOSONAR
@@ -380,8 +337,15 @@ export const translations: Record<Lang, Dict> = {
         "home.card4.text": "Find players, visit profiles and manage your friends.",
         "home.card4.pill": "Friends and profiles",
         "home.card4.button": "Go to Social",
+        "home.card1.pill": "Basic rules",
+        "home.card5.title": "🎲 Local play",
+        "home.card5.text": "Play a match on the same device, perfect for testing the board or playing quickly.",
+        "home.card5.pill": "Local mode",
+        "home.card5.button": "Play locally",
+        "home.card6.title": "🚧 Future",
+        "home.card6.text": "New features will arrive soon to expand the GameY experience.",
+        "home.card6.pill": "Coming soon",
 
-        // Game
         "game.new": "New game",
         "game.send": "Send move",
         "game.sending": "Sending…",
@@ -390,8 +354,6 @@ export const translations: Record<Lang, Dict> = {
         "game.ok": "Connected → {msg}",
         "game.fail": "Connection error → {msg}",
         "game.back": "Back To Home",
-
-        // Game Ends
         "game.finished.win": "Game Finished: You win",
         "game.finished.lost": "Game Finished: You lost",
         "game.finished.draw": "Game Finished: Draw",
@@ -401,7 +363,6 @@ export const translations: Record<Lang, Dict> = {
         "game.undo": "Undo",
         "game.undoDone": "Move undone",
 
-        // Difficulties
         "difficulty.title": "Select Difficulty",
         "difficulty.subtitle": "Choose the bot level",
         "difficulty.random": "Very easy",
@@ -412,14 +373,12 @@ export const translations: Record<Lang, Dict> = {
         "difficulty.extreme": "Extreme",
         "difficulty.start": "Play",
 
-        //Board size
         "boardsize.title": "Board Size",
         "boardsize.subtitle": "Choose a size or enter a custom one",
         "boardsize.custom.placeholder": "Custom size",
         "boardsize.warning.small": "Board too small, the game may not be fun",
         "boardsize.warning.large": "Large boards may cause slow bot responses",
 
-        // Instructions
         "instructions.title": "Instructions",
         "instructions.subtitle": "Learn the basic rules of GameY and choose the difficulty that fits you best",
         "instructions.howToPlay.title": "How to play",
@@ -434,7 +393,6 @@ export const translations: Record<Lang, Dict> = {
         "instructions.board.p2": "Larger boards offer longer and more complex matches, although some bots may take longer to calculate their move.",
         "instructions.back": "Back to home",
 
-        //Stats
         "stats.title": "My Statistics",
         "stats.subtitle": "Game summary for {username}",
         "stats.totalGames": "Games played",
@@ -563,11 +521,6 @@ export const translations: Record<Lang, Dict> = {
         "home.multiplayer": "Multiplayer",
         "home.card2.button": "Play multiplayer",
 
-        "home.card5.title": "🖥️ Local Multiplayer",
-        "home.card5.text": "Play against a friend on the same device, taking turns.",
-        "home.card5.button": "Play local",
-
-        //notifiactions
         "notifications.bellLabel": "Notifications",
         "notifications.title": "Notifications",
         "notifications.close": "Close",
@@ -578,49 +531,11 @@ export const translations: Record<Lang, Dict> = {
         "notifications.welcomeText": "Welcome to the YOVI team!",
         "notifications.friendRequestText": "{{from}} sent you a friend request",
 
-        //undo move
         "undo.title": "Undo moves",
         "undo.subtitle": "Allows you to revert your last move",
         "undo.toggle.label": "Allow undo",
         "undo.limit.label": "Limit",
         "undo.limit.moves": "moves",
         "undo.limit.unlimited": "Unlimited",
-
-        // Game mode (selector)
-        "gamemode.title": "Game Mode",
-        "gamemode.subtitle": "Choose how you want to play this match",
-        "gamemode.vsBot": "🤖 vs Bot",
-        "gamemode.local": "👥 Local Multiplayer",
-
-        // Local multiplayer — players
-        "local.player1.label": "Player 1",
-        "local.player2.label": "Player 2",
-        "local.player2.title": "Second player's name",
-        "local.player2.subtitle": "Player 1 is the logged-in user",
-        "local.player2.placeholder": "Player 2 name",
-
-        // Local multiplayer — who starts
-        "local.firstplayer.title": "Who goes first?",
-        "local.firstplayer.subtitle": "Choose which player makes the first move",
-        "local.firstplayer.random": "🎲 Random",
-
-        // Local multiplayer — active turn indicator in game
-        "local.activeturn": "Turn",
-
-        // Pie rule
-        "pierule.title": "🥧 Pie Rule",
-        "pierule.description": "After the first move, player 2 can swap colors with player 1 to balance the first-move advantage.",
-        "pierule.toggle.label": "Enable pie rule",
-        "pierule.used": "Pie rule applied",
-        "pierule.modal.title": "Swap colors?",
-        "pierule.modal.description": "{player} can take player 1's color as their own or continue as player 2.",
-        "pierule.modal.accept": "Yes, swap",
-        "pierule.modal.decline": "No, continue",
-
-        // Home — card 2 updated
-        "home.card2.cta": "Play local",
-
-        // Game over — local mode
-        "game.finished.wins": "wins!",
     },
 };
