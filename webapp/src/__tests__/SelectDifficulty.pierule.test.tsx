@@ -53,8 +53,9 @@ async function switchToLocalMode(user: ReturnType<typeof userEvent.setup>) {
  */
 function getPieRuleCard(): HTMLElement {
     const switches = screen.getAllByRole("switch");
+    // El toggle de undo tiene aria-label "Permitir deshacer"; el de pie rule es el otro
     const pieSwitch = switches.find(sw =>
-        /pierule|pie.?rule/i.test(sw.getAttribute("aria-label") ?? "")
+        !/deshacer|undo/i.test(sw.getAttribute("aria-label") ?? "")
     );
     if (!pieSwitch) throw new Error("Pie Rule switch not found");
     return pieSwitch.closest(".card") as HTMLElement;
@@ -63,8 +64,9 @@ function getPieRuleCard(): HTMLElement {
 /** Returns the Pie Rule toggle switch element. */
 function getPieRuleToggle(): HTMLElement {
     const switches = screen.getAllByRole("switch");
+    // El toggle de undo tiene aria-label "Permitir deshacer"; el de pie rule es el otro
     const pieSwitch = switches.find(sw =>
-        /pierule|pie.?rule/i.test(sw.getAttribute("aria-label") ?? "")
+        !/deshacer|undo/i.test(sw.getAttribute("aria-label") ?? "")
     );
     if (!pieSwitch) throw new Error("Pie Rule switch not found");
     return pieSwitch as HTMLElement;
@@ -185,7 +187,7 @@ describe("SelectDifficulty — Pie Rule card", () => {
 
         // The undo switch (first switch) should stay unchecked
         const undoSwitch = screen.getAllByRole("switch").find(sw =>
-            !/pierule|pie.?rule/i.test(sw.getAttribute("aria-label") ?? "")
+            /deshacer|undo/i.test(sw.getAttribute("aria-label") ?? "")
         );
 
         await user.click(getPieRuleToggle());
@@ -296,7 +298,7 @@ describe("SelectDifficulty — Pie Rule card", () => {
 
         // Enable undo (first switch = undo toggle)
         const undoSwitch = screen.getAllByRole("switch").find(sw =>
-            !/pierule|pie.?rule/i.test(sw.getAttribute("aria-label") ?? "")
+            /deshacer|undo/i.test(sw.getAttribute("aria-label") ?? "")
         ) as HTMLElement;
         await user.click(undoSwitch);
 

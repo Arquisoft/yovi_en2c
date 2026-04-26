@@ -78,7 +78,11 @@ describe("SelectDifficulty", () => {
         const user = userEvent.setup();
         renderSelectDifficulty();
 
-        await user.click(screen.getByText(/local/i));
+        const localBtn = screen.getAllByRole("button").find(b =>
+            /^local$/i.test(b.textContent?.trim() ?? "")
+        );
+        if (!localBtn) throw new Error("Local mode button not found");
+        await user.click(localBtn);
 
         expect(screen.queryByText(/Fácil|Easy/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/Extremo|Extreme/i)).not.toBeInTheDocument();
@@ -110,7 +114,11 @@ describe("SelectDifficulty", () => {
         const user = userEvent.setup();
         renderSelectDifficulty();
 
-        await user.click(screen.getByText(/local/i));
+        const localBtn = screen.getAllByRole("button").find(b =>
+            /^local$/i.test(b.textContent?.trim() ?? "")
+        );
+        if (!localBtn) throw new Error("Local mode button not found");
+        await user.click(localBtn);
 
         expect(screen.getByRole("button", { name: /Jugar|Play/i })).not.toBeDisabled();
     });

@@ -129,9 +129,10 @@ describe("SelectDifficulty — preselección de modo desde state de navegación"
 
     test("la card de Pie Rule es visible al llegar desde Home", () => {
         renderFromHome();
+        // En modo local hay dos switches: undo (aria-label "Permitir deshacer") y pie rule
         const switches = screen.getAllByRole("switch");
         const hasPieSwitch = switches.some(sw =>
-            /pierule|pie.?rule/i.test(sw.getAttribute("aria-label") ?? "")
+            !/deshacer|undo/i.test(sw.getAttribute("aria-label") ?? "")
         );
         expect(hasPieSwitch).toBe(true);
     });
