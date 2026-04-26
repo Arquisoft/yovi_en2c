@@ -3,9 +3,15 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-concepts]]
 == Cross-cutting Concepts
 
-=== Game State Representation
+This section describes concepts, patterns, and approaches that span multiple building blocks and apply
+system-wide. These are the architectural decisions that cut across service boundaries and define how YOVI
+behaves as a whole rather than within any single component.
 
-All game state across the system is represented using **YEN notation**, as mandated by the client.
+=== 1. Game State Representation — YEN Notation
+
+All game state across the system is represented using **YEN (Y Exchange Notation)**, a JSON format
+inspired by chess FEN notation. This is mandated by the client and forms the backbone of all
+service-to-service and external communication involving game state.
 
 [source,json]
 ----
@@ -17,132 +23,470 @@ All game state across the system is represented using **YEN notation**, as manda
 }
 ----
 
-* **Usage**:
-** `gamey/` service: Parses and validates YEN via `GameY::try_from(yen)`, returns moves in YEN
-** `webapp/`: Sends and receives YEN in all game API calls
-** Public API: Accepts and returns YEN exclusively
-** Gateway: Passes YEN through transparently — no parsing
+Fields:
 
-* **Rationale**: Standardization ensures interoperability with external bots and consistency across services.
+* `size` — board edge length (e.g., 7 means 28 total cells)
+* `turn` — index into `players` array indicating whose turn it is (0 or 1)
+* `players` — array of token characters; `"B"` (Blue) moves first, `"R"` (Red) second
+* `layout` — rows separated by `/`; each row is one character per cell (`.` = empty, `B` or `R` = occupied);
+row 0 has 1 cell, row 1 has 2, ..., row N-1 has N cells
 
+Usage across the system:
 
-=== Internationalization
-For the application to be more accessible to a wider range of users, internationalization has been implemented for
-English and Spanish, with architecture designed for easy addition of new languages.
+[options="header", cols="2,3"]
+|===
+| Component | How YEN is used
 
-* **Implementation**:
-** All UI strings externalized to a `translations.ts` dictionary (no external library)
-** Language selection persisted in `localStorage`
-** Custom `I18nProvider` React context with `useI18n()` hook
-** Template variable interpolation: `t("home.welcome", { username })` → `"Hello Ana"`
-** Fallback to Spanish if a key is missing in the selected language
+| **Gamey**
+| Parses YEN via `GameY::try_from(yen)` to reconstruct board state; serializes via `From<&GameY> for YEN`;
+validates row count, row lengths, and cell characters
+| **Gateway**
+| Passes YEN through transparently — no parsing; forwards raw JSON body between webapp and Gamey
+| **Multiplayer**
+| Stores current YEN per room in `RoomManager`; sends updated YEN in all Socket.IO game events
+| **BotAPI**
+| Validates YEN via `assertValidYen()`; detects moves via `detectSingleAddedMove()`; applies moves
+via `applyMoveToYen()`; forwards to Gamey for rule enforcement
+| **Webapp**
+| Receives YEN from gateway; renders board from `layout` string; sends YEN in move requests
+|===
 
-[source,typescript]
+=== 2. Authentication and Authorization
+
+==== JWT-based Authentication
+
+All user-facing endpoints that require identity are protected by JWT tokens issued by the authentication
+service. The token lifecycle is:
+
+. User logs in → Auth Service verifies bcrypt hash → issues signed JWT
+. Webapp stores token in `localStorage`
+. Every protected request includes `Authorization: Bearer <token>`
+. Gateway forwards token to Auth Service for verification (`GET /verify`)
+. Auth Service returns decoded claims; gateway proxies the response
+
+JWT payload structure:
+
+[source,json]
 ----
-// i18n structure in webapp/src/i18n/
-translations.ts       // EN + ES dictionaries
-I18nProvider.tsx      // React Context provider + useI18n hook
-----
-
-* **Fallback**: Spanish as default if no language saved; English fallback if key missing in selected language
-
-
-==== Network Security
-
-|===
-| Layer | Measure | Purpose
-| **Transport** | HTTPS with TLS 1.3 | Encrypt all external traffic
-| **Network isolation** | Docker networks (frontend/backend) | Prevent direct backend access
-| **Firewall** | Only ports 22(SSH) and 443(HTTPS) exposed | Minimize attack surface
-| **API Gateway** | Single entry point | Hide internal service topology
-| **JWT Authentication** | Stateless tokens with expiry | Protect user-specific endpoints
-|===
-
-==== Secrets Management
-
-* **Development**: `.env` files (gitignored)
-* **CI/CD**: GitHub Secrets for all credentials
-* **Production**: Environment variables in docker-compose (never committed)
-
-Example secrets:
-
-* `JWT_SECRET` — used by the authentication service to sign and verify JWT tokens
-* `JWT_EXPIRES` — token expiration (e.g., `24h`)
-* `MONGODB_URI` — MongoDB connection string used by the users service
-* `GITHUB_TOKEN` — used by CI/CD pipeline
-
-=== Architecture and Design Patterns
-
-Already documented in Section 4, but summarized here for cross-cutting relevance:
-
-|===
-| Pattern | Application | Cross-cutting Concern
-| **Strategy Pattern** | Bot AI strategies in `gamey/src/bot/` | Extensibility (new strategies = new `YBot` impl)
-| **Repository Pattern** | Data access in `users` service via Mongoose models | Testability (mock repositories)
-| **Gateway/Router** | API Gateway — single entry point | Security, routing, centralized CORS
-| **Observer/Reactive** | UI updates via React state and hooks | Consistent UI across state changes
-| **Middleware Pattern** | `authenticateToken` in auth service | JWT verification before protected routes
-| **Context Pattern** | `I18nProvider` in webapp | Global i18n state without prop drilling
-|===
-
-==== Error Handling Strategy
-
-Consistent error handling across all services:
-
-API errors always return appropriate HTTP status codes:
-
-|===
-| Status Code | When | Example
-| 400 Bad Request | Invalid input format or validation error | Passwords do not match, malformed YEN
-| 401 Unauthorized | Missing or invalid JWT token | No Authorization header, expired token
-| 403 Forbidden | Valid token but insufficient permissions | User accessing another's data
-| 404 Not Found | Resource doesn't exist | Username not found
-| 409 Conflict | Business rule violation | Username already exists
-| 500 Internal Error | Unexpected server error | Database connection lost
-| 502 Bad Gateway | Internal service unreachable | Game engine or auth service down
-| 503 Unavailable | Service temporarily down | Game engine unreachable
-|===
-
-The gateway uses a centralized `forwardAxiosError` function that propagates the status and error message from internal services to the client, or returns 502 if the service is completely unreachable.
-
-==== Code Organization
-
-All services follow consistent structure:
-
+{
+  "id": "64f1a2b3c4d5e6f7a8b9c0d1",
+  "username": "alice",
+  "email": "alice@example.com",
+  "role": "user",
+  "iat": 1712345678,
+  "exp": 1712432078
+}
 ----
 
-/service-name/
-    src/            # Production code (Rust services)
-    test/           # Unit tests
-    __tests__/      # Unit tests (Node.js services)
-package.json / Cargo.toml
-Dockerfile
+The `role` field is set to `"user"` by default and `"admin"` for privileged accounts. It is embedded
+directly in the token to avoid an additional database round-trip on every admin route check.
+
+==== Role-Based Access Control (RBAC)
+
+Two roles are defined:
+
+[options="header", cols="1,3"]
+|===
+| Role | Capabilities
+
+| **user** (default)
+| Play games (PvM and PvP), manage own profile, send/accept/reject friend requests, view own statistics and
+match history, receive and mark notifications, search for other users
+
+| **admin**
+| All user capabilities, plus: view all registered accounts (paginated), grant or revoke admin role on any
+account, delete any user's match history, permanently delete any user account
+|===
+
+RBAC is enforced at two layers:
+
+* **Client-side guard** (webapp): Admin pages check the JWT role claim before rendering; non-admin users are
+redirected to `/home` immediately.
+* **Server-side enforcement** (gateway): Admin API routes verify the JWT role claim on every request.
+A valid token with `role !== "admin"` receives `403 Forbidden`. This prevents bypassing the client guard
+via direct API calls.
+
+==== Password Security
+
+Passwords are hashed with **bcrypt** (cost factor 10) in the users service at account creation
+(`POST /createuser`). The authentication service fetches the stored hash and uses `bcrypt.compare()` during
+login. Plain-text passwords are never stored or logged.
+
+=== 3. Real-Time Communication — Socket.IO
+
+The multiplayer service uses **Socket.IO** for bidirectional real-time communication between clients and
+the server. Socket.IO is layered over WebSockets with automatic fallback to HTTP long-polling.
+
+==== Transport Negotiation
+
+Nginx proxies `/socket.io/*` with WebSocket upgrade headers:
+
+[source,nginx]
+----
+location /socket.io/ {
+    proxy_pass http://multiplayer:7000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
 ----
 
-==== Testing Strategy
+==== Room Lifecycle
 
+[plantuml,"Socket.IO Room Lifecycle",png]
+----
+@startuml
+[*] --> Waiting : create_room\n(Player 1 joins)
+Waiting --> Active : join_room\n(Player 2 joins)\nemit game_started
+Active --> Active : make_move\nemit game_updated
+Active --> Finished : game_over\nemit game_over
+Active --> Finished : disconnect\nemit opponent_left
+Finished --> [*]
+@enduml
+----
+
+==== Event Catalogue
+
+[options="header", cols="1,1,2,2"]
 |===
-| Test Type | Tool | Location | Coverage Target
-| Unit tests | Vitest (gateway), Jest (users/auth), cargo test (Rust) | `__tests__/`, `*.test.ts`, `*_test.rs` | 80%+
-| Integration tests | Supertest (Node), `tower::ServiceExt::oneshot` (Rust) | `__tests__/`, `gamey/src/game_server/` | Key paths
-| End-to-end tests | Playwright | `webapp/e2e/` | Critical user journeys
-| Property-based tests | proptest (Rust) | `gamey/src/core/coord.rs` | Coordinate invariants
+| Direction | Event | Payload | When
+
+| Client → Server
+| `create_room`
+| `{username, size}`
+| Host creates a new room
+
+| Client → Server
+| `join_room`
+| `{code, username}`
+| Guest joins by room code
+
+| Client → Server
+| `make_move`
+| `{code, row, col}`
+| Player places a piece
+
+| Client → Server
+| `leave_room`
+| `{code}`
+| Player explicitly leaves
+
+| Client → Server
+| `get_room_state`
+| `{code}`
+| Reconnecting client requests current state
+
+| Server → Client
+| `connected`
+| `{socketId, message}`
+| Immediately after connection established
+
+| Server → Client
+| `room_updated`
+| `{room}`
+| Any room state change (player joined/left)
+
+| Server → Client
+| `game_started`
+| `{room, message}`
+| Both players are connected
+
+| Server → Client
+| `game_updated`
+| `{room, finished, winner, winningEdges}`
+| After every valid move
+
+| Server → Client
+| `game_over`
+| `{room, finished, winner, winningEdges}`
+| When a player connects all three sides
+
+| Server → Client
+| `opponent_left`
+| `{room, removedColor}`
+| When a player disconnects or leaves
 |===
 
-CI Integration: All tests run on every PR via GitHub Actions
+==== Room State (In-Memory)
 
-==== Quality Assurance
+Room state is held exclusively in the `RoomManager` instance within the multiplayer service. It is **not
+persisted** to any database. If the multiplayer container restarts, all active rooms are lost. This is an
+accepted trade-off for the current scope — active multiplayer sessions are short-lived and can be restarted
+by the players.
 
-* **SonarQube** is integrated into the GitHub repository to:
-** Ensure proper code coverage
-** Detect code smells and potential bugs
-** Enforce coding standards
-** Monitor technical debt
+=== 4. Internationalization (i18n)
 
-* **CI Integration**: All tests run on every pull request via GitHub Actions. The pipeline fails if:
-** Any test fails
-** Code coverage drops below threshold (80%)
-** SonarQube detects critical issues
+The webapp supports **English (EN)** and **Spanish (ES)** via a custom React Context implementation with
+zero external dependencies.
 
-NOTE: SonarQube may flag translation keys containing words like "password" as potential credential leaks.
-These are annotated with `// NOSONAR` comments in `translations.ts` to suppress false positives.
+Implementation:
+
+* All UI strings are externalized to a `translations.ts` dictionary keyed by dot-notation paths
+(e.g., `"home.welcome"`, `"login.error.password"`)
+* `I18nProvider` wraps the app and exposes `t(key, vars?)` via the `useI18n()` hook
+* Variable interpolation: `t("home.welcome", { username })` → `"Hello alice"` (replaces `{username}`)
+* Language preference is persisted in `localStorage` under the key `"lang"`
+* Fallback: if a key is missing in the selected language, the other language is tried; if still missing,
+the key itself is returned
+
+Language toggle is available on every page (login, register, and in the navbar for authenticated users).
+
+=== 5. Theming (Dark / Light Mode)
+
+The webapp supports **dark** (default) and **light** themes via a custom `ThemeProvider` React context.
+
+Implementation:
+
+* `ThemeProvider` sets the `data-theme` attribute on `document.documentElement`
+* CSS variables are defined per theme in `App.css` under `[data-theme="dark"]` and `[data-theme="light"]`
+* Theme preference is persisted in `localStorage` under the key `"theme"`
+* `useTheme()` hook exposes `theme` and `toggleTheme()` to any component
+
+=== 6. Observability — Metrics and Monitoring
+
+Three services expose Prometheus-compatible metrics endpoints:
+
+[options="header", cols="1,2,2"]
+|===
+| Service | Metrics Library | Endpoint
+
+| **Gateway**
+| `express-prom-bundle` (Node.js)
+| `GET /metrics`
+
+| **Users**
+| `express-prom-bundle` (Node.js)
+| `GET /metrics`
+
+| **Gamey**
+| `axum-prometheus` (Rust)
+| `GET /metrics`
+|===
+
+Standard metrics collected per service:
+
+* `http_requests_total` — labelled by method, path (normalized), and status code
+* `http_request_duration_seconds` — histogram for p50/p95/p99 latency
+* For Gamey: `axum_http_requests_total` and `axum_http_requests_duration_seconds`
+
+The Grafana dashboard "Yovi Services Overview" (UID `yovi-overview`) auto-provisions with three panels
+covering all three services simultaneously, refreshing every 30 seconds.
+
+=== 7. Error Handling Strategy
+
+A consistent error response format is used across all Node.js services:
+
+[source,json]
+----
+{
+  "ok": false,
+  "error": "Human-readable error message",
+  "details": {}
+}
+----
+
+For the BotAPI (TypeScript), the format follows the OpenAPI spec:
+
+[source,json]
+----
+{
+  "code": "NOT_FOUND",
+  "message": "game abc123 not found"
+}
+----
+
+HTTP status codes are used consistently:
+
+[options="header", cols="1,2,2"]
+|===
+| Status | When | Example
+
+| 400 Bad Request
+| Invalid input format or business rule violation
+| Passwords do not match; malformed YEN; occupied cell
+
+| 401 Unauthorized
+| Missing or invalid JWT token
+| No `Authorization` header; expired token
+
+| 403 Forbidden
+| Valid token but insufficient role
+| Regular user accessing admin endpoint
+
+| 404 Not Found
+| Resource does not exist
+| Username not found; room not found; game not found
+
+| 409 Conflict
+| Duplicate resource
+| Username already exists; friend request already sent
+
+| 500 Internal Server Error
+| Unexpected server-side error
+| Unhandled exception in service logic
+
+| 502 Bad Gateway
+| Internal service unreachable
+| Gamey container down; auth service unreachable
+
+| 503 Service Unavailable
+| Service temporarily down
+| Container restarting
+|===
+
+The gateway uses a centralized `forwardAxiosError()` function that propagates the status code and error
+message from internal services to the client, or returns 502 if the service is completely unreachable.
+
+=== 8. Testing Strategy
+
+[options="header", cols="1,2,2,2"]
+|===
+| Test Type | Tool | Location | Scope
+
+| **Unit tests**
+| Vitest (gateway, auth, botapi), Jest (users, multiplayer), `cargo test` (gamey)
+| `__tests__/`, `*.test.ts`, `*_test.rs`
+| Individual functions, modules, and Mongoose models
+
+| **Integration tests**
+| Supertest (Node.js), `tower::ServiceExt::oneshot` (Rust)
+| `__tests__/`, `gamey/src/game_server/`
+| HTTP endpoints with in-memory or test databases
+
+| **Property-based tests**
+| `proptest` (Rust)
+| `gamey/src/core/coord.rs`
+| Coordinate roundtrip invariants, barycentric sum invariant
+
+| **End-to-end tests**
+| Playwright
+| `webapp/e2e/`
+| Complete user journeys in a real browser
+
+| **Load tests**
+| k6
+| `tests/load/`
+| Registration (50 VUs), login (50 VUs), game start (20 VUs)
+|===
+
+All tests run in CI via GitHub Actions on every pull request. SonarCloud enforces a minimum coverage
+of 80% across all services as a quality gate.
+
+Special testing considerations:
+
+* **Users service**: Uses `mongodb-memory-server` for isolated in-memory MongoDB during tests; the
+`vitest.globalSetup.js` drops the `_test` database after all suites complete.
+* **Gamey**: Integration tests use `tower::ServiceExt::oneshot` to call handlers without binding to a
+network port, keeping tests fast and isolated.
+* **BotAPI**: HTTP clients (`gameyClient`, `remoteInteropClient`) are mocked with `vi.mock()` so no
+real network calls are made during unit tests.
+* **Multiplayer**: Socket.IO behavior is tested via `socket.io-client` connected to a real in-process
+server instance.
+
+=== 9. Security Concepts
+
+[options="header", cols="2,3"]
+|===
+| Measure | Implementation
+
+| **Transport encryption**
+| HTTPS with TLS via Nginx for all external traffic. Internal container-to-container communication uses
+plain HTTP on the isolated Docker bridge network.
+
+| **Password hashing**
+| bcrypt with cost factor 10 in the users service. Hashed passwords are returned only to the auth service
+for comparison and are never included in any public API response.
+
+| **JWT signing**
+| HS256 algorithm with a strong secret (`JWT_SECRET` from environment). Tokens expire after `JWT_EXPIRES`
+(default 24h). The secret is stored in GitHub Secrets and never committed.
+
+| **Role enforcement**
+| Admin role is encoded in the JWT payload. Both client-side (webapp route guard) and server-side (gateway
+middleware) checks are applied, so a compromised client cannot bypass authorization.
+
+| **Input sanitization**
+| The gateway validates and sanitizes all path parameters (username: alphanumeric + underscore + hyphen,
+max 60 chars; notification ID: MongoDB ObjectId regex; room code: uppercase alphanumeric). Invalid inputs
+return 400 before reaching internal services.
+
+| **Authorization header sanitization**
+| The gateway extracts Bearer tokens using a strict regex (`/^Bearer\s+([A-Za-z0-9\-._~+/]+=*)$/`) and
+rejects malformed headers.
+
+| **Bot API host allowlist**
+| The `remoteInteropClient` in botapi validates the `base_url` against a hardcoded set of allowed hosts
+before making outbound HTTP requests, preventing SSRF attacks.
+
+| **x-powered-by disabled**
+| All Node.js services call `app.disable("x-powered-by")` to avoid leaking the framework version in
+response headers.
+
+| **Secrets management**
+| `JWT_SECRET` and `MONGODB_URI` are stored as GitHub Secrets and injected as environment variables at
+deploy time. `.env` files are gitignored. SonarCloud suppression comments (`// NOSONAR`) are used only
+for translation key strings containing the word "password", not for actual credentials.
+|===
+
+=== 10. Code Organization Conventions
+
+All services follow a consistent structure within their respective technology stack:
+
+**Node.js services (CommonJS — users, multiplayer):**
+
+----
+service-name/
+  src/               # Source files (or flat structure for simpler services)
+  models/            # Mongoose models (users service)
+  monitoring/        # Prometheus + Grafana config (users service)
+  __tests__/         # Test files (Jest / Vitest)
+  Dockerfile
+  package.json
+  .env.example
+----
+
+**Node.js services (ESM — gateway, authentication):**
+
+----
+service-name/
+  service-name.js    # Main entry point
+  vitest.config.js
+  Dockerfile
+  package.json
+----
+
+**TypeScript service (botapi):**
+
+----
+botapi/
+  src/
+    app.ts           # Express app factory
+    server.ts        # Entry point
+    routes/          # Route definitions
+    controllers/     # Request handlers
+    services/        # Business logic
+    clients/         # HTTP clients (gamey, remote interop)
+    store/           # In-memory state stores
+    models/          # TypeScript interfaces
+    dtos/            # Request/response types
+    utils/           # YEN helpers, ID generation
+    openapi/         # openapi.yaml spec
+    __tests__/       # Vitest tests
+  tsconfig.json
+  Dockerfile
+----
+
+**Rust service (gamey):**
+
+----
+gamey/src/
+  main.rs            # Binary entry point (CLI + server mode)
+  lib.rs             # Library exports
+  core/              # GameY, Coordinates, Movement, Player, PlayerSet
+  bot/               # YBot trait, YBotRegistry, bot_implementations/
+  notation/          # YEN parse/serialize
+  game_server/       # Axum HTTP server (mod.rs, bot/, game/, error.rs, state.rs, version.rs)
+  gamey_error.rs     # Error types
+  cli.rs             # Interactive terminal mode
+Cargo.toml
+----
