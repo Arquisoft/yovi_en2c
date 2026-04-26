@@ -209,7 +209,7 @@ export const translations: Record<Lang, Dict> = {
     "social.groupsTitle": "Grupos",
     "social.groupsSubtitle": "Próximamente",
 
-    "multiplayer.title": "Multijugador online",
+    "multiplayer.title": "Multijugador",
     "multiplayer.subtitle": "Crea una sala o únete a una partida contra otro jugador",
     "multiplayer.createRoom": "Crear sala",
     "multiplayer.joinRoom": "Unirse a la sala",
@@ -282,10 +282,13 @@ export const translations: Record<Lang, Dict> = {
     "admin.role.admin": "Admin",
     "admin.makeAdmin": "Hacer admin",
     "admin.removeAdmin": "Quitar admin",
-    "admin.deleteHistory": "Borrar historial",
+    "admin.deleteHistory": "Resetear",
     "admin.deleteHistoryConfirm": "¿Estás seguro de que quieres borrar el historial de partidas de {{username}}? Esta es una opción destructiva.",
     "notifications.adminGranted": "Ahora eres administrador.",
     "notifications.adminRevoked": "Ya no eres administrador.",
+    "admin.deleteUser": "Borrar usuario",
+    "admin.deleteUserConfirm": "¿Seguro que quieres borrar al usuario {{username}}? Esta acción es irreversible y también eliminará sus datos asociados.",
+    "admin.error.deleteUser": "Error al borrar el usuario",
   },
 
   en: {
@@ -567,9 +570,12 @@ export const translations: Record<Lang, Dict> = {
     "admin.role.admin": "Admin",
     "admin.makeAdmin": "Make admin",
     "admin.removeAdmin": "Remove admin",
-    "admin.deleteHistory": "Delete history",
+    "admin.deleteHistory": "Reset",
     "admin.deleteHistoryConfirm": "Are you sure you want to delete {{username}}'s match history? This is a destructive action.",
     "notifications.adminGranted": "You are now an administrator.",
     "notifications.adminRevoked": "You are no longer an administrator.",
+    "admin.deleteUser": "Delete user",
+    "admin.deleteUserConfirm": "Are you sure you want to delete user {{username}}? This action is irreversible and will also delete their related data.",
+    "admin.error.deleteUser": "Error deleting user",
   },
 };

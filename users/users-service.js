@@ -964,6 +964,48 @@ app.delete('/admin/users/:username/history', async (req, res) => {
   });
 });
 
+app.delete('/admin/users/:username', async (req, res) => {
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
+
+  const targetUsername = normalizeUsername(req.params.username);
+
+  if (!targetUsername) {
+    return res.status(400).json({ success: false, error: 'Invalid username' });
+  }
+
+  if (targetUsername === ROOT_ADMIN_USERNAME) {
+    return res.status(400).json({
+      success: false,
+      error: 'Root admin cannot be deleted',
+    });
+  }
+
+  if (targetUsername === admin.username) {
+    return res.status(400).json({
+      success: false,
+      error: 'You cannot delete your own account',
+    });
+  }
+
+  const target = await findUserByUsername(targetUsername);
+
+  if (!target) {
+    return res.status(404).json({ success: false, error: 'User not found' });
+  }
+
+  await Promise.all([
+    User.deleteOne({ username: targetUsername }),
+    GameResult.deleteMany({ username: targetUsername }),
+    Notification.deleteMany({ recipient: targetUsername }),
+  ]);
+
+  return res.json({
+    success: true,
+    message: `User ${targetUsername} deleted`,
+  });
+});
+
 module.exports = app;
 
 if (require.main == module) {

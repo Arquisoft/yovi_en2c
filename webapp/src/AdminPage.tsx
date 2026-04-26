@@ -102,6 +102,33 @@ export default function AdminPage() {
     }
   };
 
+  const deleteUser = async (username: string) => {
+    const ok = window.confirm(
+      t("admin.deleteUserConfirm").replace("{{username}}", username)
+    );
+
+    if (!ok) return;
+
+    setError(null);
+
+    try {
+      const res = await fetch(`${API}/admin/users/${username}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Delete user failed");
+      }
+
+      await loadUsers();
+    } catch {
+      setError(t("admin.error.deleteUser"));
+    }
+  };
+
   return (
     <>
       <Navbar username={currentUsername} isAdmin />
@@ -180,6 +207,18 @@ export default function AdminPage() {
                             onClick={() => deleteHistory(user.username)}
                           >
                             {t("admin.deleteHistory")}
+                          </button>
+
+                          <button
+                            type="button"
+                            className="danger danger--delete-user"
+                            disabled={
+                              user.isRootAdmin ||
+                              user.username === currentUsername
+                            }
+                            onClick={() => deleteUser(user.username)}
+                          >
+                            {t("admin.deleteUser")}
                           </button>
                         </div>
                       </td>

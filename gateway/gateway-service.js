@@ -688,6 +688,29 @@ app.delete("/admin/users/:username/history", async (req, res) => {
   }
 });
 
+app.delete("/admin/users/:username", async (req, res) => {
+  const { username } = req.params;
+  if (!validateUsernameParam(res, username)) return;
+
+  const auth = sanitizeAuthHeader(req.headers.authorization);
+  if (!requireAuth(res, auth)) return;
+
+  const usersUrl = internalUrl(
+    USERS_BASE_URL,
+    `/admin/users/${safeUsernameSegment(username)}`
+  );
+
+  try {
+    const response = await axios.delete(usersUrl, {
+      headers: { Authorization: auth },
+    });
+
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
+});
+
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
     console.log(`Gateway listening on http://localhost:${PORT}`);
