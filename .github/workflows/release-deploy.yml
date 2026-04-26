@@ -297,5 +297,12 @@ jobs:
             echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
             echo "JWT_EXPIRES=${{ secrets.JWT_EXPIRES }}" >> .env
 
-            docker compose down || true
-            docker compose up -d --pull always
+            docker compose pull
+            docker compose up -d --remove-orphans
+
+            docker container prune -f
+            docker image prune -af
+            docker builder prune -af
+
+            docker system df
+            df -h
