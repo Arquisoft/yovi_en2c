@@ -269,6 +269,11 @@ export const translations: Record<Lang, Dict> = {
     "undo.limit.label": "Límite de veces",
     "undo.limit.moves": "movimientos",
     "undo.limit.unlimited": "Sin límite",
+
+    //Admin
+    "common.admin": "Admin",
+    "notifications.adminGranted": "Ahora eres administrador.",
+    "notifications.adminRevoked": "Ya no eres administrador."
   },
 
   en: {
@@ -537,5 +542,10 @@ export const translations: Record<Lang, Dict> = {
     "undo.limit.label": "Limit",
     "undo.limit.moves": "moves",
     "undo.limit.unlimited": "Unlimited",
+
+    //Admin
+    "common.admin": "Admin",
+    "notifications.adminGranted": "You are now an administrator.",
+    "notifications.adminRevoked": "You are no longer an administrator.",
   },
 };

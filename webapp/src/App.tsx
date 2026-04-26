@@ -13,6 +13,8 @@ import UserProfile from './UserProfile';
 import Social from './Social';
 import MultiplayerLobby from './MultiplayerLobby';
 import MultiplayerGame from './MultiplayerGame';
+import AdminPage from './AdminPage';
+import AdminRoute from './AdminRoute';
 
 function App() {
   return (
@@ -32,6 +34,7 @@ function App() {
           <Route path="/multiplayer" element={<MultiplayerLobby />} />
           <Route path="/multiplayer/game" element={<MultiplayerGame />} />
           <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
