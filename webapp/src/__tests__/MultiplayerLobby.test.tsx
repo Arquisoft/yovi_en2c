@@ -274,10 +274,7 @@ describe("MultiplayerLobby", () => {
   });
 
   test("renders Navbar with username", async () => {
-    localStorage.setItem("username", "Pablo");
-    localStorage.setItem("token", "token");
-
-    renderLobby();
+    renderLobby(undefined, "Pablo");
 
     expect(await screen.findByText(/Navbar Pablo/i)).toBeInTheDocument();
   });

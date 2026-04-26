@@ -224,10 +224,12 @@ describe("MultiplayerGame", () => {
   });
 
   test("renders Navbar with username", async () => {
-    localStorage.setItem("username", "Pablo");
-    localStorage.setItem("token", "token");
-
-    renderGame();
+    renderGame({
+      username: "Pablo",
+      roomCode: "ROOM123",
+      boardSize: 7,
+      isHost: true,
+    });
 
     expect(await screen.findByText(/Navbar Pablo/i)).toBeInTheDocument();
   });
