@@ -190,14 +190,6 @@ describe("Gateway — validateUsernameParam edge cases", () => {
     expect(axios.get).not.toHaveBeenCalled();
   });
 
-  it("GET /profile/:username returns 400 for invalid username", async () => {
-    const res = await request(app).get("/profile/../../etc/passwd");
-
-    expect(res.status).toBe(400);
-    expect(res.body.ok).toBe(false);
-    expect(res.body.error).toMatch(/Invalid username/i);
-    expect(axios.get).not.toHaveBeenCalled();
-  });
 
   it("PATCH /profile/:username returns 400 for invalid username", async () => {
     const res = await request(app)

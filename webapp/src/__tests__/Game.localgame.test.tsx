@@ -2,7 +2,7 @@
 // Covers: local multiplayer mode, pie rule modal, timer timeout in local mode,
 // undo in local mode, and the local game overlay with winner name.
 
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import "@testing-library/jest-dom";
