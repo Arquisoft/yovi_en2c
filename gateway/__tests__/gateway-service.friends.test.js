@@ -5,6 +5,16 @@ import axios from "axios";
 
 vi.mock("axios");
 
+const mockVerifyOk = () => {
+  axios.get.mockResolvedValueOnce({
+    status: 200,
+    data: {
+      success: true,
+      user: { username: "pablo" },
+    },
+  });
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /search
 // ─────────────────────────────────────────────────────────────────────────────
@@ -462,6 +472,8 @@ describe("Gateway — GET /friends", () => {
     });
 
     it("returns 200 with the friends list", async () => {
+        mockVerifyOk();
+
         axios.get.mockResolvedValueOnce({
             status: 200,
             data: { success: true, friends: ["bob", "carol"] },
@@ -474,9 +486,11 @@ describe("Gateway — GET /friends", () => {
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
         expect(res.body.friends).toEqual(["bob", "carol"]);
-    });
+        });
 
-    it("returns 200 with an empty array when user has no friends", async () => {
+        it("returns 200 with an empty array when user has no friends", async () => {
+        mockVerifyOk();
+
         axios.get.mockResolvedValueOnce({
             status: 200,
             data: { success: true, friends: [] },
@@ -488,7 +502,7 @@ describe("Gateway — GET /friends", () => {
 
         expect(res.status).toBe(200);
         expect(res.body.friends).toEqual([]);
-    });
+        });
 
     it("forwards sanitized Authorization header to users service", async () => {
         axios.get.mockResolvedValueOnce({
@@ -523,6 +537,8 @@ describe("Gateway — GET /friends", () => {
     });
 
     it("returns 502 when users service is unreachable", async () => {
+        mockVerifyOk();
+
         axios.get.mockRejectedValueOnce(new Error("Service down"));
 
         const res = await request(app)

@@ -5,6 +5,16 @@ import axios from "axios";
 
 vi.mock("axios");
 
+const mockVerifyOk = () => {
+  axios.get.mockResolvedValueOnce({
+    status: 200,
+    data: {
+      success: true,
+      user: { username: "admin", role: "admin", isRootAdmin: true },
+    },
+  });
+};
+
 describe("Gateway — Admin endpoints", () => {
   afterEach(() => {
     vi.clearAllMocks();
@@ -30,6 +40,8 @@ describe("Gateway — Admin endpoints", () => {
     });
 
     it("forwards request to users service with sanitized auth", async () => {
+      mockVerifyOk();
+
       axios.get.mockResolvedValueOnce({
         status: 200,
         data: {
@@ -46,7 +58,7 @@ describe("Gateway — Admin endpoints", () => {
       expect(res.body.success).toBe(true);
       expect(res.body.user.role).toBe("admin");
 
-      expect(axios.get).toHaveBeenCalledWith(
+      expect(axios.get).toHaveBeenLastCalledWith(
         expect.stringMatching(/\/admin\/me$/),
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -57,6 +69,8 @@ describe("Gateway — Admin endpoints", () => {
     });
 
     it("propagates 403 when user is not admin", async () => {
+      mockVerifyOk();
+
       axios.get.mockRejectedValueOnce({
         response: {
           status: 403,
@@ -74,6 +88,8 @@ describe("Gateway — Admin endpoints", () => {
     });
 
     it("returns 502 when users service is unavailable", async () => {
+      mockVerifyOk();
+
       axios.get.mockRejectedValueOnce(new Error("Service down"));
 
       const res = await request(app)
@@ -95,6 +111,8 @@ describe("Gateway — Admin endpoints", () => {
     });
 
     it("returns users list from users service", async () => {
+      mockVerifyOk();
+
       axios.get.mockResolvedValueOnce({
         status: 200,
         data: {
@@ -125,7 +143,7 @@ describe("Gateway — Admin endpoints", () => {
       expect(res.body.users).toHaveLength(2);
       expect(res.body.users[0]).not.toHaveProperty("password");
 
-      expect(axios.get).toHaveBeenCalledWith(
+      expect(axios.get).toHaveBeenLastCalledWith(
         expect.stringMatching(/\/admin\/users$/),
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -136,6 +154,8 @@ describe("Gateway — Admin endpoints", () => {
     });
 
     it("propagates 403 from users service", async () => {
+      mockVerifyOk();
+
       axios.get.mockRejectedValueOnce({
         response: {
           status: 403,
