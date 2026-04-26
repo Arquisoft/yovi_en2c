@@ -40,7 +40,11 @@ function renderSelectDifficulty(username = "pablo") {
 
 /** Switches to local mode by clicking the "Local" game mode button. */
 async function switchToLocalMode(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(screen.getByText(/local/i));
+    const localBtn = screen.getAllByRole("button").find(b =>
+        /^local$/i.test(b.textContent?.trim() ?? "")
+    );
+    if (!localBtn) throw new Error("Local mode button not found");
+    await user.click(localBtn);
 }
 
 /**
