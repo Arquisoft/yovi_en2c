@@ -95,7 +95,7 @@ const Home: React.FC = () => {
 
     // Navega al selector en modo local
     const goLocalGame = () => {
-        navigate("/select-difficulty", { state: { username } });
+        navigate("/select-difficulty", { state: { username, bot: "local", boardSize: 7, localGame: true } });
     };
 
     const goMultiplayer = () => {
@@ -107,7 +107,7 @@ const Home: React.FC = () => {
     };
 
     const goDifficulty = () => {
-        navigate("/select-difficulty", { state: { username } });
+        navigate("/select-difficulty", { state: { username, bot: "local", boardSize: 7, localGame: true } });
     };
 
     const goSocial = () => {
@@ -149,89 +149,89 @@ const Home: React.FC = () => {
                     </div>
                 </section>
 
-        <section className="grid" aria-label="Info cards">
-          <article className="card">
-            <div className="hero__badge">
-              <span aria-hidden="true" />
-              {t("home.card1.pill")}
-            </div>
-            <h2 className="card__title">{t("home.card1.title")}</h2>
-            <p className="card__text">{t("home.card1.text")}</p>
-            <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goInstructions} type="button">
-                {t("home.instructions")}
-              </button>
-            </div>
-          </article>
+                <section className="grid" aria-label="Info cards">
+                    <article className="card">
+                        <div className="hero__badge">
+                            <span aria-hidden="true" />
+                            {t("home.card1.pill")}
+                        </div>
+                        <h2 className="card__title">{t("home.card1.title")}</h2>
+                        <p className="card__text">{t("home.card1.text")}</p>
+                        <div style={{ marginTop: 16 }}>
+                            <button className="btn btn--primary" onClick={goInstructions} type="button">
+                                {t("home.instructions")}
+                            </button>
+                        </div>
+                    </article>
 
-          <article className="card">
-            <div className="hero__badge">
-              <span aria-hidden="true" />
-              {t("home.card2.pill")}
-            </div>
-            <h2 className="card__title">{t("home.card2.title")}</h2>
-            <p className="card__text">{t("home.card2.text")}</p>
-            <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goMultiplayer} type="button">
-                {t("home.card2.button")}
-              </button>
-            </div>
-          </article>
+                    <article className="card">
+                        <div className="hero__badge">
+                            <span aria-hidden="true" />
+                            {t("home.card2.pill")}
+                        </div>
+                        <h2 className="card__title">{t("home.card2.title")}</h2>
+                        <p className="card__text">{t("home.card2.text")}</p>
+                        <div style={{ marginTop: 16 }}>
+                            <button className="btn btn--primary" onClick={goMultiplayer} type="button">
+                                {t("home.card2.button")}
+                            </button>
+                        </div>
+                    </article>
 
-          <article className="card">
-            <div className="hero__badge">
-              <span aria-hidden="true" />
-              {t("home.card3.pill")}
-            </div>
-            <h2 className="card__title">{t("home.card3.title")}</h2>
-            <p className="card__text">{t("home.card3.text")}</p>
-            <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goDifficulty} type="button">
-                {t("home.selectDifficulty")}
-              </button>
-            </div>
-          </article>
+                    <article className="card">
+                        <div className="hero__badge">
+                            <span aria-hidden="true" />
+                            {t("home.card3.pill")}
+                        </div>
+                        <h2 className="card__title">{t("home.card3.title")}</h2>
+                        <p className="card__text">{t("home.card3.text")}</p>
+                        <div style={{ marginTop: 16 }}>
+                            <button className="btn btn--primary" onClick={goDifficulty} type="button">
+                                {t("home.selectDifficulty")}
+                            </button>
+                        </div>
+                    </article>
 
-          <article className="card">
-            <div className="hero__badge">
-              <span aria-hidden="true" />
-              {t("home.card4.pill")}
-            </div>
-            <h2 className="card__title">{t("home.card4.title")}</h2>
-            <p className="card__text">{t("home.card4.text")}</p>
-            <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goSocial} type="button">
-                {t("home.card4.button")}
-              </button>
-            </div>
-          </article>
+                    <article className="card">
+                        <div className="hero__badge">
+                            <span aria-hidden="true" />
+                            {t("home.card4.pill")}
+                        </div>
+                        <h2 className="card__title">{t("home.card4.title")}</h2>
+                        <p className="card__text">{t("home.card4.text")}</p>
+                        <div style={{ marginTop: 16 }}>
+                            <button className="btn btn--primary" onClick={goSocial} type="button">
+                                {t("home.card4.button")}
+                            </button>
+                        </div>
+                    </article>
 
-          <article className="card">
-            <div className="hero__badge">
-              <span aria-hidden="true" />
-              {t("home.card5.pill")}
-            </div>
-            <h2 className="card__title">{t("home.card5.title")}</h2>
-            <p className="card__text">{t("home.card5.text")}</p>
-            <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goLocalGame} type="button">
-                {t("home.card5.button")}
-              </button>
-            </div>
-          </article>
+                    <article className="card">
+                        <div className="hero__badge">
+                            <span aria-hidden="true" />
+                            {t("home.card5.pill")}
+                        </div>
+                        <h2 className="card__title">{t("home.card5.title")}</h2>
+                        <p className="card__text">{t("home.card5.text")}</p>
+                        <div style={{ marginTop: 16 }}>
+                            <button className="btn btn--primary" onClick={goLocalGame} type="button">
+                                {t("home.card5.button")}
+                            </button>
+                        </div>
+                    </article>
 
-          <article className="card">
-            <div className="hero__badge">
-              <span aria-hidden="true" />
-              {t("home.card6.pill")}
-            </div>
-            <h2 className="card__title">{t("home.card6.title")}</h2>
-            <p className="card__text">{t("home.card6.text")}</p>
-          </article>
-        </section>
-      </main>
-    </div>
-  );
+                    <article className="card">
+                        <div className="hero__badge">
+                            <span aria-hidden="true" />
+                            {t("home.card6.pill")}
+                        </div>
+                        <h2 className="card__title">{t("home.card6.title")}</h2>
+                        <p className="card__text">{t("home.card6.text")}</p>
+                    </article>
+                </section>
+            </main>
+        </div>
+    );
 };
 
 export default Home;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useI18n } from "./i18n/I18nProvider";
 import Navbar from "./Navbar";
 import logo from "../img/logo.png";
@@ -23,12 +23,15 @@ type FirstPlayer = "player1" | "player2" | "random";
 
 const SelectDifficulty: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { t }    = useI18n();
 
     const [username,    setUsername]    = useState<string | null>(null);
 
     // ── Mode ─────────────────────────────────────────────────────────────────
-    const [gameMode,    setGameMode]    = useState<GameMode>("bot");
+    const [gameMode,    setGameMode]    = useState<GameMode>(
+        (location.state as { bot?: string } | null)?.bot === "local" ? "local" : "bot"
+    );
 
     // ── Bot config ────────────────────────────────────────────────────────────
     const [selected,    setSelected]    = useState<string>("");
