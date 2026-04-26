@@ -20,11 +20,6 @@ const GameFinished: React.FC = () => {
     if (!st?.result) navigate("/game", { replace: true });
   }, [username, st?.result, navigate]);
 
-  const logout = () => {
-    localStorage.removeItem("username");
-    navigate("/", { replace: true });
-  };
-
   if (!username || !st?.result) return null;
 
   const text =
@@ -36,7 +31,7 @@ const GameFinished: React.FC = () => {
 
   return (
     <div className="page">
-      <Navbar username={username} onLogout={logout} />
+      <Navbar username={username} />
 
       <main style={{ padding: 30, fontFamily: "system-ui", textAlign: "center" }}>
         <h1 style={{ marginTop: 40 }}>{text}</h1>

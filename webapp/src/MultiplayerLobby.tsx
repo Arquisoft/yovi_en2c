@@ -31,12 +31,6 @@ const MultiplayerLobby: React.FC = () => {
     }
   }, [username, navigate]);
 
-  const logout = () => {
-    localStorage.removeItem("username");
-    localStorage.removeItem("token");
-    navigate("/", { replace: true });
-  };
-
   const boardSize =
     customSize.trim() !== "" ? Number.parseInt(customSize, 10) : presetSize;
 
@@ -126,7 +120,7 @@ const MultiplayerLobby: React.FC = () => {
 
   return (
     <div className="page">
-      <Navbar username={username} onLogout={logout} />
+      <Navbar username={username} />
 
       <main className="container">
         <section className="hero">

@@ -127,12 +127,6 @@ const Social: React.FC = () => {
 
     const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-    const logout = () => {
-        localStorage.removeItem("username");
-        localStorage.removeItem("token");
-        navigate("/", { replace: true });
-    };
-
     // Debounced search — fires after user stops typing for 400 ms
     const handleSearch = useCallback(async (value: string) => {
         const q = value.trim();
@@ -176,7 +170,7 @@ const Social: React.FC = () => {
 
     return (
         <div className="page">
-            <Navbar username={currentUser} onLogout={logout} />
+            <Navbar username={currentUser} />
 
             <main className="container" style={{ paddingTop: 40 }}>
                 <div style={{ maxWidth: 680, margin: "0 auto",

@@ -41,10 +41,12 @@ const LoginForm: React.FC = () => {
       const data = await res.json();
 
       if (res.ok && data.success) {
+        const loggedUsername = data.user?.username ?? username.trim();
+
         setResponseMessage(data.message);
-        localStorage.setItem("username", username);
+        localStorage.setItem("username", loggedUsername);
         localStorage.setItem("token", data.token);
-        navigate("/home", { state: { username } });
+        navigate("/home", { state: { username: loggedUsername } });
       } else {
         setError(data.error || t("login.error.invalid"));
       }

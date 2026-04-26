@@ -37,10 +37,13 @@ const MULTIPLAYER_BASE_URL = process.env.MULTIPLAYER_BASE_URL || "http://multipl
 
 const AUTH_REGISTER_URL = `${AUTH_BASE_URL}/register`;
 const AUTH_LOGIN_URL = `${AUTH_BASE_URL}/login`;
+const AUTH_LOGOUT_URL = `${AUTH_BASE_URL}/logout`;
 const AUTH_VERIFY_URL = `${AUTH_BASE_URL}/verify`;
 const GAME_RESULT_URL = `${USERS_BASE_URL}/gameresult`;
 const MULTIPLAYER_HEALTH_URL = `${MULTIPLAYER_BASE_URL}/health`;
 const MULTIPLAYER_GAME_RESULT_URL = `${USERS_BASE_URL}/gameresult/multiplayer`;
+const ADMIN_USERS_URL = `${USERS_BASE_URL}/admin/users`;
+const ADMIN_ME_URL = `${USERS_BASE_URL}/admin/me`;
 
 const PVB_MOVE_ROUTES = {
   random_bot: `${GAMEY_BASE_URL}/v1/game/pvb/random_bot`,
@@ -170,6 +173,29 @@ function requireAuth(res, auth) {
   return true;
 }
 
+async function verifyAuthWithAuthService(res, auth) {
+  if (!requireAuth(res, auth)) return false;
+
+  try {
+    await axios.get(AUTH_VERIFY_URL, {
+      headers: { Authorization: auth },
+    });
+
+    return true;
+  } catch (error) {
+    const status = error?.response?.status || 401;
+    const data = error?.response?.data;
+
+    res.status(status).json({
+      ok: false,
+      error: data?.error || "Invalid or expired token",
+      details: data,
+    });
+
+    return false;
+  }
+}
+
 async function proxyMultiplayerPost(res, path, payload, fallbackMessage) {
   try {
     const response = await axios.post(internalUrl(MULTIPLAYER_BASE_URL, path), payload); //NOSONAR
@@ -185,7 +211,7 @@ async function proxyMultiplayerPost(res, path, payload, fallbackMessage) {
  */
 async function proxyUsersGet(res, usersUrl, authHeader) {
   const auth = sanitizeAuthHeader(authHeader);
-  if (!requireAuth(res, auth)) return;
+  if (!(await verifyAuthWithAuthService(res, auth))) return;
 
   try {
     const response = await axios.get(usersUrl, {
@@ -203,7 +229,7 @@ async function proxyUsersGet(res, usersUrl, authHeader) {
  */
 async function proxyUsersPostWithAuth(res, usersUrl, authHeader) {
   const auth = sanitizeAuthHeader(authHeader);
-  if (!requireAuth(res, auth)) return;
+  if (!(await verifyAuthWithAuthService(res, auth))) return;
 
   try {
     const response = await axios.post(usersUrl, {}, { //NOSONAR
@@ -422,7 +448,7 @@ app.delete("/friends/:username", async (req, res) => {
   if (!validateUsernameParam(res, username)) return;
 
   const auth = sanitizeAuthHeader(req.headers.authorization);
-  if (!requireAuth(res, auth)) return;
+  if (!(await verifyAuthWithAuthService(res, auth))) return;
 
   const safeUsername = safeUsernameSegment(username);
   const usersUrl = internalUrl(USERS_BASE_URL, `/friends/${safeUsername}`);
@@ -456,7 +482,7 @@ app.patch("/notifications/:id/read", async (req, res) => {
   }
 
   const auth = sanitizeAuthHeader(req.headers.authorization);
-  if (!requireAuth(res, auth)) return;
+  if (!(await verifyAuthWithAuthService(res, auth))) return;
 
   const safeId = safeObjectIdSegment(id);
   const usersUrl = internalUrl(USERS_BASE_URL, `/notifications/${safeId}/read`);
@@ -484,6 +510,25 @@ app.post("/login", async (req, res) => {
 app.post("/register", async (req, res) => {
   try {
     const response = await axios.post(AUTH_REGISTER_URL, req.body); //NOSONAR
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Auth service unavailable");
+  }
+});
+
+app.post("/logout", async (req, res) => {
+  const auth = sanitizeAuthHeader(req.headers.authorization);
+  if (!(await verifyAuthWithAuthService(res, auth))) return;
+
+  try {
+    const response = await axios.post(
+      AUTH_LOGOUT_URL,
+      {},
+      {
+        headers: { Authorization: auth },
+      }
+    );
+
     return res.status(response.status).json(response.data);
   } catch (error) {
     return forwardAxiosError(res, error, "Auth service unavailable");
@@ -652,6 +697,81 @@ app.post("/multiplayer/room/leave", async (req, res) => {
     { code: normalizedCode, username: username.trim() },
     "Multiplayer service unavailable"
   );
+});
+
+app.get("/admin/me", async (req, res) => {
+  return proxyUsersGet(res, ADMIN_ME_URL, req.headers.authorization);
+});
+
+app.get("/admin/users", async (req, res) => {
+  return proxyUsersGet(res, ADMIN_USERS_URL, req.headers.authorization);
+});
+
+app.patch("/admin/users/:username/role", async (req, res) => {
+  const { username } = req.params;
+  if (!validateUsernameParam(res, username)) return;
+
+  const auth = sanitizeAuthHeader(req.headers.authorization);
+  if (!(await verifyAuthWithAuthService(res, auth))) return;
+
+  const usersUrl = internalUrl(
+    USERS_BASE_URL,
+    `/admin/users/${safeUsernameSegment(username)}/role`
+  );
+
+  try {
+    const response = await axios.patch(usersUrl, { role: req.body?.role }, {
+      headers: { Authorization: auth },
+    });
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
+});
+
+app.delete("/admin/users/:username/history", async (req, res) => {
+  const { username } = req.params;
+  if (!validateUsernameParam(res, username)) return;
+
+  const auth = sanitizeAuthHeader(req.headers.authorization);
+  if (!(await verifyAuthWithAuthService(res, auth))) return;
+
+  const usersUrl = internalUrl(
+    USERS_BASE_URL,
+    `/admin/users/${safeUsernameSegment(username)}/history`
+  );
+
+  try {
+    const response = await axios.delete(usersUrl, {
+      headers: { Authorization: auth },
+    });
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
+});
+
+app.delete("/admin/users/:username", async (req, res) => {
+  const { username } = req.params;
+  if (!validateUsernameParam(res, username)) return;
+
+  const auth = sanitizeAuthHeader(req.headers.authorization);
+  if (!(await verifyAuthWithAuthService(res, auth))) return;
+
+  const usersUrl = internalUrl(
+    USERS_BASE_URL,
+    `/admin/users/${safeUsernameSegment(username)}`
+  );
+
+  try {
+    const response = await axios.delete(usersUrl, {
+      headers: { Authorization: auth },
+    });
+
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
 });
 
 if (process.env.NODE_ENV !== "test") {

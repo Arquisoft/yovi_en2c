@@ -375,4 +375,81 @@ describe("Auth Service", () => {
       expect(res.body.user.email).toBe("ana@uniovi.es");
     });
   });
+
+  describe("Logout endpoint", () => {
+    const createValidToken = (username = "Ana") =>
+      jwt.sign(
+        {
+          id: "507f1f77bcf86cd799439011",
+          username,
+          email: `${username.toLowerCase()}@uniovi.es`,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES }
+      );
+
+    it("POST /logout returns 401 if Authorization header is missing", async () => {
+      const res = await request(app).post("/logout");
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toMatch(/Missing or invalid Authorization header/i);
+    });
+
+    it("POST /logout returns 401 if Authorization header is invalid", async () => {
+      const res = await request(app)
+        .post("/logout")
+        .set("Authorization", "InvalidToken");
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toMatch(/Missing or invalid Authorization header/i);
+    });
+
+    it("POST /logout returns 401 if token is invalid", async () => {
+      const res = await request(app)
+        .post("/logout")
+        .set("Authorization", "Bearer invalid_token_here");
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toMatch(/Invalid or expired token/i);
+    });
+
+    it("POST /logout revokes a valid token", async () => {
+      const token = createValidToken("LogoutUser");
+
+      const logoutRes = await request(app)
+        .post("/logout")
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(logoutRes.status).toBe(200);
+      expect(logoutRes.body.success).toBe(true);
+      expect(logoutRes.body.message).toMatch(/Logged out successfully/i);
+
+      const verifyRes = await request(app)
+        .get("/verify")
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(verifyRes.status).toBe(401);
+      expect(verifyRes.body.success).toBe(false);
+      expect(verifyRes.body.error).toMatch(/Token has been revoked/i);
+    });
+
+    it("POST /logout returns 401 when token was already revoked", async () => {
+      const token = createValidToken("AlreadyRevokedUser");
+
+      await request(app)
+        .post("/logout")
+        .set("Authorization", `Bearer ${token}`);
+
+      const res = await request(app)
+        .post("/logout")
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toMatch(/Token has been revoked/i);
+    });
+  });
 });

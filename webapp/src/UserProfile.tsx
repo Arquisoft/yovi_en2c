@@ -437,17 +437,11 @@ const UserProfile: React.FC = () => {
         }
     };
 
-    const logout = () => {
-        localStorage.removeItem("username");
-        localStorage.removeItem("token");
-        navigate("/", { replace: true });
-    };
-
     // ── Loading / error states ────────────────────────────────────────────────
 
     if (loading) return (
         <div className="page">
-            <Navbar username={currentUser} onLogout={logout} />
+            <Navbar username={currentUser} />
             <main className="container" style={{ textAlign: "center", paddingTop: 60 }}>
                 <p style={{ color: "var(--muted)" }}>{t("stats.loading")}</p>
             </main>
@@ -456,7 +450,7 @@ const UserProfile: React.FC = () => {
 
     if (error || !profile) return (
         <div className="page">
-            <Navbar username={currentUser} onLogout={logout} />
+            <Navbar username={currentUser} />
             <main className="container" style={{ textAlign: "center", paddingTop: 60 }}>
                 <p style={{ color: "var(--danger)", fontWeight: 800 }}>
                     {error ?? t("profile.error.generic")}
@@ -491,7 +485,7 @@ const UserProfile: React.FC = () => {
                 />
             )}
 
-            <Navbar username={currentUser} onLogout={logout} />
+            <Navbar username={currentUser} />
 
             <main className="container" style={{ paddingTop: 40 }}>
                 <div style={{ maxWidth: 720, margin: "0 auto",

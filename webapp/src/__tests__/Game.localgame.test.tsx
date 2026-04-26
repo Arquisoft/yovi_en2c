@@ -272,7 +272,7 @@ describe("Game — pie rule", () => {
     await waitFor(() => { expect(screen.getByText(/🥧/)).toBeInTheDocument(); });
 
     // Click decline
-    await user.click(screen.getByRole("button", { name: /pierule.modal.decline/i }));
+    await user.click(screen.getByRole("button", { name: /Mantener|Keep/i }));
 
     // Modal disappears
     await waitFor(() => {
@@ -316,7 +316,7 @@ describe("Game — pie rule", () => {
     await waitFor(() => { expect(screen.getByText(/🥧/)).toBeInTheDocument(); });
 
     // Decline pie rule
-    await user.click(screen.getByRole("button", { name: /pierule.modal.decline/i }));
+    await user.click(screen.getByRole("button", { name: /Mantener|Keep/i }));
     await waitFor(() => { expect(screen.queryByText(/🥧/)).not.toBeInTheDocument(); });
 
     // Move 2 → no pie rule modal

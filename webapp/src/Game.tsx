@@ -132,11 +132,6 @@ const Game: React.FC = () => {
     if (!username) navigate("/", { replace: true });
   }, [username, navigate]);
 
-  const logout = () => {
-    localStorage.removeItem("username");
-    navigate("/", { replace: true });
-  };
-
   // ── Game mode — "bot" (default) or "local" ────────────────────────────────
   const gameMode = useMemo(() => {
     const st = (location.state as { mode?: string } | null) ?? null;
@@ -698,7 +693,7 @@ const Game: React.FC = () => {
 
   return (
       <div className="page" style={{ height: "100dvh", overflow: "auto", display: "flex", flexDirection: "column" }}>
-        <Navbar username={username} onLogout={logout} />
+        <Navbar username={username} />
 
         <main
             style={{

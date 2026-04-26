@@ -71,7 +71,7 @@ describe("MultiplayerLobby", () => {
     renderLobby("Pablo");
 
     expect(await screen.findByText(/Navbar Pablo/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Multijugador online/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Multijugador|Multiplayer/i })).toBeInTheDocument();
 
     const createButtons = screen.getAllByRole("button", { name: /Crear sala|Create room/i });
     expect(createButtons.length).toBeGreaterThan(0);
@@ -273,17 +273,9 @@ describe("MultiplayerLobby", () => {
     expect(await screen.findByText(/network|red/i)).toBeInTheDocument();
   });
 
-  test("logout clears storage and navigates to root", async () => {
-    const user = userEvent.setup();
-    localStorage.setItem("username", "Pablo");
-    localStorage.setItem("token", "fake-token");
+  test("renders Navbar with username", async () => {
+    renderLobby(undefined, "Pablo");
 
-    renderLobby("Pablo");
-
-    await user.click(screen.getByRole("button", { name: /Mock logout/i }));
-
-    expect(localStorage.getItem("username")).toBeNull();
-    expect(localStorage.getItem("token")).toBeNull();
-    expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+    expect(await screen.findByText(/Navbar Pablo/i)).toBeInTheDocument();
   });
 });

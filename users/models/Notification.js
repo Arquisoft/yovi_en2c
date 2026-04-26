@@ -14,7 +14,7 @@ const notificationSchema = new mongoose.Schema({
     type: {
         type: String,
         required: [true, 'Type is mandatory'],
-        enum: ['friend_request', 'welcome'],
+        enum: ['friend_request', 'welcome', 'admin_granted', 'admin_revoked'],
         default: 'friend_request',
     },
     from: {

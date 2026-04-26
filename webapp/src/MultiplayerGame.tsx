@@ -122,12 +122,6 @@ const MultiplayerGame: React.FC = () => {
     winner: string | null;
   } | null>(null);
 
-  const logout = () => {
-    localStorage.removeItem("username");
-    localStorage.removeItem("token");
-    navigate("/", { replace: true });
-  };
-
   const setRoomState = (nextRoom: RoomState | null) => {
     roomRef.current = nextRoom;
     setRoom(nextRoom);
@@ -454,7 +448,7 @@ const MultiplayerGame: React.FC = () => {
 
   return (
     <div className="page">
-      <Navbar username={username} onLogout={logout} />
+      <Navbar username={username} />
 
       <main className="container">
         <section className="hero">

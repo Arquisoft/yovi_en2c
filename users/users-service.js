@@ -30,6 +30,51 @@ app.use(metricsMiddleware);
 const PORT = process.env.PORT || 3000;
 const SALT_ROUNDS = 10;
 
+const ROOT_ADMIN_USERNAME = 'admin';
+
+async function requireAdmin(req, res) {
+  const username = normalizeUsername(getUsernameFromToken(req.headers.authorization));
+
+  if (!username) {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+    return null;
+  }
+
+  const user = await findUserByUsername(username);
+  if (!user || user.role !== 'admin') {
+    res.status(403).json({ success: false, error: 'Forbidden' });
+    return null;
+  }
+
+  return user;
+}
+
+function bySafeUsername(username) {
+    const safeUsername = normalizeUsername(username);
+    if (!safeUsername) return null;
+
+    return { username: { $eq: safeUsername } };
+}
+
+function bySafeRecipient(username) {
+    const safeUsername = normalizeUsername(username);
+    if (!safeUsername) return null;
+
+    return { recipient: { $eq: safeUsername } };
+}
+
+function publicAdminUserView(user) {
+  return {
+    id: user._id,
+    username: user.username,
+    email: user.email ?? null,
+    realName: user.realName ?? null,
+    role: user.role ?? 'user',
+    isRootAdmin: user.username === ROOT_ADMIN_USERNAME,
+    createdAt: user.createdAt,
+  };
+}
+
 function getErrorMessage(error) {
     return typeof error?.message === 'string' ? error.message : 'Internal server error';
 }
@@ -73,17 +118,17 @@ function execMaybe(query) {
 }
 
 async function findUserByUsername(username, projection) {
-    const safeUsername = normalizeUsername(username);
-    if (!safeUsername) return null;
+    const filter = bySafeUsername(username);
+    if (!filter) return null;
 
-    return execMaybe(User.findOne({ username: safeUsername }, projection)); //NOSONAR
+    return execMaybe(User.findOne(filter, projection)); //NOSONAR
 }
 
 function findGamesByUsername(username) {
-    const safeUsername = normalizeUsername(username);
-    if (!safeUsername) return null;
+    const filter = bySafeUsername(username);
+    if (!filter) return null;
 
-    return GameResult.find({ username: safeUsername }); //NOSONAR
+    return GameResult.find(filter); //NOSONAR
 }
 
 function normalizeEmail(value) {
@@ -173,10 +218,15 @@ app.post('/createuser', async (req, res) => {
         const rawUsername = req.body?.username;
         const { password } = req.body;
         const processedEmail = normalizeEmail(req.body?.email);
-        const username = typeof rawUsername === 'string' ? rawUsername.trim() : '';
+
+        if (typeof rawUsername !== 'string' || !rawUsername.trim()) {
+            return res.status(400).json({ success: false, error: 'Username is a mandatory field' });
+        }
+
+        const username = normalizeUsername(rawUsername);
 
         if (!username) {
-            return res.status(400).json({ success: false, error: 'Username is a mandatory field' });
+            return res.status(400).json({ success: false, error: 'Invalid username' });
         }
 
         if (password === undefined || password === null) {
@@ -281,7 +331,7 @@ app.get('/search', async (req, res) => {
 
         const regex = new RegExp(escapeRegex(safeQuery), 'i');
 
-        const users = await User.find(
+        const users = await User.find( //NOSONAR
             {
                 $or: [
                     { username: { $regex: regex } },
@@ -779,9 +829,14 @@ app.get('/notifications', async (req, res) => {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
-        const notifications = await Notification.find({ recipient: username }) //NOSONAR
-            .sort({ createdAt: -1 }) //NOSONAR
-            .limit(50); //NOSONAR
+        const recipientFilter = bySafeRecipient(username);
+        if (!recipientFilter) {
+            return res.status(400).json({ success: false, error: 'Invalid username' });
+        }
+
+        const notifications = await Notification.find(recipientFilter) //NOSONAR
+            .sort({ createdAt: -1 })
+            .limit(50);
 
         const unreadCount = notifications.filter(notification => !notification.read).length;
 
@@ -842,6 +897,148 @@ app.get('/health', async (_req, res) => {
         server: 'running',
         database: states[dbState],
         timestamp: new Date(),
+    });
+});
+
+app.get('/admin/me', async (req, res) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    return res.json({
+        success: true,
+        user: publicAdminUserView(admin),
+    });
+});
+
+app.get('/admin/users', async (req, res) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const users = await User.find({}, { password: 0 }).sort({ username: 1 });
+    return res.json({
+        success: true,
+        users: users.map(publicAdminUserView),
+    });
+});
+
+app.patch('/admin/users/:username/role', async (req, res) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const targetUsername = normalizeUsername(req.params.username);
+    const nextRole = req.body?.role;
+
+    if (!targetUsername || !['user', 'admin'].includes(nextRole)) {
+        return res.status(400).json({ success: false, error: 'Invalid payload' });
+    }
+
+    if (targetUsername === ROOT_ADMIN_USERNAME && nextRole !== 'admin') {
+        return res.status(400).json({
+        success: false,
+        error: 'Root admin cannot be demoted',
+    });
+  }
+
+    const target = await findUserByUsername(targetUsername);
+    if (!target) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const previousRole = target.role ?? 'user';
+    target.role = nextRole;
+    await target.save();
+
+    if (previousRole !== nextRole) {
+        createNotificationSilently(
+        {
+            recipient: target.username,
+            type: nextRole === 'admin' ? 'admin_granted' : 'admin_revoked',
+            from: admin.username,
+            read: false,
+        },
+        'Failed to create admin role notification:'
+        );
+    }
+
+    return res.json({
+        success: true,
+        user: publicAdminUserView(target),
+    });
+});
+
+app.delete('/admin/users/:username/history', async (req, res) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const targetUsername = normalizeUsername(req.params.username);
+    if (!targetUsername) {
+        return res.status(400).json({ success: false, error: 'Invalid username' });
+    }
+
+    const target = await findUserByUsername(targetUsername);
+    if (!target) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const filter = bySafeUsername(targetUsername);
+    if (!filter) {
+        return res.status(400).json({ success: false, error: 'Invalid username' });
+    }
+
+    const result = await GameResult.deleteMany(filter); //NOSONAR
+    
+    return res.json({
+        success: true,
+        deletedCount: result.deletedCount,
+    });
+});
+
+app.delete('/admin/users/:username', async (req, res) => {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+
+    const targetUsername = normalizeUsername(req.params.username);
+
+    if (!targetUsername) {
+        return res.status(400).json({ success: false, error: 'Invalid username' });
+    }
+
+    if (targetUsername === ROOT_ADMIN_USERNAME) {
+        return res.status(400).json({
+        success: false,
+        error: 'Root admin cannot be deleted',
+        });
+    }
+
+    if (targetUsername === admin.username) {
+        return res.status(400).json({
+        success: false,
+        error: 'You cannot delete your own account',
+        });
+    }
+
+    const target = await findUserByUsername(targetUsername);
+
+    if (!target) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const userFilter = bySafeUsername(targetUsername);
+    const recipientFilter = bySafeRecipient(targetUsername);
+
+    if (!userFilter || !recipientFilter) {
+        return res.status(400).json({ success: false, error: 'Invalid username' });
+    }
+
+    await Promise.all([
+        User.deleteOne(userFilter), //NOSONAR
+        GameResult.deleteMany(userFilter), //NOSONAR
+        Notification.deleteMany(recipientFilter), //NOSONAR
+    ]);
+
+    return res.json({
+        success: true,
+        message: `User ${targetUsername} deleted`,
     });
 });
 
