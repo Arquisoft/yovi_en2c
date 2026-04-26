@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useI18n } from "./i18n/I18nProvider";
 import Navbar from "./Navbar";
 import logo from "../img/logo.png";
@@ -32,34 +32,32 @@ const SelectDifficulty: React.FC = () => {
     (location.state as { bot?: string } | null)?.bot === "local" ? "local" : "bot"
   );
 
-  const [selected, setSelected] = useState<string>("");
-  const [player2Name, setPlayer2Name] = useState<string>("");
+  const [selected, setSelected] = useState("");
+  const [player2Name, setPlayer2Name] = useState("");
   const [firstPlayer, setFirstPlayer] = useState<FirstPlayer>("player1");
-  const [pieRule, setPieRule] = useState<boolean>(false);
+  const [pieRule, setPieRule] = useState(false);
 
   const [presetSize, setPresetSize] = useState<number | null>(7);
-  const [customSize, setCustomSize] = useState<string>("");
+  const [customSize, setCustomSize] = useState("");
 
   const [presetTimer, setPresetTimer] = useState<number | null>(0);
-  const [customTimer, setCustomTimer] = useState<string>("");
+  const [customTimer, setCustomTimer] = useState("");
 
-  const [allowUndo, setAllowUndo] = useState<boolean>(false);
-  const [undoLimit, setUndoLimit] = useState<number>(3);
+  const [allowUndo, setAllowUndo] = useState(false);
+  const [undoLimit, setUndoLimit] = useState(3);
 
-  const boardSize =
-    customSize !== "" ? parseInt(customSize, 10) : presetSize ?? 7;
-
-  const timerSeconds =
-    customTimer !== "" ? parseInt(customTimer, 10) : presetTimer ?? 0;
+  const boardSize = customSize !== "" ? parseInt(customSize, 10) : presetSize ?? 7;
+  const timerSeconds = customTimer !== "" ? parseInt(customTimer, 10) : presetTimer ?? 0;
 
   useEffect(() => {
     const storedUser = localStorage.getItem("username");
 
     if (!storedUser) {
       navigate("/", { replace: true });
-    } else {
-      setUsername(storedUser);
+      return;
     }
+
+    setUsername(storedUser);
   }, [navigate]);
 
   const logout = () => {
@@ -90,32 +88,30 @@ const SelectDifficulty: React.FC = () => {
   };
 
   const sizeWarning = (): string | null => {
-    if (!boardSize || isNaN(boardSize)) return null;
+    if (!boardSize || Number.isNaN(boardSize)) return null;
     if (boardSize < MIN_RECOMMENDED) return t("boardsize.warning.small");
     if (boardSize > MAX_RECOMMENDED) return t("boardsize.warning.large");
     return null;
   };
 
   const timerWarning = (): string | null => {
-    if (timerSeconds === 0 || isNaN(timerSeconds)) return null;
+    if (timerSeconds === 0 || Number.isNaN(timerSeconds)) return null;
     if (timerSeconds < 5) return t("timer.warning.short");
     if (timerSeconds > 300) return t("timer.warning.long");
     return null;
   };
 
   const resolveFirstPlayer = (): "player1" | "player2" => {
-    if (firstPlayer === "random") {
-      const arr = new Uint32Array(1);
-      crypto.getRandomValues(arr);
-      return arr[0] % 2 === 0 ? "player1" : "player2";
-    }
+    if (firstPlayer !== "random") return firstPlayer;
 
-    return firstPlayer;
+    const arr = new Uint32Array(1);
+    crypto.getRandomValues(arr);
+    return arr[0] % 2 === 0 ? "player1" : "player2";
   };
 
   const handleStart = () => {
-    const safeBoardSize = isNaN(boardSize) ? 7 : boardSize;
-    const safeTimerSeconds = isNaN(timerSeconds) ? 0 : timerSeconds;
+    const safeBoardSize = Number.isNaN(boardSize) ? 7 : boardSize;
+    const safeTimerSeconds = Number.isNaN(timerSeconds) ? 0 : timerSeconds;
 
     if (gameMode === "bot") {
       if (!selected) return;
@@ -137,8 +133,6 @@ const SelectDifficulty: React.FC = () => {
       return;
     }
 
-    const p2 = player2Name.trim() || "Player 2";
-
     navigate("/game", {
       state: {
         username,
@@ -148,7 +142,7 @@ const SelectDifficulty: React.FC = () => {
         undoLimit: allowUndo ? undoLimit : 0,
         mode: "local",
         player1Name: username,
-        player2Name: p2,
+        player2Name: player2Name.trim() || "Player 2",
         firstPlayer: resolveFirstPlayer(),
         pieRule,
       },
@@ -171,7 +165,6 @@ const SelectDifficulty: React.FC = () => {
             <div className="hero__top">
               <img src={logo} alt="GameY" className="hero__logo" />
             </div>
-
             <h1 className="hero__title">{t("difficulty.title")}</h1>
             <p className="hero__subtitle">{t("difficulty.subtitle")}</p>
           </div>
@@ -327,11 +320,6 @@ const SelectDifficulty: React.FC = () => {
                       key={limit}
                       onClick={() => setUndoLimit(limit)}
                       className={`btn sd-preset-btn ${undoLimit === limit ? "btn--primary" : ""}`}
-                      aria-label={
-                        limit === 0
-                          ? t("undo.limit.unlimited")
-                          : `${limit} ${t("undo.limit.moves")}`
-                      }
                     >
                       {limit === 0 ? t("undo.limit.unlimited") : limit}
                     </button>
@@ -360,7 +348,8 @@ const SelectDifficulty: React.FC = () => {
                   onClick={() => setFirstPlayer("player2")}
                   className={`btn sd-btn-full ${firstPlayer === "player2" ? "btn--primary" : ""}`}
                 >
-                  {player2Name.trim() || t("local.player2.placeholder")} ({t("local.player2.label")})
+                  {player2Name.trim() || t("local.player2.placeholder")}{" "}
+                  ({t("local.player2.label")})
                 </button>
 
                 <button
