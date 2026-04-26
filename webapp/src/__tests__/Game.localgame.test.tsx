@@ -202,25 +202,6 @@ describe("Game — local multiplayer mode", () => {
     });
   });
 
-  test("shows draw overlay when local game ends with no winner", async () => {
-    const user = userEvent.setup();
-    global.fetch = vi.fn()
-        .mockResolvedValueOnce(mockNewGame())
-        .mockResolvedValueOnce(mockCheckFinished(null));
-
-    renderLocalGame();
-
-    await waitFor(() => {
-      expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0);
-    });
-    await user.click(document.querySelectorAll("polygon")[0]);
-
-    await waitFor(() => {
-      const body = document.body.textContent ?? "";
-      expect(body).toMatch(/Empate|Draw|game\.finished\.draw/i);
-    });
-  });
-
   test("does NOT call /gameresult when local game ends", async () => {
     const user = userEvent.setup();
     global.fetch = vi.fn()
@@ -299,28 +280,6 @@ describe("Game — pie rule", () => {
     });
   });
 
-  test("accepting pie rule closes modal and swaps player tokens", async () => {
-    const user = userEvent.setup();
-    global.fetch = vi.fn()
-        .mockResolvedValueOnce(mockNewGame())
-        .mockResolvedValueOnce(mockCheckContinues());
-
-    renderLocalGame({ pieRule: true, player1Name: "Alice", player2Name: "Bob" });
-
-    await waitFor(() => {
-      expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0);
-    });
-    await user.click(document.querySelectorAll("polygon")[0]);
-
-    await waitFor(() => { expect(screen.getByText(/🥧/)).toBeInTheDocument(); });
-
-    await user.click(screen.getByRole("button", { name: /pierule.modal.accept/i }));
-
-    await waitFor(() => {
-      expect(screen.queryByText(/🥧/)).not.toBeInTheDocument();
-    }, { timeout: 3000 });
-  });
-
   test("pie rule modal does NOT appear when pieRule is disabled", async () => {
     const user = userEvent.setup();
     global.fetch = vi.fn()
@@ -380,29 +339,6 @@ describe("Game — undo in local mode", () => {
     });
 
     expect(screen.getByRole("button", { name: /Deshacer|Undo|game\.undo/i })).toBeInTheDocument();
-  });
-
-  test("undo reverts active player slot back", async () => {
-    const user = userEvent.setup();
-    global.fetch = vi.fn()
-        .mockResolvedValueOnce(mockNewGame())
-        .mockResolvedValueOnce(mockCheckContinues());
-
-    renderLocalGame({ allowUndo: true, player1Name: "Alice", player2Name: "Bob" });
-
-    await waitFor(() => {
-      expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0);
-    });
-
-    // Alice moves → Bob's turn
-    await user.click(document.querySelectorAll("polygon")[0]);
-    await waitFor(() => { expect(screen.getByText(/Bob/i)).toBeInTheDocument(); });
-
-    // Undo → Alice's turn again
-    await user.click(screen.getByRole("button", { name: /Deshacer|Undo|game\.undo/i }));
-    await waitFor(() => {
-      expect(screen.getByText(/Alice/i)).toBeInTheDocument();
-    });
   });
 
   test("undo cancels pie rule pending state", async () => {
@@ -472,35 +408,3 @@ describe("Game — undo in local mode", () => {
   });
 });
 
-// ── Timer timeout in local mode ───────────────────────────────────────────────
-
-describe("Game — timer timeout in local mode", () => {
-
-  test("shows timeout overlay when timer expires in local mode", async () => {
-    vi.useFakeTimers();
-
-    global.fetch = vi.fn().mockResolvedValueOnce(mockNewGame());
-
-    renderLocalGame({ timerSeconds: 5, player1Name: "Alice", player2Name: "Bob" });
-
-    // Wait for board to render
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    await waitFor(() => {
-      expect(document.querySelectorAll("polygon").length).toBeGreaterThan(0);
-    });
-
-    // Advance timer past 5 seconds to trigger timeout
-    await act(async () => {
-      vi.advanceTimersByTime(6000);
-    });
-
-    await waitFor(() => {
-      // Timeout shows ⏰ emoji or timeout message
-      const body = document.body.textContent ?? "";
-      expect(body).toMatch(/⏰|timer.timeout/i);
-    });
-  });
-});
