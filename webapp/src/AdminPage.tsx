@@ -166,11 +166,9 @@ export default function AdminPage() {
                           to={`/profile/${user.username}`}
                         >
                           <span className="admin-avatar" aria-hidden="true">
-                            {(user.realName || user.username)
-                              .slice(0, 2)
-                              .toUpperCase()}
+                            {user.username.slice(0, 2).toUpperCase()}
                           </span>
-                          <span>{user.realName || user.username}</span>
+                          <span>{user.username}</span>
                         </Link>
                       </td>
 
