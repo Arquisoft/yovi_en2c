@@ -1,17 +1,11 @@
 import { When, Then } from "@cucumber/cucumber";
 
 When("I switch the language to English", async function () {
-  const page = this.page;
-  if (!page) throw new Error("Page not initialized");
-
-  await page.getByRole("button", { name: "EN" }).click();
+  await this.page.getByRole("button", { name: "EN", exact: true }).click();
 });
 
 When("I switch the language to Spanish", async function () {
-  const page = this.page;
-  if (!page) throw new Error("Page not initialized");
-
-  await page.getByRole("button", { name: "ES" }).click();
+  await this.page.getByRole("button", { name: "ES", exact: true }).click();
 });
 
 Then("the English language button should be active", async function () {
