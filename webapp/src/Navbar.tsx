@@ -10,6 +10,7 @@ type Notification = {
   type: "friend_request" | "welcome" | "admin_granted" | "admin_revoked";
   from: string | null;
   read: boolean;
+  createdAt?: string;
 };
 
 type NavbarProps = {
@@ -34,26 +35,20 @@ const Navbar: React.FC<NavbarProps> = ({
 
   const token = localStorage.getItem("token");
 
-  const fetchNotifications = async () => {
+  useEffect(() => {
     if (!token) return;
 
-    try {
-      const res = await fetch(`${API}/notifications`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) return;
-
-      const data = await res.json();
-      setNotifications(data.notifications ?? []);
-    } catch {
-      // silencio
-    }
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
+    fetch(`${API}/notifications`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.notifications) {
+          setNotifications(data.notifications);
+        }
+      })
+      .catch(() => {});
+  }, [token]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -61,73 +56,100 @@ const Navbar: React.FC<NavbarProps> = ({
   const goGame = () => navigate("/select-difficulty", { state: { username } });
   const goMultiplayer = () => navigate("/multiplayer", { state: { username } });
   const goSocial = () => navigate("/social", { state: { username } });
-  const goStats = () => navigate("/stats", { state: { username } });
+  const goStats = () => navigate("/statistics", { state: { username } });
   const goAdmin = () => navigate("/admin", { state: { username } });
 
-  const handleNotificationClick = async (id: string) => {
+  const goProfile = () => {
+    if (username) {
+      navigate(`/profile/${username}`, { state: { username } });
+    }
+  };
+
+  const markNotificationRead = async (id: string) => {
+    if (!token) return;
+
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+
     try {
       await fetch(`${API}/notifications/${id}/read`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === id ? { ...n, read: true } : n
-        )
-      );
     } catch {
-      // silencio
+      // no rompas la navbar por una notificación
     }
   };
 
-  const renderNotificationText = (n: Notification) => {
-    switch (n.type) {
-      case "welcome":
-        return t("notifications.welcomeText");
-
-      case "admin_granted":
-        return t("notifications.adminGranted");
-
-      case "admin_revoked":
-        return t("notifications.adminRevoked");
-
-      case "friend_request":
-      default:
-        return t("notifications.friendRequestText").replace(
-          "{{from}}",
-          n.from ?? ""
-        );
+  const renderNotificationText = (notification: Notification) => {
+    if (notification.type === "welcome") {
+      return t("notifications.welcomeText");
     }
+
+    if (notification.type === "admin_granted") {
+      return t("notifications.adminGranted");
+    }
+
+    if (notification.type === "admin_revoked") {
+      return t("notifications.adminRevoked");
+    }
+
+    return t("notifications.friendRequestText").replace(
+      "{{from}}",
+      notification.from ?? ""
+    );
   };
 
   return (
     <header className="navbar">
       <div className="navbar__inner">
-
-        {/* LEFT */}
         <div className="navbar__left">
-          <button className="navbar__brand" onClick={goHome}>
-            <img src={logo} alt="logo" />
+          <button
+            type="button"
+            className="navbar__brand"
+            onClick={goHome}
+            aria-label={t("common.home")}
+          >
+            <img src={logo} alt={t("app.brand")} className="navbar__logo" />
           </button>
 
           <button
+            type="button"
+            className="navbtn"
+            onClick={goHome}
+            aria-current={location.pathname === "/home" ? "page" : undefined}
+          >
+            {t("common.home")}
+          </button>
+
+          <button
+            type="button"
             className="navbtn"
             onClick={goGame}
-            aria-current={location.pathname === "/select-difficulty" ? "page" : undefined}
+            aria-current={
+              location.pathname === "/select-difficulty" ||
+              location.pathname === "/game"
+                ? "page"
+                : undefined
+            }
           >
             {t("common.game")}
           </button>
 
           <button
+            type="button"
             className="navbtn"
             onClick={goMultiplayer}
-            aria-current={location.pathname === "/multiplayer" ? "page" : undefined}
+            aria-current={
+              location.pathname.startsWith("/multiplayer") ? "page" : undefined
+            }
           >
-            Multiplayer
+            {t("common.multiplayer")}
           </button>
 
           <button
+            type="button"
             className="navbtn"
             onClick={goSocial}
             aria-current={location.pathname === "/social" ? "page" : undefined}
@@ -136,16 +158,19 @@ const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <button
+            type="button"
             className="navbtn"
             onClick={goStats}
-            aria-current={location.pathname === "/stats" ? "page" : undefined}
+            aria-current={
+              location.pathname === "/statistics" ? "page" : undefined
+            }
           >
             {t("common.stats")}
           </button>
 
-          {/* 🔥 ADMIN SOLO SI ES ADMIN */}
           {isAdmin && (
             <button
+              type="button"
               className="navbtn"
               onClick={goAdmin}
               aria-current={location.pathname === "/admin" ? "page" : undefined}
@@ -155,40 +180,61 @@ const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* RIGHT */}
         <div className="navbar__right">
-
-          {/* NOTIFICATIONS */}
           <div className="notifications">
-            <button onClick={() => setOpen(!open)}>
-              🔔 {unreadCount > 0 && <span>({unreadCount})</span>}
+            <button
+              type="button"
+              className="navbtn"
+              onClick={() => setOpen((prev) => !prev)}
+              aria-label={t("notifications.bellLabel")}
+              aria-expanded={open}
+            >
+              🔔
+              {unreadCount > 0 && (
+                <span className="navbar__notif-badge">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </button>
 
             {open && (
               <div className="notifications__dropdown">
-                {notifications.length === 0 && (
+                {notifications.length === 0 ? (
                   <p>{t("notifications.empty")}</p>
+                ) : (
+                  notifications.map((notification) => (
+                    <button
+                      type="button"
+                      key={notification.id}
+                      className={`notification ${
+                        notification.read ? "read" : "unread"
+                      }`}
+                      onClick={() => markNotificationRead(notification.id)}
+                    >
+                      {renderNotificationText(notification)}
+                    </button>
+                  ))
                 )}
-
-                {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className={`notification ${n.read ? "read" : "unread"}`}
-                    onClick={() => handleNotificationClick(n.id)}
-                  >
-                    {renderNotificationText(n)}
-                  </div>
-                ))}
               </div>
             )}
           </div>
 
+          <button
+            type="button"
+            className="navbar__user navbar__user--link"
+            onClick={goProfile}
+          >
+            👤 {username || "—"}
+          </button>
+
           <LanguageToggle />
           <ThemeToggle />
 
-          <span className="navbar__user">{username}</span>
-
-          <button onClick={onLogout}>
+          <button
+            type="button"
+            className="navbtn navbtn--danger"
+            onClick={() => onLogout?.()}
+          >
             {t("common.logout")}
           </button>
         </div>
