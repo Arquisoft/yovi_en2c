@@ -1,416 +1,647 @@
+ifndef::imagesdir[:imagesdir: ../images]
+
 [[section-building-block-view]]
 == Building Block View
 
 This section describes the static decomposition of the YOVI system into building blocks. Following arc42 guidelines,
-we present a **hierarchical view**:
+we present a hierarchical view:
 
-* **Level 1**: White box description of the overall system, with black box descriptions of each top-level building block
-* **Level 2**: White box descriptions of selected building blocks, showing their internal structure
-
-This abstraction allows understanding the system structure without drowning in implementation details.
+* **Level 1**: White box description of the overall system with black box descriptions of each top-level building
+block.
+* **Level 2**: White box descriptions of selected building blocks showing their internal structure.
 
 === Level 1: Overall System White Box
 
-The YOVI system is decomposed into **several top-level building blocks** plus an external database and a public reverse proxy.
+The YOVI system is decomposed into **eight top-level building blocks** plus a database and a monitoring stack,
+all orchestrated via Docker Compose and exposed through Nginx.
 
 [plantuml,"Level 1 System White Box",png]
 ----
 @startuml
-!define RECTANGLE node
-
 skinparam componentStyle rectangle
-skinparam backgroundColor #FEFEFE
 
 package "YOVI System (Level 1)" {
 
-  component "Nginx Reverse Proxy (nginx/)" as Nginx <<gateway>>
-  
-  component "Bot API Service (botapi/)" as BotAPI <<backend>>
+  component "Nginx\n(nginx/)" as Nginx <<gateway>>
+  component "Webapp\n(webapp/)" as Webapp <<frontend>>
+  component "Gateway\n(gateway/)" as Gateway <<backend>>
+  component "Authentication\n(authentication/)" as Auth <<backend>>
+  component "Users\n(users/)" as Users <<backend>>
+  component "Gamey\n(gamey/)" as Gamey <<backend>>
+  component "Multiplayer\n(multiplayer/)" as Multi <<backend>>
+  component "BotAPI\n(botapi/)" as BotAPI <<backend>>
+  database "MongoDB" as DB
+  component "Prometheus" as Prom <<monitoring>>
+  component "Grafana" as Graf <<monitoring>>
 
-  component "API Gateway (gateway/)" as Gateway <<gateway>>
+  Nginx --> Webapp : "/ (HTTP)"
+  Nginx --> Gateway : "/api/* (HTTP)"
+  Nginx --> Multi : "/socket.io/* (WS)"
+  Nginx --> BotAPI : "/interop/* (HTTP)"
 
-  component "Web Frontend Service (webapp/)" as Webapp <<frontend>>
+  Gateway --> Auth : "auth endpoints"
+  Gateway --> Users : "user/social/admin/game-result endpoints"
+  Gateway --> Gamey : "game/bot/hint endpoints"
+  Gateway --> Multi : "multiplayer REST endpoints"
 
-  component "Authentication Service (authentication/)" as Auth <<backend>>
+  Auth --> Users : "POST /createuser\nGET /users/:username"
+  Users --> DB : "MongoDB Wire Protocol"
 
-  component "User Service (users/)" as Users <<backend>>
+  Multi --> Gamey : "POST /game/new\nPOST /v1/game/pvp/move"
+  BotAPI --> Gamey : "POST /game/new\nPOST /v1/ybot/choose/:bot\nPOST /v1/game/pvb/:bot"
 
-  component "Game Engine Service (gamey/)" as Gamey <<backend>>
-
-  database "MongoDB (database)" as DB <<database>>
-
-  Nginx --> Webapp : "serves static files\n(HTTP)"
-  Nginx --> Gateway : "routes /api/*\n(HTTP)"
-  Nginx --> BotAPI : "routes /interop/*\n(HTTP)"
-  
-  Gateway --> Users : "HTTP internal\n(user operations)"
-  BotAPI --> Gamey : "HTTP internal\n(interoperability)"
-  Gateway --> Auth : "routes /register, /login, /verify\n(HTTP)"
-
-  Auth --> Users : "HTTP internal\n(user lookup/creation)"
-  Users --> DB : "MongoDB Wire Protocol\n(persistence)"
-
-  Webapp --> Gateway : "API calls via /api\n(HTTP, internal)"
-
-  note top of Nginx
-    **Provided Interfaces:**
-    * Public Web UI (port 443)
-    * Public access to backend services
-    **Responsibilities:**
-    * HTTPS termination
-    * Request routing
-  end note
-
-  note bottom of Webapp
-    **Provided:**
-    * Web UI for humans
-    **Required:**
-    * Auth Service API
-    * Game Engine API
-  end note
-
-  note bottom of Auth
-    **Provided:**
-    * POST /register
-    * POST /login
-    * GET /verify
-    **Required:**
-    * User Service (internal)
-  end note
-
-  note bottom of Users
-    **Provided:**
-    * POST /createuser
-    * GET /users/:username
-    * POST /gameresult
-    * GET /history/:username
-    * GET /ranking
-    **Required:**
-    * MongoDB
-  end note
-
-  note bottom of Gamey
-    **Provided:**
-    * Game Logic API (YEN)
-    * Bot Strategy API (/v1/)
-    **Required:**
-    * None (stateless)
-  end note
+  Prom --> Gateway : "scrape /metrics"
+  Prom --> Users : "scrape /metrics"
+  Prom --> Gamey : "scrape /metrics"
+  Graf --> Prom : "PromQL"
 }
 
-actor "Human Player" as Human
+actor "Human Player / Admin" as Human
 actor "External Bot" as Bot
 
 Human --> Nginx : "HTTPS"
-Bot --> Nginx : "HTTPS (API calls)"
-
+Bot --> Nginx : "HTTPS"
 @enduml
 ----
 
-==== Black Box Descriptions
+==== Black Box Descriptions — Level 1
 
-===== API Gateway
+===== Nginx Reverse Proxy
 
-* **Purpose/Responsibility**: Acts as the single entry point to the system. Routes external requests to the appropriate internal service, handles CORS centrally, and provides a security layer.
-* **Interface(s)**:
-** *Provided*:
-*** Public Web UI endpoint
-*** Public Bot API endpoint
-** *Required*:
-*** Web Frontend Service (internal HTTP)
-*** Authentication Service (internal HTTP)
-*** Game Engine Service (internal HTTP)
-* **Quality/Performance Characteristics**: Must handle all external traffic; availability is critical. Stateless, can be scaled horizontally.
-* **Directory/File Location**: `/gateway/gateway-service.js`
-* **Fulfilled Requirements**: Public deployment, single entry point, centralized CORS
-* **Open Issues**: SSL certificate management in production
+* **Purpose**: Single public entry point. Handles HTTPS termination, HTTP->HTTPS redirect, and path-based routing
+to internal services. TLS certificates are mounted from `nginx/certs/`.
+* **Provided interfaces**: HTTPS on ports 80 and 443
+* **Routing rules**:
+** `/` → webapp:80
+** `/api/*` → gateway:8080
+** `/socket.io/*` → multiplayer:7000 (with WebSocket upgrade)
+** `/interop/*` → botapi:4001
+* **Location**: `nginx/conf.d/default.conf`
 
-===== Web Frontend Service
+===== Webapp
 
-* **Purpose/Responsibility**: Provides the user interface for human players. Handles game rendering, user interaction, language switching, and orchestrates calls to backend services via the gateway.
-* **Interface(s)**:
-** *Provided*: Web UI (HTML/CSS/JS) served to browsers
-** *Required*:
-*** Authentication Service API (via gateway)
-*** Game Engine API (via gateway)
-* **Quality/Performance Characteristics**: Responsive UI (< 100ms for interactions). Supports EN/ES via custom i18n module. Stateless for scalability.
-* **Directory/File Location**: `/webapp/` (React + TypeScript source)
-* **Fulfilled Requirements**: Web frontend, game visualization, strategy selection UI, internationalization
-* **Open Issues**: Real-time updates for future multiplayer features
+* **Purpose**: Single-page React application served as static files. Provides the complete user interface for
+human players and administrators. Communicates with backend exclusively through `/api/*` (REST) and
+`/socket.io/*` (WebSocket) via Nginx.
+* **Provided interfaces**: HTML/CSS/JS bundle served to browsers
+* **Required interfaces**: Gateway REST API; Multiplayer Socket.IO
+* **Key routes**: `/` (login), `/register`, `/home`, `/game`, `/select-difficulty`, `/game/finished`,
+`/statistics`, `/profile/:username`, `/social`, `/multiplayer`, `/multiplayer/game`, `/admin` (admin only)
+* **Location**: `webapp/`
+
+===== Gateway
+
+* **Purpose**: Backend entry point for all webapp requests. Routes to the appropriate internal service, handles
+CORS, sanitizes path parameters, validates input, and exposes Prometheus metrics. Stateless — no session state.
+* **Provided interfaces**: REST API at port 8080 (internal), exposed via Nginx at `/api/*`
+* **Required interfaces**: Authentication Service, Users Service, Gamey Service, Multiplayer Service
+* **Prometheus metrics**: request count, method, path, status code via `express-prom-bundle`
+* **Location**: `gateway/gateway-service.js`
 
 ===== Authentication Service
 
-* **Purpose/Responsibility**: Handles all identity-related operations: JWT token generation and validation, registration payload validation, and login credential verification. Delegates user data persistence to the User Service.
-* **Interface(s)**:
-** *Provided*: REST API with endpoints `/register`, `/login`, `/verify`, `/health`
-** *Required*: User Service (internal HTTP — user lookup and creation)
-* **Quality/Performance Characteristics**: Response time < 200ms. Stateless (JWT-based). Token expiration configurable via `JWT_EXPIRES` env var.
-* **Directory/File Location**: `/authentication/auth-service.js`
-* **Fulfilled Requirements**: User authentication, JWT generation and validation
-* **Open Issues**: Password comparison currently in plain text — bcrypt hashing pending (tracked as TD-5)
+* **Purpose**: Handles all identity operations: payload validation, bcrypt password hashing and comparison,
+JWT token generation and verification with role claims. Delegates user data persistence to the Users Service.
+* **Provided interfaces**:
+** `POST /register` — validates payload, hashes password, calls Users Service, returns JWT
+** `POST /login` — fetches user from Users Service, bcrypt compares, returns JWT
+** `GET /verify` — validates JWT, returns decoded claims
+** `GET /health`
+* **Required interfaces**: Users Service (internal HTTP)
+* **Location**: `authentication/auth-service.js`
 
-===== User Service
+===== Users Service
 
-* **Purpose/Responsibility**: Manages all user data persistence: user profiles, game results, match history, and statistics. Acts as a pure data store — no authentication logic.
-* **Interface(s)**:
-** *Provided*: REST API with endpoints `/createuser`, `/users/:username`, `/users`, `/gameresult`, `/history/:username`, `/ranking`, `/health`
-** *Required*: MongoDB for data persistence
-* **Quality/Performance Characteristics**: Must persist data reliably. Response time < 200ms for typical operations.
-* **Directory/File Location**: `/users/users-service.js`
-* **Fulfilled Requirements**: User registration (data), match history, statistics, ranking
-* **Open Issues**: `/profile/:id` and `/:id/stats` endpoints pending implementation
+* **Purpose**: Manages all user data: profiles, credentials, game results, match history, statistics, friend
+graph, notifications, ranking, user search, and admin operations. Pure data service — no JWT logic.
+* **Provided interfaces** (selected):
+** `POST /createuser`, `GET /users/:username`, `GET /users/:username/profile`, `PUT /users/:username/profile`
+** `DELETE /users/:username`
+** `POST /gameresults`, `GET /gameresults/:username`, `GET /ranking`
+** `GET /users/:username/friends`, `POST /users/:username/friends/request`,
+`POST /users/:username/friends/accept`, `POST /users/:username/friends/reject`,
+`DELETE /users/:username/friends/:friend`
+** `GET /users/:username/notifications`, `PATCH /users/:username/notifications/:id/read`
+** `GET /search?q=...`
+** `GET /health`, `GET /metrics` (Prometheus)
+** Admin endpoints: `GET /admin/users`, `PATCH /admin/users/:username/role`, `DELETE /admin/users/:username`,
+`DELETE /admin/users/:username/history`
+* **Required interfaces**: MongoDB
+* **Swagger UI**: available at `/api-docs`
+* **Location**: `users/users-service.js`
 
-===== Bot API Service
+===== Gamey (Game Engine)
 
-* **Purpose/Responsibility**: Exposes the public interoperability API for external bots. Receives bot requests through the reverse proxy and delegates game-related operations to the Game Engine Service.
-* **Interface(s)**:
-** *Provided*: Public REST interoperability API under `/interop/*`
-** *Required*: Game Engine Service (internal HTTP)
-* **Quality/Performance Characteristics**: Must be stable and predictable for third-party integrations. Stateless and easy to test independently.
-* **Directory/File Location**: `/botapi/`
-* **Fulfilled Requirements**: Public API for bots, interoperability, encapsulation of internal services
-* **Open Issues**: API versioning and long-term compatibility policy
+* **Purpose**: Encapsulates all Game Y logic: move validation, win condition detection (connecting all three
+sides of the triangular board using Union-Find), and AI move calculation with six strategies. Stateless — no
+persistent data.
+* **Provided interfaces**:
+** `GET /status` — health check
+** `GET /metrics` — Prometheus metrics (axum-prometheus)
+** `POST /game/new` — creates initial game state, returns YEN
+** `POST /game/check` — checks win condition from YEN
+** `POST /v1/game/pvb/:bot_id` — applies player move, computes bot response, returns updated YEN
+** `POST /v1/game/pvp/move` — applies a player move in PvP context, returns updated YEN + win status
+** `POST /v1/ybot/choose/:bot_id` — returns bot's chosen coordinates without applying move
+* **Required interfaces**: None (fully stateless)
+* **Bot strategies**: `random_bot`, `heuristic_bot`, `minimax_bot`, `alfa_beta_bot`,
+`monte_carlo_hard`, `monte_carlo_extreme`
+* **Location**: `gamey/`
 
-===== Game Engine Service
+===== Multiplayer Service
 
-* **Purpose/Responsibility**: Encapsulates all Game Y logic: move validation, win condition checking (connecting three sides of the triangular board), and AI move calculation with six strategies.
-* **Interface(s)**:
-** *Provided*: REST API using YEN notation — `POST /game/new`, `POST /v1/game/pvb/{bot_id}`, `POST /v1/ybot/choose/{bot_id}`, `GET /status`
-** *Required*: None (stateless, no external dependencies)
-* **Quality/Performance Characteristics**: Low latency (< 2s for move calculation per QS-01). High correctness (100% rule compliance). Memory safety guaranteed by Rust.
-* **Directory/File Location**: `/gamey/` (Rust + Axum)
-* **Fulfilled Requirements**: Game rule verification, AI move suggestion, six bot strategies, YEN notation, public bot API
-* **Open Issues**: Performance optimization for large boards with complex bots
+* **Purpose**: Manages real-time player-vs-player game rooms via Socket.IO. Creates and joins rooms with unique
+6-character codes. Maintains room state (players, YEN, status) in memory. Delegates game rule enforcement to
+Gamey via HTTP. Broadcasts game events to all room participants.
+* **Provided interfaces**:
+** REST: `POST /rooms/create`, `POST /rooms/join`, `POST /rooms/state`, `POST /rooms/move`,
+`POST /rooms/leave`, `GET /rooms/:code`, `GET /health`
+** Socket.IO events (server -> client): `connected`, `room_updated`, `game_started`, `game_updated`,
+`game_over`, `opponent_left`
+** Socket.IO events (client -> server): `create_room`, `join_room`, `get_room_state`, `make_move`,
+`leave_room`
+* **Required interfaces**: Gamey (HTTP)
+* **State**: In-memory `RoomManager` (lost on restart)
+* **Location**: `multiplayer/src/multiplayer-service.js`
 
-===== MongoDB Database
+===== BotAPI (Interoperability Service)
 
-* **Purpose/Responsibility**: Persists user data, including profiles, authentication credentials, game results, match history, and statistics.
-* **Interface(s)**:
-** *Provided*: MongoDB Wire Protocol
-** *Required*: None (data storage only)
-* **Quality/Performance Characteristics**: Durable storage, backup capability. Must handle concurrent connections.
-* **Directory/File Location**: Managed via Docker (not in repo)
-* **Fulfilled Requirements**: User data persistence, game results, ranking aggregation
-* **Open Issues**: Backup and recovery strategy
+* **Purpose**: Public interoperability API for external bots. Operates in two modes:
+** **Server mode**: external bots play against our bots via `POST /games`, `GET /games/:id`,
+`POST /games/:id/play`, `GET /play`
+** **Client mode**: our bots play against rival teams' APIs via `POST /remote-games/create`,
+`POST /remote-games/connect`, `POST /remote-games/:id/play-turn`
+* **Provided interfaces**: REST API at port 4001, exposed via Nginx at `/interop/*`
+* **Required interfaces**: Gamey (HTTP); Rival Team APIs (HTTP outbound, allowlisted hosts)
+* **State**: In-memory `ActiveGamesStore` and `RemoteGameSessionsStore` (lost on restart)
+* **OpenAPI spec**: `botapi/src/openapi/openapi.yaml`
+* **Location**: `botapi/`
 
-=== Level 2: Building Block Internals
+===== MongoDB
 
-==== White Box: Web Frontend Service (`webapp/`)
+* **Purpose**: Persists all user data via the Users Service. Never accessed directly by other services.
+* **Collections**: `users`, `gameresults`, `notifications`
+* **Location**: Docker container managed externally; URI injected via `MONGODB_URI` env var
 
-The web frontend is structured following a **component-based architecture** with clear separation of concerns.
+===== Prometheus + Grafana
+
+* **Purpose**: Metrics collection and visualization. Prometheus scrapes `/metrics` from gateway, users, and
+gamey every 15 seconds. Grafana provides the pre-built "Yovi Services Overview" dashboard with request rate,
+p95 latency, and error rate panels.
+* **Location**: `users/monitoring/prometheus/`, `users/monitoring/grafana/`
+
+=== Level 2: Internal Structure
+
+==== White Box: Webapp (`webapp/`)
 
 [plantuml,"Webapp Internal Structure",png]
 ----
 @startuml
-!define RECTANGLE component
+skinparam componentStyle rectangle
 
-package "Web Frontend Service (Level 2)" {
+package "Webapp (Level 2)" {
 
-  component "UI Components (React)" as UI <<frontend>>
+  component "React Router\n(App.tsx)" as Router
+  component "ThemeProvider\n(dark/light)" as Theme
+  component "I18nProvider\n(EN/ES)" as I18n
 
-  component "i18n Module (I18nProvider)" as I18n <<frontend>>
+  package "Pages" {
+    component "LoginForm / RegistrationForm" as Auth
+    component "Home" as Home
+    component "Game (PvM)" as Game
+    component "MultiplayerLobby / MultiplayerGame (PvP)" as Multi
+    component "SelectDifficulty" as Diff
+    component "Statistics" as Stats
+    component "UserProfile" as Profile
+    component "Social" as Social
+    component "Instructions" as Instr
+    component "AdminPanel" as Admin
+  }
 
-  component "API Client (fetch)" as APIClient <<frontend>>
+  component "Navbar" as Navbar
+  component "API Client\n(fetch /api/*)" as API
+  component "Socket.IO Client\n(/socket.io/*)" as WS
 
-  component "Routing (React Router)" as Router <<frontend>>
+  Router --> Theme
+  Router --> I18n
+  Router --> Auth
+  Router --> Home
+  Router --> Game
+  Router --> Multi
+  Router --> Diff
+  Router --> Stats
+  Router --> Profile
+  Router --> Social
+  Router --> Instr
+  Router --> Admin
 
-  UI --> Router : "navigation"
-  UI --> I18n : "translations (EN/ES)"
-
-  UI --> APIClient : "API calls via /api"
-
-  APIClient --> "Gateway" : "HTTP calls"
-
-  note right of UI
-    **Contained Building Blocks:**
-    * LoginForm
-    * RegistrationForm
-    * Home
-    * Game
-    * SelectDifficulty
-    * GameFinished
-    * Navbar
-    * LanguageToggle
-  end note
-
-  note right of I18n
-    **Custom i18n:**
-    * translations.ts (EN/ES)
-    * localStorage persistence
-    * {variable} interpolation
-  end note
+  Home --> Navbar
+  Game --> API
+  Multi --> WS
+  Social --> API
+  Stats --> API
+  Profile --> API
+  Admin --> API
 }
-
 @enduml
 ----
 
-===== Black Box Descriptions (Webapp Internals)
+Key webapp building blocks:
 
+[options="header", cols="2,3,2"]
 |===
-| Building Block | Responsibility | Key Interfaces | Location
-| **UI Components** | Render all user interfaces; handle user input events | Props/State callbacks | `webapp/src/`
-| **API Client** | Communicate with backend services via gateway | HTTP fetch calls to `/api/*` | `webapp/src/` (inline in components)
-| **Routing** | Handle navigation between views | URL paths (`/`, `/register`, `/home`, `/game`, `/select-difficulty`, `/game/finished`) | `webapp/src/App.tsx`
-| **i18n Module** | Provide EN/ES internationalization via React Context | `useI18n()` hook → `t(key)` function | `webapp/src/i18n/`
+| Block | Responsibility | Location
+
+| **App.tsx + React Router**
+| Route definitions; redirect to `/` for unknown paths
+| `webapp/src/App.tsx`
+
+| **ThemeProvider**
+| Dark/light theme context; `data-theme` attribute on `<html>`; `localStorage` persistence
+| `webapp/src/ThemeProvider.tsx`
+
+| **I18nProvider**
+| EN/ES translations via React context; `{variable}` interpolation; `localStorage` persistence
+| `webapp/src/i18n/`
+
+| **Navbar**
+| Navigation links; notification bell with unread badge; profile link; theme/language toggles; logout
+| `webapp/src/Navbar.tsx`
+
+| **Game (PvM)**
+| Game board rendering; PvM move loop via `POST /api/game/pvb/move`; hint via `POST /api/hint`; local PvP mode
+| `webapp/src/Game.tsx`
+
+| **MultiplayerLobby / MultiplayerGame**
+| Room creation/join via REST; Socket.IO connection; real-time board sync; PvP move via Socket.IO `make_move`
+| `webapp/src/MultiplayerLobby.tsx`, `webapp/src/MultiplayerGame.tsx`
+
+| **Social**
+| User search with 400ms debounce; friend request buttons; profile navigation
+| `webapp/src/Social.tsx`
+
+| **UserProfile**
+| Editable profile fields; match history display
+| `webapp/src/UserProfile.tsx`
+
+| **Statistics**
+| Win/loss stats, game history with pagination
+| `webapp/src/Statistics.tsx`
+
+| **AdminPanel**
+| Admin-only page; user list; role toggle; delete history; delete account
+| `webapp/src/AdminPanel.tsx`
 |===
 
-==== White Box: Game Engine Service (`gamey/`)
+==== White Box: Gamey (`gamey/`)
 
-The game engine is structured in layers, with clear separation between parsing, core logic, and AI strategies.
-
-[plantuml,"Game Engine Internal Structure",png]
+[plantuml,"Gamey Internal Structure",png]
 ----
 @startuml
-!define RECTANGLE component
+skinparam componentStyle rectangle
 
-package "Game Engine Service (Level 2)" {
+package "Gamey (Level 2)" {
 
-  component "HTTP Server (Axum)" as HTTP <<backend>>
+  component "HTTP Server\n(Axum + Tokio)" as HTTP
+  component "game_server/mod.rs\n(router + AppState)" as Router
 
-  component "YEN Parser (notation/)" as Parser <<backend>>
+  package "game_server/" {
+    component "bot/choose.rs\n(POST /v1/ybot/choose/:bot)" as Choose
+    component "game/new.rs\n(POST /game/new)" as New
+    component "game/pvb.rs\n(POST /v1/game/pvb/:bot)" as PvB
+    component "game/pvp.rs\n(POST /v1/game/pvp/move)" as PvP
+    component "game/check.rs\n(POST /game/check)" as Check
+  }
 
-  component "Game Core (core/)" as Core <<backend>>
+  package "core/" {
+    component "GameY\n(board state)" as Core
+    component "Coordinates\n(barycentric x,y,z)" as Coord
+    component "PlayerSet\n(Union-Find)" as UF
+    component "Movement / GameAction" as Move
+    component "Player / PlayerId" as Player
+  }
 
-  component "AI Strategies (bot/)" as AI <<backend>>
+  package "bot/" {
+    component "YBot trait" as Trait
+    component "YBotRegistry" as Registry
+    component "RandomBot" as Rand
+    component "HeuristicBot" as Heur
+    component "MinimaxBot (depth 3)" as Mini
+    component "AlfaBetaBot" as AB
+    component "MonteCarloBot (Hard / Extreme)" as MC
+  }
 
-  component "Bot Registry (YBotRegistry)" as Registry <<backend>>
+  component "notation/\n(YEN parse/serialize)" as YEN
+  component "cli/\n(human vs human terminal)" as CLI
 
-  HTTP --> Parser : "parse YEN"
-  Parser --> Core : "validated game state"
-  Core --> AI : "requests move"
-  AI --> Core : "returns move"
-  HTTP --> Registry : "find bot by name"
-  Registry --> AI : "returns YBot impl"
+  HTTP --> Router
+  Router --> Choose
+  Router --> New
+  Router --> PvB
+  Router --> PvP
+  Router --> Check
 
-  note right of AI
-    **Strategies (YBot trait):**
-    * RandomBot
-    * HeuristicBot
-    * MinimaxBot (depth 3)
-    * AlfaBetaBot
-    * MonteCarloBot (Hard)
-    * MonteCarloBot (Extreme)
-  end note
+  Choose --> Registry
+  PvB --> Registry
+  PvB --> Core
+  PvP --> Core
+  New --> Core
+
+  Registry --> Trait
+  Trait <|.. Rand
+  Trait <|.. Heur
+  Trait <|.. Mini
+  Trait <|.. AB
+  Trait <|.. MC
+
+  Core --> UF
+  Core --> Coord
+  Core --> Move
+  Core --> Player
+
+  PvB --> YEN
+  PvP --> YEN
+  New --> YEN
+  Choose --> YEN
 }
-
 @enduml
 ----
 
-===== Black Box Descriptions (Game Engine Internals)
+Key gamey building blocks:
 
+[options="header", cols="2,3,2"]
 |===
-| Building Block | Responsibility | Key Interfaces | Location
-| **HTTP Server** | Expose REST endpoints via Axum; handle requests/responses | `POST /game/new`, `POST /v1/game/pvb/{bot_id}`, `POST /v1/ybot/choose/{bot_id}` | `gamey/src/game_server/`
-| **YEN Parser** | Parse and validate YEN notation; serialize game state to YEN | `GameY::try_from(yen)`, `YEN::from(&game)` | `gamey/src/notation/yen.rs`
-| **Game Core** | Implement Game Y rules; validate moves; check win conditions (3 sides connected) | `add_move()`, `available_cells()`, `get_player_positions_coords()` | `gamey/src/core/`
-| **AI Strategies** | Implement different bot behaviors via `YBot` trait | `choose_move(&GameY) -> Option<Coordinates>` | `gamey/src/bot/bot_implementations/`
-| **Bot Registry** | Store and retrieve bot implementations by name | `find(name) -> Option<Arc<dyn YBot>>` | `gamey/src/bot/ybot_registry.rs`
+| Block | Responsibility | Location
+
+| **HTTP Server (Axum)**
+| Async HTTP server with Tokio runtime; Prometheus middleware; shared `AppState` via `Arc<YBotRegistry>`
+| `gamey/src/game_server/mod.rs`
+
+| **GameY (core)**
+| Board state; move application; available cell tracking; player position queries
+| `gamey/src/core/game.rs`
+
+| **Coordinates**
+| Barycentric (x,y,z) representation; `from_index` / `to_index` conversion; side-touch detection
+| `gamey/src/core/coord.rs`
+
+| **PlayerSet (Union-Find)**
+| Tracks connected components per player; `touches_side_a/b/c` flags; `is_winning_configuration()`
+| `gamey/src/core/player_set.rs`
+
+| **YBot trait**
+| `name() -> &str`; `choose_move(&GameY) -> Option<Coordinates>`; `Send + Sync` for async safety
+| `gamey/src/bot/ybot.rs`
+
+| **YBotRegistry**
+| `HashMap<String, Arc<dyn YBot>>`; `find(name)`, `names()`, `with_bot()` builder; default includes all six
+| `gamey/src/bot/ybot_registry.rs`
+
+| **YEN notation**
+| `TryFrom<YEN> for GameY`; `From<&GameY> for YEN`; layout string parsing and serialization
+| `gamey/src/notation/`
 |===
 
-==== White Box: Authentication Service (`authentication/`)
+==== White Box: Users Service (`users/`)
 
-The authentication service is a thin layer responsible exclusively for identity operations.
-
-[plantuml,"Authentication Service Internal Structure",png]
+[plantuml,"Users Service Internal Structure",png]
 ----
 @startuml
-!define RECTANGLE component
+skinparam componentStyle rectangle
 
-package "Authentication Service (Level 2)" {
+package "Users Service (Level 2)" {
 
-  component "API Routes (Express)" as Routes <<backend>>
+  component "Express App\n(users-service.js)" as App
+  component "Prometheus Middleware\n(express-prom-bundle)" as Prom
+  component "Swagger UI\n(/api-docs)" as Swagger
 
-  component "Input Validation" as Validation <<backend>>
+  package "Routes" {
+    component "User CRUD\n(/createuser, /users/:u, /profile)" as UserRoutes
+    component "Game Results\n(/gameresults, /ranking)" as GameRoutes
+    component "Friends\n(/friends/request|accept|reject|delete)" as FriendRoutes
+    component "Notifications\n(/notifications)" as NotifRoutes
+    component "Search\n(/search)" as SearchRoutes
+    component "Admin\n(/admin/users)" as AdminRoutes
+  }
 
-  component "JWT Module (jsonwebtoken)" as JWT <<backend>>
+  package "Models (Mongoose)" {
+    component "User\n(username, email, password,\nfriends[], friendRequests[],\nrealName, bio, location,\npreferredLanguage, role)" as UserModel
+    component "GameResult\n(username, opponent, result,\nwinner, score, boardSize, gameMode)" as GameModel
+    component "Notification\n(recipient, type, from, read)" as NotifModel
+  }
 
-  component "Auth Middleware" as Middleware <<backend>>
+  database "MongoDB" as DB
 
-  Routes --> Validation : "validate payload"
-  Routes --> JWT : "generate/verify token"
-  Routes --> "User Service" : "HTTP /createuser, /users/:username"
-  Middleware --> JWT : "verify token"
+  App --> Prom
+  App --> Swagger
+  App --> UserRoutes
+  App --> GameRoutes
+  App --> FriendRoutes
+  App --> NotifRoutes
+  App --> SearchRoutes
+  App --> AdminRoutes
 
-  note right of Routes
-    **Endpoints:**
-    * POST /register
-    * POST /login
-    * GET /verify (uses middleware)
-    * GET /health
-  end note
+  UserRoutes --> UserModel
+  GameRoutes --> GameModel
+  FriendRoutes --> UserModel
+  NotifRoutes --> NotifModel
+  SearchRoutes --> UserModel
+  AdminRoutes --> UserModel
+  AdminRoutes --> GameModel
+
+  UserModel --> DB
+  GameModel --> DB
+  NotifModel --> DB
 }
-
 @enduml
 ----
 
-==== White Box: User Service (`users/`)
+Key users service building blocks:
 
-The user service follows a simple **flat architecture** for REST APIs with Mongoose models.
+[options="header", cols="2,3,2"]
+|===
+| Block | Responsibility | Location
 
-[plantuml,"User Service Internal Structure",png]
+| **User model**
+| Schema with `username` (unique), `email` (sparse), `password` (bcrypt hash), `friends[]`,
+`friendRequests[]`, `realName`, `bio`, `location`, `preferredLanguage`, `role` (`user`/`admin`),
+`createdAt`; unique index on username
+| `users/models/User.js`
+
+| **GameResult model**
+| Stores match outcomes: `username`, `opponent`, `result` (`win`/`loss`), `winner`, `score`,
+`boardSize`, `gameMode` (`pvb`/`pvp`), `date`; index on `username`
+| `users/models/GameResult.js`
+
+| **Notification model**
+| `recipient`, `type` (`friend_request`/`welcome`), `from` (null for system notifications),
+`read` (bool); compound index on `(recipient, createdAt DESC)` for efficient queries
+| `users/models/Notification.js`
+
+| **Friend routes**
+| Request (creates notification), accept (bidirectional add), reject (remove from `friendRequests`),
+unfriend (bidirectional `$pull`)
+| `users/users-service.js` — friends section
+
+| **Admin routes**
+| `GET /admin/users` (paginated), `PATCH /admin/users/:username/role`, `DELETE /admin/users/:username`,
+`DELETE /admin/users/:username/history`; cascades deletes to `GameResult` and `Notification`
+| `users/users-service.js` — admin section
+
+| **Ranking**
+| MongoDB aggregation: `$match {result: win}` → `$group {_id: username, wins: $sum 1}` → `$sort` →
+`$limit 10` → `$project`
+| `users/users-service.js` — GET /ranking
+|===
+
+==== White Box: Multiplayer Service (`multiplayer/`)
+
+[plantuml,"Multiplayer Service Internal Structure",png]
 ----
 @startuml
-!define RECTANGLE component
+skinparam componentStyle rectangle
 
-package "User Service (Level 2)" {
+package "Multiplayer Service (Level 2)" {
 
-  component "API Routes (Express)" as Routes <<backend>>
+  component "Express + HTTP Server" as HTTP
+  component "Socket.IO Server" as SIO
 
-  component "Models (Mongoose)" as Models <<backend>>
+  component "RoomManager\n(rooms.js)" as Rooms
+  component "GameyClient\n(gamey-client.js)" as GameyClient
+  component "RoomCodeGenerator\n(codes.js)" as Codes
 
-  Routes --> Models : "CRUD operations"
-  Models --> "MongoDB" : "database"
+  package "REST Endpoints" {
+    component "POST /rooms/create" as Create
+    component "POST /rooms/join" as Join
+    component "POST /rooms/move" as Move
+    component "POST /rooms/leave" as Leave
+    component "POST /rooms/state" as State
+    component "GET /rooms/:code" as Get
+  }
 
-  note right of Routes
-    **Endpoints:**
-    * POST /createuser
-    * GET /users/:username
-    * GET /users
-    * POST /gameresult
-    * GET /history/:username
-    * GET /ranking
-    * GET /health
-  end note
+  package "Socket.IO Events" {
+    component "create_room" as SCreate
+    component "join_room" as SJoin
+    component "make_move" as SMove
+    component "leave_room" as SLeave
+    component "get_room_state" as SState
+  }
 
-  note right of Models
-    **Schemas:**
-    * User (username, email, password, createdAt)
-    * GameResult (username, opponent, result, score, date)
-  end note
+  HTTP --> Create
+  HTTP --> Join
+  HTTP --> Move
+  HTTP --> Leave
+  HTTP --> State
+  HTTP --> Get
+
+  SIO --> SCreate
+  SIO --> SJoin
+  SIO --> SMove
+  SIO --> SLeave
+  SIO --> SState
+
+  Create --> Rooms
+  Join --> Rooms
+  Move --> Rooms
+  Move --> GameyClient
+  Leave --> Rooms
+  State --> Rooms
+
+  SCreate --> Rooms
+  SCreate --> GameyClient
+  SJoin --> Rooms
+  SMove --> Rooms
+  SMove --> GameyClient
+  SLeave --> Rooms
+
+  Rooms --> Codes
 }
-
 @enduml
 ----
+
+Key multiplayer building blocks:
+
+[options="header", cols="2,3,2"]
+|===
+| Block | Responsibility | Location
+
+| **RoomManager**
+| Creates rooms with unique codes (6-char alphanumeric); tracks player sockets; manages turn order via
+`getCurrentTurnColor()`; updates YEN after moves; handles disconnect cleanup
+| `multiplayer/src/rooms.js`
+
+| **GameyClient**
+| HTTP client wrapping `POST /game/new` and `POST /v1/game/pvp/move` calls to Gamey; 5-second timeout
+| `multiplayer/src/gamey-client.js`
+
+| **RoomCodeGenerator**
+| Generates unique 6-character codes from a custom alphabet (no O/0, I/1 ambiguity); retries up to 1000
+times to guarantee uniqueness against existing codes
+| `multiplayer/src/codes.js`
+
+| **Socket.IO events (server-emitted)**
+| `room_updated` (player joined/left), `game_started` (both players connected), `game_updated` (after move),
+`game_over` (game finished), `opponent_left` (disconnect)
+| `multiplayer/src/multiplayer-service.js`
+|===
 
 === Interface Overview
 
-This table summarizes the key interfaces between building blocks, showing the **provided** and **required** relationships.
-
+[options="header", cols="2,1,1,1,2"]
 |===
-| Interface | Provider | Consumer | Protocol | Data Format | Purpose
-| **Public Web UI** | Nginx | Browser | HTTPS | HTML/CSS/JS | Serve frontend to users
-| **Public Bot API** | Nginx | External Bot | HTTPS | JSON (YEN) | Public access to bot interoperability API
-| **Auth API** | Auth Service | Gateway | HTTP (internal) | JSON + JWT | Register, login, verify token
-| **User Data API** | Users Service | Auth Service | HTTP (internal) | JSON | User lookup and creation
-| **Game API** | Gamey Service | Gateway | HTTP (internal) | JSON (YEN) | Game logic and bot moves
-| **Database Interface** | MongoDB | Users Service | MongoDB Wire | BSON | Data persistence
-|===
+| Interface | Provider | Consumer | Protocol | Purpose
 
-=== Mapping to Requirements
+| Public HTTPS
+| Nginx
+| Browser / Bot
+| HTTPS
+| Single external entry point with TLS termination
 
-This table shows how the building blocks fulfill the key requirements from section 1.
+| WebSocket Upgrade
+| Nginx -> Multiplayer
+| Browser
+| WSS (Socket.IO)
+| Real-time PvP game events
 
-|===
-| Requirement | Primary Building Block | Supporting Building Blocks
-| Web frontend (TypeScript/React) | Web Frontend Service | Nginx, Gateway
-| Rust game engine | Game Engine Service | (none)
-| JSON + YEN communication | Game Engine Service | Webapp (client), Gateway (routing)
-| Public API for bots | Bot API Service | Nginx, Game Engine Service
-| User registration | Authentication Service | User Service, MongoDB
-| User authentication (JWT) | Authentication Service | (none)
-| Match history | User Service | MongoDB, Webapp (UI)
-| Multiple AI strategies | Game Engine Service | (none)
-| Internationalization | Web Frontend Service | (none — custom i18n module)
-| Docker deployment | All services | docker-compose
-| CI/CD | GitHub Actions | All services
+| Auth API
+| Authentication
+| Gateway
+| HTTP (internal)
+| Register, login, verify JWT
+
+| User Data API
+| Users
+| Auth, Gateway
+| HTTP (internal)
+| User CRUD, friends, notifications, admin ops
+
+| Game API
+| Gamey
+| Gateway, Multiplayer, BotAPI
+| HTTP (internal)
+| Game logic, bot moves, win detection
+
+| Interop API
+| BotAPI
+| External Bots
+| HTTPS -> HTTP
+| Public bot integration with YEN
+
+| Remote Interop
+| BotAPI (client)
+| Rival Team APIs
+| HTTP (outbound)
+| Cross-team bot-vs-bot via YEN contract
+
+| Database
+| MongoDB
+| Users
+| MongoDB Wire
+| Data persistence
+
+| Metrics
+| Prometheus
+| Gateway, Users, Gamey
+| HTTP (scrape)
+| Observability data collection
 |===
