@@ -8,3 +8,4 @@
 pub mod new;
 pub mod pvb;
 pub mod pvp;
+pub mod check;
