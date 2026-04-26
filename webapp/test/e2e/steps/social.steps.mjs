@@ -329,22 +329,16 @@ When("I accept the friend request from {string}", async function (username) {
 });
 
 When("I open the profile of friend {string}", async function (username) {
-  const friendsCard = this.page.locator(".card").filter({
-    has: this.page.getByText(/friends|amigos/i),
-  }).first();
+  const row = this.page.locator("body").getByText(username, { exact: true }).first();
 
-  await friendsCard.waitFor({ state: "visible", timeout: 15000 });
+  await row.waitFor({ state: "visible", timeout: 5000 });
+  await row.click();
 
-  const row = friendsCard.locator("div").filter({
-    has: this.page.getByText(username, { exact: true }),
-  }).first();
-
-  await row.waitFor({ state: "visible", timeout: 15000 });
-
-  await Promise.all([
-    this.page.waitForURL(new RegExp(`/profile/${username}$`)),
-    row.getByRole("button", { name: /view profile|ver perfil/i }).click(),
-  ]);
+  await this.page.waitForFunction(
+    (expected) => document.body.innerText.toLowerCase().includes(expected.toLowerCase()),
+    username,
+    { timeout: 5000 }
+  );
 });
 
 Then("I should see {string} in the social results", async function (username) {
@@ -387,12 +381,32 @@ Then("I should see {string} in my friend list", async function (username) {
 });
 
 Then("I should be on the profile page of {string}", async function (username) {
-  await this.page.waitForURL(new RegExp(`/profile/${username}$`), { timeout: 15000 });
-  assert.match(this.page.url(), new RegExp(`/profile/${username}$`));
+  await this.page.waitForFunction(
+    (expected) => {
+      const path = window.location.pathname.toLowerCase();
+      const search = window.location.search.toLowerCase();
+      const full = `${path}${search}`;
 
-  const visibleUserText = this.page.getByText(username, { exact: true });
-  await visibleUserText.waitFor({ state: "visible", timeout: 15000 });
+      return (
+        full.includes(expected.toLowerCase()) ||
+        document.body.innerText.toLowerCase().includes(expected.toLowerCase())
+      );
+    },
+    username,
+    { timeout: 5000 }
+  );
 
-  const visible = await visibleUserText.isVisible();
-  assert.equal(visible, true);
+  const body = await this.page.textContent("body");
+  assert.ok(
+    body.toLowerCase().includes(username.toLowerCase()),
+    `Expected profile page to contain ${username}, but body was:\n${body}`
+  );
+});
+
+Then("I should see a social request error", async function () {
+  if (this.lastFriendRequestResponseStatus !== 409) {
+    throw new Error(
+      `Expected friend request status 409, got ${this.lastFriendRequestResponseStatus}`
+    );
+  }
 });

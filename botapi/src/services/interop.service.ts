@@ -113,7 +113,6 @@ class InteropService {
     );
 
     return {
-      bot_id: selectedBotId,
       coords: moveResponse.coords
     };
   }

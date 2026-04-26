@@ -2,6 +2,24 @@ import { Request, Response } from "express";
 import { interopService } from "../services/interop.service";
 import { PlayOnceRequestDto } from "../dtos/play-once.dto";
 import { ErrorDto } from "../dtos/error.dto";
+import { YenDto } from "../dtos/yen.dto";
+
+function isValidYenPosition(value: unknown): value is YenDto {
+  if (!value || typeof value !== "object") return false;
+
+  const position = value as Partial<YenDto>;
+
+  return (
+    typeof position.size === "number" &&
+    position.size > 0 &&
+    typeof position.turn === "number" &&
+    Array.isArray(position.players) &&
+    position.players.length >= 2 &&
+    position.players.every((player) => typeof player === "string") &&
+    typeof position.layout === "string" &&
+    position.layout.trim().length > 0
+  );
+}
 
 class PlayController {
   async playOnce(req: Request, res: Response) {
@@ -10,33 +28,45 @@ class PlayController {
       const rawBotId = req.query.bot_id;
 
       if (typeof rawPosition !== "string" || rawPosition.trim() === "") {
-        throw new Error("position query parameter is required");
+        return res.status(400).json({
+          code: "BAD_REQUEST",
+          message: "position query parameter is required",
+        } satisfies ErrorDto);
       }
 
-      let parsedPosition: PlayOnceRequestDto["position"];
+      let parsedPosition: unknown;
 
       try {
         parsedPosition = JSON.parse(rawPosition);
       } catch {
-        throw new Error("position must be a valid JSON-encoded YEN object");
+        return res.status(400).json({
+          code: "BAD_REQUEST",
+          message: "position must be a valid JSON-encoded YEN object",
+        } satisfies ErrorDto);
+      }
+
+      if (!isValidYenPosition(parsedPosition)) {
+        return res.status(400).json({
+          code: "BAD_REQUEST",
+          message: "position must be a valid YEN object with size, numeric turn, players and layout",
+        } satisfies ErrorDto);
       }
 
       const input: PlayOnceRequestDto = {
         position: parsedPosition,
-        bot_id: typeof rawBotId === "string" ? rawBotId : undefined
+        bot_id:
+          typeof rawBotId === "string" && rawBotId.trim() !== ""
+            ? rawBotId
+            : undefined,
       };
 
       const result = await interopService.playOnce(input);
-      res.status(200).json(result);
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error("Unexpected error");
-
-      const body: ErrorDto = {
-        code: "BAD_REQUEST",
-        message: err.message
-      };
-
-      res.status(400).json(body);
+      return res.status(200).json(result);
+    } catch {
+      return res.status(500).json({
+        code: "INTERNAL_ERROR",
+        message: "Unexpected error while computing bot action",
+      } satisfies ErrorDto);
     }
   }
 }
