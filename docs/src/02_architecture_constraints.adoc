@@ -3,83 +3,281 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-architecture-constraints]]
 == Architecture Constraints
 
-This section lists the main constraints that shape the architecture of the YOVI system. Unlike requirements , constraints define
-how it must be done or which technologies must be used. These are non-negotiable boundaries within which we must operate.
-.
+This section lists the main constraints that shape the architecture of the YOVI system. Unlike requirements,
+constraints define *how* it must be done or which technologies must be used. These are non-negotiable boundaries
+within which we must operate.
 
 === Technical Constraints
-These constraints are imposed by the  client (Micrati). They dictate the technology stack and communication protocols.
 
+These constraints are imposed by the client (Micrati). They dictate the technology stack and communication protocols.
+
+[options="header", cols="2,3,2,1"]
 |===
 | Constraint | Explanation | Rationale | Negotiable?
-| **Frontend Technology** | The web application MUST be implemented in **TypeScript**. React is the chosen framework but not strictly mandatory. | The client requires TypeScript for type safety and maintainability. |  No (TypeScript is mandatory)
-| **Game Engine Language** | The game logic module MUST be implemented in **Rust**. | Performance and safety requirements for game state validation and AI strategies. |  No
-| **Communication Protocol** | All communication between the webapp and game engine MUST use **JSON messages** following **YEN notation** for game states. | Standardized format specified by the client for interoperability. |  No
-| **Public Interoperability API** | The system MUST expose a documented public interoperability API (botapi) that allows external bots to interact. | Core requirement from Micrati for third-party integration. |  No
-| **Deployment** | The complete system MUST be publicly accessible via the Web. | The client needs to demonstrate the working product. |  No
-| **Containerization** | All services MUST be containerized using **Docker** with a root-level `docker-compose.yml`. | Ensures consistent deployment across environments. |  Partial (format flexible)
-| **Database** | User data MUST be persisted. **MongoDB** is the current implementation, but alternatives are possible. | Data persistence is mandatory; the specific database technology is negotiable. | Yes (technology choice)
-| **Authentication** | User operations MUST be secured using **JWT-based authentication**. | Ensures secure access to user-specific data and actions. | No
+
+| **Frontend Technology**
+| The web application MUST be implemented in **TypeScript**. React is the chosen framework.
+| The client requires TypeScript for type safety and maintainability.
+| No (TypeScript mandatory)
+
+| **Game Engine Language**
+| The game logic module MUST be implemented in **Rust**.
+| Performance and memory safety requirements for game state validation and AI strategies.
+| No
+
+| **Communication Protocol**
+| All communication between the webapp and game engine MUST use **JSON messages** following **YEN notation**
+for game states.
+| Standardized format specified by the client for interoperability.
+| No
+
+| **Public Interoperability API**
+| The system MUST expose a documented public interoperability API (`botapi`) that allows external bots
+to interact using YEN notation.
+| Core requirement from Micrati for third-party bot integration and cross-team competitions.
+| No
+
+| **Real-time Multiplayer**
+| The player-vs-player mode MUST use **WebSockets** (via Socket.IO) for bidirectional real-time communication.
+| HTTP polling is insufficient for the latency requirements of a turn-based game with live state sync.
+| No (WebSockets mandatory; Socket.IO library negotiable)
+
+| **Deployment**
+| The complete system MUST be publicly accessible via the Web over HTTPS.
+| The client needs to demonstrate the working product to evaluators and end users.
+| No
+
+| **Containerization**
+| All services MUST be containerized using **Docker** with a root-level `docker-compose.yml`.
+| Ensures consistent deployment across environments.
+| Partial (format flexible)
+
+| **Database**
+| User data MUST be persisted. **MongoDB** is the current implementation.
+| Data persistence is mandatory; the specific database technology is negotiable.
+| Yes (technology choice)
+
+| **Authentication**
+| User operations MUST be secured using **JWT-based authentication** with **bcrypt** password hashing.
+| Ensures secure access to user-specific data and actions. Passwords must never be stored in plain text.
+| No
+
+| **Role-based Access Control**
+| The system MUST support at least two roles: **regular user** and **administrator**. Role information MUST
+be encoded in the JWT payload so the gateway and frontend can enforce access without additional service calls.
+| Required for the admin panel feature. Encoding roles in the token avoids an extra round-trip on every
+protected request.
+| Partial (additional roles could be added)
+
+| **Load Testing**
+| The system MUST include a load testing suite using **k6** covering at minimum registration, login, and
+game start scenarios.
+| Required to validate that the system meets the concurrent user quality goals under realistic conditions.
+| Partial (additional scenarios encouraged)
 |===
 
 === Domain Constraints
 
 These constraints come from the game domain itself and the specific requirements of Game Y.
 
+[options="header", cols="2,3,2,1"]
 |===
 | Constraint | Explanation | Rationale | Negotiable?
-| **Game Rules** | The system MUST correctly implement the rules of **Game Y** (classic version minimum). | Core business requirement; incorrect game rules make the product worthless. |  No
-| **Game Mode** | A **player-versus-machine** mode MUST be available. | Primary use case for the platform. |  No
-| **Board Size** | The game MUST support **variable board sizes** configurable by the user. | Required for different difficulty levels and game variants. |  No
-| **AI Strategies** | The computer MUST implement **more than one strategy**, selectable by the user. | Demonstrates AI sophistication and provides varied gameplay. |  No
-| **User Data** | Users MUST be able to register and access their match history. | Basic user management requirement. |  No
+
+| **Game Rules**
+| The system MUST correctly implement the rules of **Game Y** (classic version minimum).
+| Core business requirement; incorrect game rules make the product worthless.
+| No
+
+| **Game Modes**
+| Both **player-versus-machine** (PvM) and **player-versus-player** (PvP) modes MUST be available.
+The PvP mode operates in real time via WebSockets.
+| Primary use cases for the platform.
+| No
+
+| **Board Size**
+| The game MUST support **variable board sizes** configurable by the user (minimum size 3, no enforced maximum).
+| Required for different difficulty levels and game variants.
+| No
+
+| **AI Strategies**
+| The computer MUST implement **more than one strategy**, selectable by the user. Six strategies are currently
+implemented.
+| Demonstrates AI sophistication and provides varied gameplay experience.
+| No (minimum one strategy mandatory; more encouraged)
+
+| **User Data**
+| Users MUST be able to register and access their match history and statistics.
+| Basic user management requirement.
+| No
+
+| **Admin Capabilities**
+| Administrator users MUST be able to: view all registered accounts, grant or revoke admin permissions,
+delete a user's match history, and permanently delete user accounts.
+| Required for platform moderation and management.
+| No
 |===
 
 === Organizational Constraints
 
 These constraints govern our development process and team practices.
 
+[options="header", cols="2,3,2,1"]
 |===
 | Constraint | Explanation | Rationale | Negotiable?
-| **Documentation Standard** | Architecture MUST be documented following the **Arc42 template**. | Course requirement for the ASR lab. |  No
-| **Decision Recording** | Architectural decisions MUST be recorded as **ADRs** (Architectural Decision Records) in the wiki of Github. | Ensures traceability and rationale documentation. |  No
-| **Version Control** | Development MUST use **Git** with the repository hosted on **GitHub** (`Arquisoft/yovi_en2c`). | Course requirement for collaboration and evaluation. |  No
-| **Branching Strategy** | A **branch-based workflow** MUST be followed (feature branches, pull requests, code reviews). | Ensures code quality and team coordination. |  Partial (specific workflow details negotiable)
-| **Testing Requirements** | The system MUST include **unit tests**, **integration tests**, and **end-to-end tests**. | Quality assurance requirement from course evaluation. |  No
-| **Test Coverage** | Code coverage MUST meet thresholds defined in `sonar-project.properties` (minimum 80%). | Quality gate for acceptance. |  No
-| **CI/CD** | Automated **build, test, and deployment** MUST be implemented via CI/CD pipelines (GitHub Actions). | Ensures reproducible builds and deployment automation. |  No
-| **Issue Tracking** | All tasks MUST be tracked using **GitHub Issues**. | Project management and traceability requirement. |  No
+
+| **Documentation Standard**
+| Architecture MUST be documented following the **Arc42 template** (sections 1-15, including new sections
+for Load Testing, API Reference, and Monitoring).
+| Course requirement for the ASW lab.
+| No
+
+| **Decision Recording**
+| Architectural decisions MUST be recorded as **ADRs** (Architecture Decision Records) in the GitHub wiki.
+| Ensures traceability and rationale documentation.
+| No
+
+| **Version Control**
+| Development MUST use **Git** with the repository hosted on **GitHub** (`Arquisoft/yovi_en2c`).
+| Course requirement for collaboration and evaluation.
+| No
+
+| **Branching Strategy**
+| A **branch-based workflow** MUST be followed (feature branches, pull requests, code reviews).
+| Ensures code quality and team coordination.
+| Partial
+
+| **Testing Requirements**
+| The system MUST include **unit tests**, **integration tests**, **end-to-end tests**, and **load tests**.
+| Quality assurance requirement from course evaluation.
+| No
+
+| **Test Coverage**
+| Code coverage MUST meet thresholds defined in `sonar-project.properties` (minimum 80%).
+| Quality gate for acceptance.
+| No
+
+| **CI/CD**
+| Automated **build, test, and deployment** MUST be implemented via **GitHub Actions**.
+| Ensures reproducible builds and deployment automation.
+| No
+
+| **Issue Tracking**
+| All tasks MUST be tracked using **GitHub Issues**.
+| Project management and traceability requirement.
+| No
+
+| **Code Quality**
+| Code quality MUST be monitored via **SonarCloud**. Critical issues block merges.
+| Required by course evaluation criteria.
+| No
 |===
 
 === External Constraints
 
 These constraints come from external stakeholders and the operating environment.
 
+[options="header", cols="2,3,2,1"]
 |===
 | Constraint | Explanation | Rationale | Negotiable?
-| **Bot Integration** |  External bots can ONLY interact through the public interoperability API (botapi); no direct access to internal services. | Security and encapsulation requirement. |  No
-| **API Documentation** | The public interoperability API (botapi) MUST be documented for third-party developers. | Enables external developers to build compatible bots. |  Partial (documentation format negotiable)
-| **YEN Notation Compliance** | Any system claiming to support Game Y MUST use YEN notation for game state representation. | Industry standard for this game family. |  No
-| **Public Accessibility** | The deployed system MUST be accessible without special network configuration. | End users and evaluators need to access the platform easily. |  No
+
+| **Bot Integration**
+| External bots can ONLY interact through the public interoperability API (`botapi`, exposed at `/interop/*`);
+no direct access to internal services.
+| Security and encapsulation requirement.
+| No
+
+| **Interoperability Contract**
+| The `botapi` MUST follow the shared cross-team interoperability contract: `POST /games`,
+`GET /games/{id}`, `POST /games/{id}/play`, and `GET /play` (stateless), all using YEN notation.
+| Enables bot-vs-bot matches between teams from different universities.
+| No
+
+| **API Documentation**
+| The public interoperability API MUST be documented via **OpenAPI (YAML)** at `src/openapi/openapi.yaml`.
+| Enables external developers to build compatible bots without reading source code.
+| Partial (format negotiable)
+
+| **YEN Notation Compliance**
+| Any system claiming to support Game Y MUST use YEN notation for game state representation.
+| Industry standard for this game family.
+| No
+
+| **Public Accessibility**
+| The deployed system MUST be accessible without special network configuration over HTTPS.
+| End users and evaluators need to access the platform easily.
+| No
 |===
 
 === Quality Constraints
 
 These constraints define the minimum acceptable quality levels the architecture must guarantee.
 
+[options="header", cols="2,2,2,1"]
 |===
 | Constraint | Target | Measurement | Negotiable?
-| **Response Time** | Game engine must respond within **2 seconds** for standard board sizes. | Performance testing with realistic loads. |  Partial (exact threshold)
-| **Concurrent Users** | Support at least **10 concurrent users** without degradation. | Load testing simulation. | Yes (scale up with resources)
-| **Availability** | System must achieve **99% uptime** during evaluation period. | Monitoring and observability tools. |  Partial (percentage)
+
+| **Response Time (bot move)**
+| Game engine must respond within **2 seconds** for standard board sizes (<=11x11).
+| k6 load test `p(95) < 2000ms` on `/game/new`.
+| Partial
+
+| **Response Time (login)**
+| Login endpoint must respond within **1.5 seconds** at 50 concurrent users.
+| k6 load test `p(95) < 1500ms` on `/login`.
+| Partial
+
+| **Response Time (registration)**
+| Registration endpoint must respond within **2 seconds** at 50 concurrent users.
+| k6 load test `p(95) < 2000ms` on `/register`.
+| Partial
+
+| **Concurrent Users**
+| Support at least **50 concurrent users** on auth endpoints without degradation.
+| k6 ramping VU scenarios (register and login scripts).
+| Yes (scale up with resources)
+
+| **Error Rate**
+| HTTP error rate MUST remain below **5%** under load test conditions.
+| k6 threshold `http_req_failed rate < 0.05`.
+| Partial
+
+| **Availability**
+| System must achieve **99% uptime** during the evaluation period.
+| Monitoring via Prometheus and Grafana dashboards.
+| Partial
+
+| **Test Coverage**
+| Code coverage MUST remain above **80%** as enforced by SonarCloud.
+| Automated coverage reports in CI pipeline.
+| No
 |===
 
 === Implications of These Constraints
 
 These constraints collectively shape our architecture in specific ways:
 
-* **Three-service structure**: The technology constraints (TypeScript + Rust) force a separation between frontend (`webapp`) and game engine (`gamey`). The user management requirement adds a third service (`users`).
-* **Reverse proxy and routing**: Public access is centralized through an Nginx reverse proxy, which handles HTTPS termination and routes requests to the appropriate internal services (webapp, gateway, botapi).
-* **Docker standardization**: The containerization constraint ensures consistent development and deployment environments.
-* **Documentation overhead**: Arc42 and ADR requirements mean we must invest time in documentation alongside development.
-* **Testing necessity**: The testing requirements force us to design for testability from the start.
+* **Eight-service structure**: The technology constraints (TypeScript + Rust + WebSockets) force a separation
+between frontend (`webapp`), game engine (`gamey`), real-time multiplayer (`multiplayer`), and the remaining
+Node.js services. The admin role requirement adds access control logic at both the gateway and users service
+levels.
+
+* **JWT with role claims**: The role-based access control constraint means the JWT payload must include a `role`
+field (e.g., `"admin"` or `"user"`) so that the gateway can enforce admin-only endpoints without querying the
+users service on every request.
+
+* **Reverse proxy and routing**: Public access is centralized through an Nginx reverse proxy, which handles
+HTTPS termination and routes requests to `webapp`, `gateway`, `botapi`, and `multiplayer` via Socket.IO.
+
+* **Socket.IO for multiplayer**: The real-time constraint forces a stateful WebSocket server (`multiplayer`
+service) alongside the stateless REST services. This service maintains room state in memory and must be
+considered separately in scaling and failure scenarios.
+
+* **Docker standardization**: The containerization constraint ensures consistent development and deployment
+environments across all eight services plus the monitoring stack (Prometheus + Grafana).
+
+* **Load testing as a first-class concern**: The k6 constraint means performance is validated automatically,
+not just observed. Thresholds are defined in the test scripts and enforced in CI.
+
+* **Documentation overhead**: Arc42, ADRs, OpenAPI, and load test documentation require dedicated time
+alongside development, but provide traceability and evaluability for the course.
