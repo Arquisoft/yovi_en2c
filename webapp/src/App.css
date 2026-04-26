@@ -1193,3 +1193,37 @@ body {
   color: #ff6b6b;
   font-weight: 800;
 }
+
+.admin-user-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: white;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.admin-user-link:hover {
+  color: var(--aqua);
+}
+
+.admin-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  background: linear-gradient(135deg, var(--violet), var(--aqua));
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.admin-table td:first-child {
+  min-width: 260px;
+}
