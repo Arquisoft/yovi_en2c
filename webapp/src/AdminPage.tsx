@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import Navbar from "./Navbar";
 import { useI18n } from "./i18n/I18nProvider";
 
-const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const API = import.meta.env.VITE_API_BASE_URL || "/api";
 
 type AdminUser = {
   username: string;
@@ -107,67 +107,89 @@ export default function AdminPage() {
       <Navbar username={currentUsername} isAdmin />
 
       <main className="admin-page">
-        <h1>{t("admin.title")}</h1>
+        <section className="admin-panel">
+          <div className="admin-panel__header">
+            <div>
+              <h1>{t("admin.title")}</h1>
+            </div>
+          </div>
 
-        {error && <p className="admin-error">{error}</p>}
+          {error && <p className="admin-error">{error}</p>}
 
-        {loading ? (
-          <p>{t("common.loading")}</p>
-        ) : (
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>{t("admin.user")}</th>
-                <th>{t("admin.email")}</th>
-                <th>{t("admin.role")}</th>
-                <th>{t("admin.actions")}</th>
-              </tr>
-            </thead>
+          {loading ? (
+            <p className="admin-loading">{t("common.loading")}</p>
+          ) : (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>{t("admin.user")}</th>
+                    <th>{t("admin.email")}</th>
+                    <th>{t("admin.role")}</th>
+                    <th>{t("admin.actions")}</th>
+                  </tr>
+                </thead>
 
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.username}>
-                  <td>
-                    <Link to={`/profile/${user.username}`}>
-                      👤 {user.realName || user.username}
-                    </Link>
-                  </td>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.username}>
+                      <td>
+                        <Link
+                          className="admin-user-link"
+                          to={`/profile/${user.username}`}
+                        >
+                          <span className="admin-avatar" aria-hidden="true">
+                            {(user.realName || user.username)
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </span>
+                          <span>{user.realName || user.username}</span>
+                        </Link>
+                      </td>
 
-                  <td>{user.email || "—"}</td>
+                      <td>{user.email || "—"}</td>
 
-                  <td>{t(`admin.role.${user.role}`)}</td>
+                      <td>
+                        <span className={`admin-role admin-role--${user.role}`}>
+                          {t(`admin.role.${user.role}`)}
+                        </span>
+                      </td>
 
-                  <td>
-                    {user.role === "admin" ? (
-                      <button
-                        type="button"
-                        disabled={user.isRootAdmin}
-                        onClick={() => changeRole(user.username, "user")}
-                      >
-                        {t("admin.removeAdmin")}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => changeRole(user.username, "admin")}
-                      >
-                        {t("admin.makeAdmin")}
-                      </button>
-                    )}
+                      <td>
+                        <div className="admin-actions">
+                          {user.role === "admin" ? (
+                            <button
+                              type="button"
+                              disabled={user.isRootAdmin}
+                              onClick={() => changeRole(user.username, "user")}
+                            >
+                              {t("admin.removeAdmin")}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => changeRole(user.username, "admin")}
+                            >
+                              {t("admin.makeAdmin")}
+                            </button>
+                          )}
 
-                    <button
-                      type="button"
-                      className="danger"
-                      onClick={() => deleteHistory(user.username)}
-                    >
-                      {t("admin.deleteHistory")}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+                          <button
+                            type="button"
+                            className="danger"
+                            onClick={() => deleteHistory(user.username)}
+                          >
+                            {t("admin.deleteHistory")}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </main>
     </>
   );

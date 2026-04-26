@@ -15,6 +15,7 @@ const Home: React.FC = () => {
 
   const [checkingSession, setCheckingSession] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const username = useMemo(() => {
     const st = (location.state as LocationState | null) ?? null;
@@ -82,6 +83,16 @@ const Home: React.FC = () => {
           return;
         }
 
+        try {
+          const adminRes = await fetch(`${API_URL}/admin/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          setIsAdmin(adminRes.ok);
+        } catch {
+          setIsAdmin(false);
+        }
+
         setCheckingSession(false);
         fetchNotifications();
       } catch {
@@ -133,14 +144,15 @@ const Home: React.FC = () => {
       <Navbar
         username={username}
         onLogout={logout}
+        isAdmin={isAdmin}
         notifications={notifications}
         onMarkRead={handleMarkRead}
       />
 
       <main className="container">
-        <section className="hero" aria-label="Home panel">
+        <section className="hero" aria-label={t("home.aria")}>
           <div className="hero__top">
-            <img src={logo} alt="GameY" className="hero__logo" />
+            <img src={logo} alt={t("app.brand")} className="hero__logo" />
 
             <div className="hero__badge">
               <span aria-hidden="true" />
@@ -152,21 +164,33 @@ const Home: React.FC = () => {
           <p className="hero__subtitle">{t("home.subtitle")}</p>
 
           <div className="hero__actions">
-            <button className="btn btn--primary" onClick={startQuickGame} type="button">
+            <button
+              className="btn btn--primary"
+              onClick={startQuickGame}
+              type="button"
+            >
               {t("home.quickgame")}
             </button>
 
-            <button className="btn btn--secondary" onClick={goMultiplayer} type="button">
+            <button
+              className="btn btn--secondary"
+              onClick={goMultiplayer}
+              type="button"
+            >
               {t("home.multiplayer")}
             </button>
 
-            <button className="btn btn--ghost" onClick={logout} type="button">
+            <button
+              className="btn btn--ghost"
+              onClick={logout}
+              type="button"
+            >
               {t("home.changeUser")}
             </button>
           </div>
         </section>
 
-        <section className="grid" aria-label="Info cards">
+        <section className="grid" aria-label={t("home.cardsAria")}>
           <article className="card">
             <div className="hero__badge">
               <span aria-hidden="true" />
@@ -175,7 +199,11 @@ const Home: React.FC = () => {
             <h2 className="card__title">{t("home.card1.title")}</h2>
             <p className="card__text">{t("home.card1.text")}</p>
             <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goInstructions} type="button">
+              <button
+                className="btn btn--primary"
+                onClick={goInstructions}
+                type="button"
+              >
                 {t("home.instructions")}
               </button>
             </div>
@@ -189,7 +217,11 @@ const Home: React.FC = () => {
             <h2 className="card__title">{t("home.card2.title")}</h2>
             <p className="card__text">{t("home.card2.text")}</p>
             <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goMultiplayer} type="button">
+              <button
+                className="btn btn--primary"
+                onClick={goMultiplayer}
+                type="button"
+              >
                 {t("home.card2.button")}
               </button>
             </div>
@@ -203,7 +235,11 @@ const Home: React.FC = () => {
             <h2 className="card__title">{t("home.card3.title")}</h2>
             <p className="card__text">{t("home.card3.text")}</p>
             <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goDifficulty} type="button">
+              <button
+                className="btn btn--primary"
+                onClick={goDifficulty}
+                type="button"
+              >
                 {t("home.selectDifficulty")}
               </button>
             </div>
@@ -217,7 +253,11 @@ const Home: React.FC = () => {
             <h2 className="card__title">{t("home.card4.title")}</h2>
             <p className="card__text">{t("home.card4.text")}</p>
             <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goSocial} type="button">
+              <button
+                className="btn btn--primary"
+                onClick={goSocial}
+                type="button"
+              >
                 {t("home.card4.button")}
               </button>
             </div>
@@ -231,7 +271,11 @@ const Home: React.FC = () => {
             <h2 className="card__title">{t("home.card5.title")}</h2>
             <p className="card__text">{t("home.card5.text")}</p>
             <div style={{ marginTop: 16 }}>
-              <button className="btn btn--primary" onClick={goLocalGame} type="button">
+              <button
+                className="btn btn--primary"
+                onClick={goLocalGame}
+                type="button"
+              >
                 {t("home.card5.button")}
               </button>
             </div>

@@ -6,7 +6,7 @@ export const translations: Record<Lang, Dict> = {
   es: {
     "app.brand": "GameY",
     "common.home": "Inicio",
-    "common.game": "Nuevo Juego",
+    "common.game": "Jugar",
     "common.logout": "Salir",
     "common.language": "Idioma",
     "common.user": "Usuario",
@@ -14,6 +14,7 @@ export const translations: Record<Lang, Dict> = {
     "common.social": "Social",
     "common.lightMode": "Cambiar a tema claro",
     "common.darkMode": "Cambiar a tema oscuro",
+    "common.loading": "Cargando…",
 
     "register.title": "GameY",
     "register.label": "¿Cómo te llamas?",
@@ -298,6 +299,7 @@ export const translations: Record<Lang, Dict> = {
     "common.social": "Social",
     "common.lightMode": "Switch to light theme",
     "common.darkMode": "Switch to dark theme",
+    "common.loading": "Loading…",
 
     "register.title": "GameY",
     "register.label": "What’s your name?",
