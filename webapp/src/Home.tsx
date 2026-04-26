@@ -107,7 +107,7 @@ const Home: React.FC = () => {
     };
 
     const goDifficulty = () => {
-        navigate("/select-difficulty", { state: { username, bot: "local", boardSize: 7, localGame: true } });
+        navigate("/select-difficulty", { state: { username } });
     };
 
     const goSocial = () => {
