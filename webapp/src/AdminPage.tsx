@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import Navbar from "./Navbar";
 import { useI18n } from "./i18n/I18nProvider";
 
@@ -15,7 +15,6 @@ type AdminUser = {
 
 export default function AdminPage() {
   const { t } = useI18n();
-  const navigate = useNavigate();
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -23,32 +22,6 @@ export default function AdminPage() {
 
   const currentUsername = localStorage.getItem("username");
   const token = localStorage.getItem("token");
-
-  const clearSessionAndGoLogin = () => {
-    localStorage.removeItem("username");
-    localStorage.removeItem("token");
-    sessionStorage.clear();
-    navigate("/", { replace: true });
-  };
-
-  const logout = async () => {
-    const authToken = localStorage.getItem("token");
-
-    try {
-      if (authToken) {
-        await fetch(`${API}/logout`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        });
-      }
-    } catch {
-      // Aunque falle el backend, cerramos sesión en cliente.
-    } finally {
-      clearSessionAndGoLogin();
-    }
-  };
 
   const loadUsers = async () => {
     setLoading(true);
@@ -158,7 +131,7 @@ export default function AdminPage() {
 
   return (
     <>
-      <Navbar username={currentUsername} isAdmin onLogout={logout} />
+      <Navbar username={currentUsername} isAdmin />
 
       <main className="admin-page">
         <section className="admin-panel">

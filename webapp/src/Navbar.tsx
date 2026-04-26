@@ -15,7 +15,7 @@ export type Notification = {
 
 type NavbarProps = {
   username?: string | null;
-  onLogout?: () => void;
+  onLogout?: () => void | Promise<void>;
   isAdmin?: boolean;
   notifications?: Notification[];
   onMarkRead?: (id: string) => void;
@@ -234,6 +234,29 @@ const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
+  const logout = async () => {
+    if (onLogout) {
+      await onLogout();
+      return;
+    }
+
+    try {
+      if (token) {
+        await fetch(`${API}/logout`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    } catch {
+      // Aunque falle backend/red, cerramos sesión en cliente.
+    } finally {
+      localStorage.removeItem("username");
+      localStorage.removeItem("token");
+      sessionStorage.clear();
+      navigate("/", { replace: true });
+    }
+  };
+
   const goHome = () => navigate("/home", { state: { username } });
   const goGameSelect = () =>
     navigate("/select-difficulty", { state: { username } });
@@ -405,7 +428,7 @@ const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             className="navbtn navbtn--danger"
-            onClick={() => onLogout?.()}
+            onClick={logout}
           >
             {t("common.logout")}
           </button>

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useI18n } from "./i18n/I18nProvider";
 
-const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const API = import.meta.env.VITE_API_BASE_URL || "/api";
 
 type AdminRouteProps = {
   children: ReactNode;

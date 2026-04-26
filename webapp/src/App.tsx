@@ -1,20 +1,20 @@
-import './App.css'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider } from './ThemeProvider';
-import LoginForm from './LoginForm';
-import Game from './Game';
-import Home from './Home';
+import "./App.css";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "./ThemeProvider";
+import LoginForm from "./LoginForm";
+import Game from "./Game";
+import Home from "./Home";
 import GameFinished from "./GameFinished";
-import RegistrationForm from './RegistrationForm';
-import SelectDifficulty from './SelectDifficulty';
-import Instructions from './Instructions';
-import Statistics from './Statistics';
-import UserProfile from './UserProfile';
-import Social from './Social';
-import MultiplayerLobby from './MultiplayerLobby';
-import MultiplayerGame from './MultiplayerGame';
-import AdminPage from './AdminPage';
-import AdminRoute from './AdminRoute';
+import RegistrationForm from "./RegistrationForm";
+import SelectDifficulty from "./SelectDifficulty";
+import Instructions from "./Instructions";
+import Statistics from "./Statistics";
+import UserProfile from "./UserProfile";
+import Social from "./Social";
+import MultiplayerLobby from "./MultiplayerLobby";
+import MultiplayerGame from "./MultiplayerGame";
+import AdminPage from "./AdminPage";
+import AdminRoute from "./AdminRoute";
 
 function App() {
   return (
@@ -33,8 +33,8 @@ function App() {
           <Route path="/social" element={<Social />} />
           <Route path="/multiplayer" element={<MultiplayerLobby />} />
           <Route path="/multiplayer/game" element={<MultiplayerGame />} />
+          <Route path="/admin" element={<AdminRoute> <AdminPage /> </AdminRoute> } />
           <Route path="*" element={<Navigate to="/" replace />} />
-          <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
