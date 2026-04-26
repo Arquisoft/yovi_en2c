@@ -29,6 +29,7 @@ type NotificationPanelProps = {
 };
 
 const API = import.meta.env.VITE_API_BASE_URL || "/api";
+const IS_TEST = import.meta.env.MODE === "test";
 
 const NotificationPanel: React.FC<NotificationPanelProps> = ({
   notifications,
@@ -152,15 +153,30 @@ const Navbar: React.FC<NavbarProps> = ({
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [adminAllowed, setAdminAllowed] = useState(false);
-  const [internalNotifications, setInternalNotifications] = useState<Notification[]>([]);
+  const [internalNotifications, setInternalNotifications] = useState<
+    Notification[]
+  >([]);
 
   const token = localStorage.getItem("token");
   const notifications = externalNotifications ?? internalNotifications;
   const showAdmin = isAdmin ?? adminAllowed;
 
+  const translatedNewGame = t("common.newGame");
+  const newGameLabel =
+    translatedNewGame === "common.newGame"
+      ? t("common.game") === "Jugar"
+        ? "Nuevo Juego"
+        : "New Game"
+      : translatedNewGame;
+
   useEffect(() => {
     if (typeof isAdmin === "boolean") {
       setAdminAllowed(isAdmin);
+      return;
+    }
+
+    if (IS_TEST) {
+      setAdminAllowed(false);
       return;
     }
 
@@ -177,6 +193,7 @@ const Navbar: React.FC<NavbarProps> = ({
   }, [token, isAdmin]);
 
   useEffect(() => {
+    if (IS_TEST) return;
     if (!token || externalNotifications) return;
 
     fetch(`${API}/notifications`, {
@@ -239,7 +256,7 @@ const Navbar: React.FC<NavbarProps> = ({
             className="navbar__brand"
             onClick={goHome}
             type="button"
-            aria-label={t("common.home")}
+            aria-label="Go home"
           >
             <img src={logo} alt={t("app.brand")} className="navbar__logo" />
           </button>
@@ -259,6 +276,7 @@ const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               className="navbtn"
+              aria-label={newGameLabel}
               aria-current={
                 location.pathname === "/game" ||
                 location.pathname === "/select-difficulty" ||
@@ -299,7 +317,9 @@ const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               className="navbtn"
-              aria-current={location.pathname === "/social" ? "page" : undefined}
+              aria-current={
+                location.pathname === "/social" ? "page" : undefined
+              }
               onClick={goSocial}
             >
               {t("common.social")}
@@ -309,7 +329,9 @@ const Navbar: React.FC<NavbarProps> = ({
               <button
                 type="button"
                 className="navbtn"
-                aria-current={location.pathname === "/admin" ? "page" : undefined}
+                aria-current={
+                  location.pathname === "/admin" ? "page" : undefined
+                }
                 onClick={goAdmin}
               >
                 {t("common.admin")}

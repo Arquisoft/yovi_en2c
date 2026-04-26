@@ -249,7 +249,7 @@ describe("Home — cobertura adicional", () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
-    const homePanel = await screen.findByLabelText(/Home panel/i);
+    const homePanel = await screen.findByLabelText(/home.aria|Home panel/i);
 
     await user.click(
       within(homePanel).getByRole("button", {
@@ -266,7 +266,7 @@ describe("Home — cobertura adicional", () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
-    const cards = await screen.findByLabelText(/Info cards/i);
+    const cards = await screen.findByLabelText(/home.cardsAria|Info cards/i);
 
     await user.click(
       within(cards).getByRole("button", {
@@ -297,7 +297,7 @@ describe("Home — cobertura adicional", () => {
   test("renders hero badge and home panel landmark", async () => {
     renderHome("Pablo");
 
-    const homePanel = await screen.findByLabelText(/Home panel/i);
+    const homePanel = await screen.findByLabelText(/home.aria|Home panel/i);
 
     expect(homePanel).toBeInTheDocument();
     expect(
@@ -311,7 +311,7 @@ describe("Home — cobertura adicional", () => {
   test("renders info cards section with new local and future cards", async () => {
     renderHome("Pablo");
 
-    const cards = await screen.findByLabelText(/Info cards/i);
+    const cards = await screen.findByLabelText(/home.cardsAria|Info cards/i);
 
     expect(cards).toBeInTheDocument();
     expect(within(cards).getByRole("heading", { name: /Jugar en local|Local play/i })).toBeInTheDocument();

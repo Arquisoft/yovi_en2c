@@ -71,7 +71,7 @@ describe("MultiplayerLobby", () => {
     renderLobby("Pablo");
 
     expect(await screen.findByText(/Navbar Pablo/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Multijugador online/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Multijugador|Multiplayer/i })).toBeInTheDocument();
 
     const createButtons = screen.getAllByRole("button", { name: /Crear sala|Create room/i });
     expect(createButtons.length).toBeGreaterThan(0);

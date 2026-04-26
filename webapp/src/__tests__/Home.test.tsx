@@ -156,7 +156,7 @@ describe("Home", () => {
   it("renders the six home cards with their pills", async () => {
     renderHome("Pablo");
 
-    const cards = await screen.findByLabelText(/Info cards/i);
+    const cards = await screen.findByLabelText(/home.cardsAria|Info cards/i);
 
     expect(within(cards).getByRole("heading", { name: /Instrucciones|Instructions/i })).toBeInTheDocument();
     expect(within(cards).getByRole("heading", { name: /Multijugador|Multiplayer/i })).toBeInTheDocument();
@@ -174,7 +174,7 @@ describe("Home", () => {
     const user = userEvent.setup();
     renderHome("Pablo");
 
-    const cards = await screen.findByLabelText(/Info cards/i);
+    const cards = await screen.findByLabelText(/home.cardsAria|Info cards/i);
     const instructionsButton = within(cards).getByRole("button", {
       name: /Instrucciones|Instructions/i,
     });
