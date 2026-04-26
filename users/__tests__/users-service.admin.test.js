@@ -244,7 +244,7 @@ describe('Admin endpoints', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.deletedCount).toBe(3);
-      expect(deleteManySpy).toHaveBeenCalledWith({ username: 'alice' });
+      expect(deleteManySpy).toHaveBeenCalledWith({ username: { $eq: 'alice' } });
     });
   });
 
@@ -311,9 +311,9 @@ describe('Admin endpoints', () => {
       expect(res.body.success).toBe(true);
       expect(res.body.message).toMatch(/alice deleted/i);
 
-      expect(deleteOneSpy).toHaveBeenCalledWith({ username: 'alice' });
-      expect(deleteManySpy).toHaveBeenCalledWith({ username: 'alice' });
-      expect(deleteManySpy).toHaveBeenCalledWith({ recipient: 'alice' });
+      expect(deleteOneSpy).toHaveBeenCalledWith({ username: { $eq: 'alice' } });
+      expect(deleteManySpy).toHaveBeenCalledWith({ username: { $eq: 'alice' } });
+      expect(deleteManySpy).toHaveBeenCalledWith({ recipient: { $eq: 'alice' } });
     });
   });
 });
