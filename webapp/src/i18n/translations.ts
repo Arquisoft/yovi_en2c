@@ -3,52 +3,52 @@ export type Lang = "es" | "en";
 export type Dict = Record<string, string>;
 
 export const translations: Record<Lang, Dict> = {
-  es: {
-    "app.brand": "GameY",
-    "common.home": "Inicio",
-    "common.game": "Jugar",
-    "common.logout": "Salir",
-    "common.language": "Idioma",
-    "common.user": "Usuario",
-    "common.stats": "Estadísticas",
-    "common.social": "Social",
-    "common.lightMode": "Cambiar a tema claro",
-    "common.darkMode": "Cambiar a tema oscuro",
-    "common.loading": "Cargando…",
+    es: {
+        "app.brand": "GameY",
+        "common.home": "Inicio",
+        "common.game": "Jugar",
+        "common.logout": "Salir",
+        "common.language": "Idioma",
+        "common.user": "Usuario",
+        "common.stats": "Estadísticas",
+        "common.social": "Social",
+        "common.lightMode": "Cambiar a tema claro",
+        "common.darkMode": "Cambiar a tema oscuro",
+        "common.loading": "Cargando…",
 
-    "register.title": "GameY",
-    "register.label": "¿Cómo te llamas?",
-    "register.placeholder": "Nombre de usuario",
-    "register.button": "¡Vamos!",
-    "register.loading": "Entrando…",
-    "register.error.empty": "Por favor, introduce un nombre de usuario.",
-    "register.error.server": "Error del servidor",
-    "register.error.network": "Error de red",
+        "register.title": "GameY",
+        "register.label": "¿Cómo te llamas?",
+        "register.placeholder": "Nombre de usuario",
+        "register.button": "¡Vamos!",
+        "register.loading": "Entrando…",
+        "register.error.empty": "Por favor, introduce un nombre de usuario.",
+        "register.error.server": "Error del servidor",
+        "register.error.network": "Error de red",
 
-    "registration.aria": "Registro de usuario",
-    "registration.username": "Usuario",
-    "registration.email": "Correo electrónico",
-    "registration.password": "Contraseña", //NOSONAR
-    "registration.repeatPassword": "Repetir contraseña", //NOSONAR
-    "registration.error.repeatPassword": "Debes repetir la contraseña.",
-    "registration.button": "Registrarse",
-    "registration.loading": "Registrando…",
-    "registration.error.username": "El nombre de usuario es obligatorio.",
-    "registration.error.password": "La contraseña es obligatoria.",
-    "registration.error.generic": "Error de registro",
-    "registration.error.network": "Error de red",
-    "registration.goLogin": "¿Ya tienes cuenta? Volver al login",
+        "registration.aria": "Registro de usuario",
+        "registration.username": "Usuario",
+        "registration.email": "Correo electrónico",
+        "registration.password": "Contraseña", //NOSONAR
+        "registration.repeatPassword": "Repetir contraseña", //NOSONAR
+        "registration.error.repeatPassword": "Debes repetir la contraseña.",
+        "registration.button": "Registrarse",
+        "registration.loading": "Registrando…",
+        "registration.error.username": "El nombre de usuario es obligatorio.",
+        "registration.error.password": "La contraseña es obligatoria.",
+        "registration.error.generic": "Error de registro",
+        "registration.error.network": "Error de red",
+        "registration.goLogin": "¿Ya tienes cuenta? Volver al login",
 
-    "login.aria": "Inicio de sesión",
-    "login.username": "Usuario",
-    "login.password": "Contraseña", //NOSONAR
-    "login.button": "Iniciar sesión",
-    "login.loading": "Entrando…",
-    "login.error.username": "Por favor, introduce un nombre de usuario.",
-    "login.error.password": "Por favor, introduce una contraseña.",
-    "login.error.invalid": "Error de inicio de sesión",
-    "login.error.network": "Error de red",
-    "login.goRegister": "¿No tienes cuenta? Regístrate",
+        "login.aria": "Inicio de sesión",
+        "login.username": "Usuario",
+        "login.password": "Contraseña", //NOSONAR
+        "login.button": "Iniciar sesión",
+        "login.loading": "Entrando…",
+        "login.error.username": "Por favor, introduce un nombre de usuario.",
+        "login.error.password": "Por favor, introduce una contraseña.",
+        "login.error.invalid": "Error de inicio de sesión",
+        "login.error.network": "Error de red",
+        "login.goRegister": "¿No tienes cuenta? Regístrate",
 
     "home.badge": "Estás en Gamey - Yovi_EN2C",
     "home.welcome": "Hola {username}",
@@ -270,6 +270,25 @@ export const translations: Record<Lang, Dict> = {
     "undo.limit.label": "Límite de veces",
     "undo.limit.moves": "movimientos",
     "undo.limit.unlimited": "Sin límite",
+
+        "gamemode.title":   "Modo de juego",
+        "gamemode.subtitle": "Elige si juegas contra el bot o en local con otro jugador",
+        "gamemode.vsBot":   "vs Bot",
+        "gamemode.local":   "Local",
+
+        "local.player2.title":       "Nombre del jugador 2",
+        "local.player2.subtitle":    "Introduce el nombre del segundo jugador",
+        "local.player2.placeholder": "Jugador 2",
+        "local.player1.label":       "Jugador 1",
+        "local.player2.label":       "Jugador 2",
+
+        "local.firstplayer.title":    "¿Quién empieza?",
+        "local.firstplayer.subtitle": "Elige quién hace el primer movimiento",
+        "local.firstplayer.random":   "Aleatorio",
+
+        "pierule.title":        "Regla del pastel",
+        "pierule.description":  "El segundo jugador puede intercambiar colores tras el primer movimiento, equilibrando la ventaja de salir primero.",
+        "pierule.toggle.label": "Activar regla del pastel",
 
     //Admin
     "common.admin": "Admin",
@@ -558,6 +577,25 @@ export const translations: Record<Lang, Dict> = {
     "undo.limit.label": "Limit",
     "undo.limit.moves": "moves",
     "undo.limit.unlimited": "Unlimited",
+
+      "gamemode.title":   "Game mode",
+      "gamemode.subtitle": "Choose whether to play against the bot or locally with another player",
+      "gamemode.vsBot":   "vs Bot",
+      "gamemode.local":   "Local",
+
+      "local.player2.title":       "Player 2 name",
+      "local.player2.subtitle":    "Enter the name of the second player",
+      "local.player2.placeholder": "Player 2",
+      "local.player1.label":       "Player 1",
+      "local.player2.label":       "Player 2",
+
+      "local.firstplayer.title":    "Who goes first?",
+      "local.firstplayer.subtitle": "Choose who makes the first move",
+      "local.firstplayer.random":   "Random",
+
+      "pierule.title":        "Pie rule",
+      "pierule.description":  "The second player may swap colours after the first move, balancing the first-move advantage.",
+      "pierule.toggle.label": "Enable pie rule",
 
     //Admin
     "common.admin": "Admin",

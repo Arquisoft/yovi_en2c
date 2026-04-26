@@ -250,6 +250,26 @@ app.post("/game/new", async (req, res) => {
   }
 });
 
+app.post("/game/check", async (req, res) => {
+  const { yen } = req.body ?? {};
+  if (!yen) return res.status(400).json({ ok: false, error: "Missing YEN" });
+
+  const GAME_CHECK_URL = `${GAMEY_BASE_URL}/game/check`;
+  try {
+    const response = await axios.post(GAME_CHECK_URL, { yen }); //NOSONAR
+    const payload = response.data || {};
+    return res.status(200).json({
+      ok: true,
+      yen:           payload.yen    ?? yen,
+      finished:      payload.finished === true,
+      winner:        payload.winner  ?? null,
+      winning_edges: payload.winning_edges ?? [],
+    });
+  } catch (error) {
+    return forwardAxiosError(res, error, "Game server unavailable");
+  }
+});
+
 app.post("/game/pvb/move", async (req, res) => {
   const { yen, bot, row, col } = req.body ?? {};
 

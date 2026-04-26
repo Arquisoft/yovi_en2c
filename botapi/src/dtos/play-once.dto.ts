@@ -6,6 +6,5 @@ export interface PlayOnceRequestDto {
 }
 
 export interface PlayOnceResponseDto {
-  bot_id?: string;
   coords: CoordinatesDto;
 }

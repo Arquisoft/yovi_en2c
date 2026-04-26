@@ -76,10 +76,10 @@ function getHexagonPoints(cx: number, cy: number, radius: number) {
 // ── TurnTimer ─────────────────────────────────────────────────────────────────
 interface TurnTimerProps { secondsLeft: number; totalSeconds: number; }
 
-const TIMER_SIZE = 64;
+const TIMER_SIZE   = 64;
 const TIMER_STROKE = 5;
-const TIMER_R = (TIMER_SIZE - TIMER_STROKE) / 2;
-const TIMER_CIRC = 2 * Math.PI * TIMER_R;
+const TIMER_R      = (TIMER_SIZE - TIMER_STROKE) / 2;
+const TIMER_CIRC   = 2 * Math.PI * TIMER_R;
 
 const TurnTimer: React.FC<TurnTimerProps> = ({ secondsLeft, totalSeconds }) => {
   const ratio      = totalSeconds > 0 ? secondsLeft / totalSeconds : 1;
@@ -132,6 +132,46 @@ const Game: React.FC = () => {
     if (!username) navigate("/", { replace: true });
   }, [username, navigate]);
 
+  // ── Game mode — "bot" (default) or "local" ────────────────────────────────
+  const gameMode = useMemo(() => {
+    const st = (location.state as { mode?: string } | null) ?? null;
+    return (st?.mode === "local") ? "local" : "bot";
+  }, [location.state]);
+
+  const isLocal = gameMode === "local";
+
+  // ── Local multiplayer config ──────────────────────────────────────────────
+  const localPlayer1Name = useMemo(() => {
+    const st = (location.state as { player1Name?: string } | null) ?? null;
+    return st?.player1Name ?? username;
+  }, [location.state, username]);
+
+  const localPlayer2Name = useMemo(() => {
+    const st = (location.state as { player2Name?: string } | null) ?? null;
+    return st?.player2Name ?? "Player 2";
+  }, [location.state]);
+
+  // firstPlayer resolved at selector: "player1" | "player2"
+  const initialFirstPlayer = useMemo(() => {
+    const st = (location.state as { firstPlayer?: string } | null) ?? null;
+    return st?.firstPlayer ?? "player1";
+  }, [location.state]);
+
+  const pieRuleEnabled = useMemo(() => {
+    const st = (location.state as { pieRule?: boolean } | null) ?? null;
+    return st?.pieRule ?? false;
+  }, [location.state]);
+
+  // ── Local turn tracking ───────────────────────────────────────────────────
+  // localActiveSlot: 0 = player1's token (B), 1 = player2's token (R)
+  const initialSlot = initialFirstPlayer === "player2" ? 1 : 0;
+  const [localActiveSlot, setLocalActiveSlot] = useState<0 | 1>(initialSlot as 0 | 1);
+
+  // ── Pie rule state ────────────────────────────────────────────────────────
+  // pieRulePending: true only right after move 1, waiting for player2's choice
+  const [pieRulePending, setPieRulePending] = useState(false);
+  const [pieRuleUsed,    setPieRuleUsed]    = useState(false);
+
   const [yen, setYen] = useState<any>(null);
 
   const botId = useMemo(() => {
@@ -147,13 +187,12 @@ const Game: React.FC = () => {
 
   const timerEnabled = timerSeconds > 0;
 
-  // ── Undo config (read from navigation state) ──────────────────────────────
+  // ── Undo config ───────────────────────────────────────────────────────────
   const allowUndo = useMemo(() => {
     const st = (location.state as { allowUndo?: boolean } | null) ?? null;
     return st?.allowUndo ?? false;
   }, [location.state]);
 
-  // undoLimit: 0 = unlimited, >0 = max undos per game
   const undoLimit = useMemo(() => {
     const st = (location.state as { undoLimit?: number } | null) ?? null;
     return st?.undoLimit ?? 0;
@@ -166,19 +205,17 @@ const Game: React.FC = () => {
     return st?.boardSize ?? 7;
   }, [location.state]);
 
-  const [busy,       setBusy]       = useState(false);
-  const [error,      setError]      = useState<string | null>(null);
-  const [moveCount,  setMoveCount]  = useState(0);
+  const [busy,      setBusy]      = useState(false);
+  const [error,     setError]     = useState<string | null>(null);
+  const [moveCount, setMoveCount] = useState(0);
 
   const [hintCell,    setHintCell]    = useState<string | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
   const hintTimerRef = useRef<number | null>(null);
 
   // ── Undo state ────────────────────────────────────────────────────────────
-  // yenHistory: array of YEN states BEFORE each human move (index 0 = oldest).
-  // Each entry is the complete yen object the player could revert to.
   const [yenHistory,  setYenHistory]  = useState<any[]>([]);
-  const [undoCount,   setUndoCount]   = useState(0);   // how many undos used this game
+  const [undoCount,   setUndoCount]   = useState(0);
   const [undoToast,   setUndoToast]   = useState(false);
   const undoToastTimerRef = useRef<number | null>(null);
 
@@ -199,6 +236,7 @@ const Game: React.FC = () => {
   const [gameOver, setGameOver] = useState<{
     result: "win" | "lost" | "draw";
     winner: string | null;
+    winnerName?: string;
     reason?: "timeout";
   } | null>(null);
 
@@ -229,8 +267,15 @@ const Game: React.FC = () => {
   useEffect(() => {
     if (!timerEnabled || timeLeft !== 0 || gameOver || !yen || busy) return;
     const players: [string, string] = fixedPlayersRef.current ?? ["B", "R"];
-    setGameOver({ result: "lost", winner: players[1], reason: "timeout" });
-    saveGameResult("loss", players[1], moveCount, boardSizeFromState, "timeout");
+    // In local mode: active player loses on timeout
+    if (isLocal) {
+      const losingToken = players[localActiveSlot];
+      const losingName  = localActiveSlot === 0 ? localPlayer1Name : localPlayer2Name;
+      setGameOver({ result: "lost", winner: losingToken, winnerName: losingName, reason: "timeout" });
+    } else {
+      setGameOver({ result: "lost", winner: players[1], reason: "timeout" });
+      saveGameResult("loss", players[1], moveCount, boardSizeFromState, "timeout");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft]);
 
@@ -260,6 +305,10 @@ const Game: React.FC = () => {
     setHintCell(null); setHintLoading(false);
     setYenHistory([]); setUndoCount(0); setUndoToast(false);
     stopTimer(); setTimeLeft(timerSeconds);
+    // Reset local-specific state
+    setLocalActiveSlot(initialSlot as 0 | 1);
+    setPieRulePending(false);
+    setPieRuleUsed(false);
   }, [botId, boardSizeFromState, stopTimer, timerSeconds]);
 
   const extractPlayers = (nextYen: any): [string, string] => {
@@ -281,8 +330,27 @@ const Game: React.FC = () => {
 
   const boardSize    = yen?.size ?? boardSizeFromState;
   const layoutMatrix = useMemo(() => (!yen?.layout ? [] : parseLayout(yen.layout)), [yen]);
-  const humanToken   = useMemo(() => fixedPlayers ? fixedPlayers[0] : (yen?.players?.[0] ? String(yen.players[0]) : "B"), [yen, fixedPlayers]);
-  const botToken     = useMemo(() => fixedPlayers ? fixedPlayers[1] : (yen?.players?.[1] ? String(yen.players[1]) : "R"), [yen, fixedPlayers]);
+
+  // ── Token / player resolution ──────────────────────────────────────────────
+  // In local mode: slot 0 always plays "B", slot 1 always plays "R".
+  // humanToken is the token of the currently active player (local) or player1 (bot).
+  const humanToken = useMemo(() =>
+          fixedPlayers ? fixedPlayers[0] : (yen?.players?.[0] ? String(yen.players[0]) : "B"),
+      [yen, fixedPlayers]);
+
+  const botToken = useMemo(() =>
+          fixedPlayers ? fixedPlayers[1] : (yen?.players?.[1] ? String(yen.players[1]) : "R"),
+      [yen, fixedPlayers]);
+
+  // In local mode, the active token is derived from the active slot
+  const localActiveToken = useMemo(() => {
+    if (!isLocal) return humanToken;
+    const players: [string, string] = fixedPlayersRef.current ?? ["B", "R"];
+    return players[localActiveSlot];
+  }, [isLocal, localActiveSlot, humanToken]);
+
+  // Display name of the currently active player (local mode only)
+  const localActivePlayerName = localActiveSlot === 0 ? localPlayer1Name : localPlayer2Name;
 
   const boardWidth  = 540;
   const padding     = 50;
@@ -350,10 +418,17 @@ const Game: React.FC = () => {
     const winningCells = buildWinningCellSet(payload?.winning_edges);
     setWinningPath(winner && winningCells.size > 0 ? { winner, cells: winningCells } : null);
     clearPendingFinish();
-    const youWin = winner ? winner === playersFixed[0] : false;
-    const result: "win" | "lost" | "draw" = winner ? (youWin ? "win" : "lost") : "draw";
-    setGameOver({ result, winner });
-    if (result !== "draw") saveGameResult(result === "win" ? "win" : "loss", winner, currentMoveCount, currentBoardSize);
+
+    if (isLocal) {
+      // In local mode, map winner token to player name
+      const winnerName = winner === playersFixed[0] ? localPlayer1Name : localPlayer2Name;
+      setGameOver({ result: "win", winner, winnerName });
+    } else {
+      const youWin = winner ? winner === playersFixed[0] : false;
+      const result: "win" | "lost" | "draw" = winner ? (youWin ? "win" : "lost") : "draw";
+      setGameOver({ result, winner });
+      if (result !== "draw") saveGameResult(result === "win" ? "win" : "loss", winner, currentMoveCount, currentBoardSize);
+    }
   };
 
   const clearHint = () => {
@@ -361,13 +436,20 @@ const Game: React.FC = () => {
     if (hintTimerRef.current !== null) { window.clearTimeout(hintTimerRef.current); hintTimerRef.current = null; }
   };
 
+  // ── Reset helpers for new game ────────────────────────────────────────────
+  const resetLocalState = () => {
+    setLocalActiveSlot(initialSlot as 0 | 1);
+    setPieRulePending(false);
+    setPieRuleUsed(false);
+  };
+
   const newGame = async () => {
     setBusy(true); setError(null); setWinningPath(null); setGameOver(null);
     clearPendingFinish(); setMoveCount(0); stopTimer(); setTimeLeft(timerSeconds);
     clearHint(); setHintLoading(false);
     fixedPlayersRef.current = null; setFixedPlayersState(null);
-    // Reset undo state for new game
     setYenHistory([]); setUndoCount(0); setUndoToast(false);
+    resetLocalState();
     try {
       const res  = await fetch(`${API_URL}/game/new`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -395,54 +477,115 @@ const Game: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, botId, boardSizeFromState]);
 
+  // ── Pie rule: swap sides ───────────────────────────────────────────────────
+  // When player 2 accepts the swap, tokens are exchanged:
+  // player1 keeps the piece that was placed (now R-colored) and player2 takes B.
+  const handlePieRuleSwap = (accept: boolean) => {
+    if (!pieRulePending || !yen) return;
+    setPieRulePending(false);
+    if (accept) {
+      // Swap the fixed players array so tokens are flipped for the rest of the game
+      const current = fixedPlayersRef.current ?? ["B", "R"];
+      const swapped: [string, string] = [current[1], current[0]];
+      setFixedPlayers(swapped);
+      setPieRuleUsed(true);
+      // Active slot stays at 1 (player2 already chose, now it's effectively their turn but
+      // they've swapped so player1's original piece is now theirs — slot alternation continues normally)
+    }
+    // Either way, it's now player2's turn (slot 1 stays active after the choice)
+    startTimer();
+  };
+
+  // ── Send move: branches on game mode ─────────────────────────────────────
   const sendMove = async (target: { row: number; col: number }) => {
     if (!target || !yen || busy || gameOver) return;
     if (!isEmptyCell(target.row, target.col)) return;
+
     clearHint();
     stopTimer();
-    const optimisticYen = applyLocalHumanMove(yen, target.row, target.col, humanToken);
-    setBusy(true); setError(null);
-    const previousYen   = yen;
-    const newMoveCount  = moveCount + 1;
-    setMoveCount(newMoveCount);
-    setYen(optimisticYen);
+    const previousYen  = yen;
+    const newMoveCount = moveCount + 1;
 
-    // ── Push to undo history before the move is sent ──────────────────────
-    if (allowUndo) {
-      setYenHistory(prev => [...prev, previousYen]);
-    }
+    if (isLocal) {
+      // ── Local multiplayer: no backend bot call ─────────────────────────
+      const activeToken   = localActiveToken;
+      const optimisticYen = applyLocalHumanMove(yen, target.row, target.col, activeToken);
 
-    try {
-      const res  = await fetch(`${API_URL}/game/pvb/move`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ yen: previousYen, bot: botId, row: target.row, col: target.col }),
-      });
-      const data = await readGatewayResponse(res);
-      if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Backend error");
-      const nextYen  = (data as any).yen;
-      const players: [string, string] = fixedPlayersRef.current ?? extractPlayers(nextYen);
-      if (!fixedPlayersRef.current) setFixedPlayers(players);
-      setYen(nextYen);
-      applyFinishFromGateway(data, players, newMoveCount, boardSizeFromState);
-      if (!(data as any).finished) startTimer();
-    } catch (e: any) {
-      // Revert on error — also pop the history entry we just pushed
-      setYen(previousYen);
-      setMoveCount((c) => Math.max(0, c - 1));
-      if (allowUndo) {
-        setYenHistory(prev => prev.slice(0, -1));
+      if (allowUndo) setYenHistory(prev => [...prev, previousYen]);
+      setMoveCount(newMoveCount);
+      setYen(optimisticYen);
+
+      // Check finish via the check endpoint (no bot move)
+      setBusy(true); setError(null);
+      try {
+        const res  = await fetch(`${API_URL}/game/check`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ yen: optimisticYen }),
+        });
+        const data = await readGatewayResponse(res);
+
+        const players: [string, string] = fixedPlayersRef.current ?? extractPlayers(optimisticYen);
+        if (!fixedPlayersRef.current) setFixedPlayers(players);
+
+        if (data.ok && (data as any).finished) {
+          applyFinishFromGateway(data, players, newMoveCount, boardSizeFromState);
+        } else {
+          // Game continues — trigger pie rule prompt if applicable
+          if (pieRuleEnabled && newMoveCount === 1 && !pieRuleUsed) {
+            setPieRulePending(true);
+            // Don't start timer yet — wait for pie rule decision
+          } else {
+            // Alternate the active player slot
+            setLocalActiveSlot(prev => (prev === 0 ? 1 : 0) as 0 | 1);
+            startTimer();
+          }
+        }
+      } catch (e: any) {
+        // Revert on error
+        setYen(previousYen);
+        setMoveCount(c => Math.max(0, c - 1));
+        if (allowUndo) setYenHistory(prev => prev.slice(0, -1));
+        setError(e?.message ?? "Backend error");
+        startTimer();
+      } finally {
+        setBusy(false);
       }
-      setError(e?.message ?? "Backend error");
-      startTimer();
-    } finally {
-      setBusy(false);
+
+    } else {
+      // ── vs Bot: original flow ─────────────────────────────────────────
+      const optimisticYen = applyLocalHumanMove(yen, target.row, target.col, humanToken);
+      setBusy(true); setError(null);
+      setMoveCount(newMoveCount);
+      setYen(optimisticYen);
+
+      if (allowUndo) setYenHistory(prev => [...prev, previousYen]);
+
+      try {
+        const res  = await fetch(`${API_URL}/game/pvb/move`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ yen: previousYen, bot: botId, row: target.row, col: target.col }),
+        });
+        const data = await readGatewayResponse(res);
+        if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Backend error");
+        const nextYen  = (data as any).yen;
+        const players: [string, string] = fixedPlayersRef.current ?? extractPlayers(nextYen);
+        if (!fixedPlayersRef.current) setFixedPlayers(players);
+        setYen(nextYen);
+        applyFinishFromGateway(data, players, newMoveCount, boardSizeFromState);
+        if (!(data as any).finished) startTimer();
+      } catch (e: any) {
+        setYen(previousYen);
+        setMoveCount(c => Math.max(0, c - 1));
+        if (allowUndo) setYenHistory(prev => prev.slice(0, -1));
+        setError(e?.message ?? "Backend error");
+        startTimer();
+      } finally {
+        setBusy(false);
+      }
     }
   };
 
   // ── Undo move ─────────────────────────────────────────────────────────────
-  // Restores the board to the state before the last human move.
-  // The bot's response move is also rolled back because the history stores
-  // the YEN BEFORE the human moved (which is also BEFORE the bot responded).
   const undoMove = () => {
     if (!allowUndo) return;
     if (yenHistory.length === 0) return;
@@ -457,9 +600,16 @@ const Game: React.FC = () => {
     setUndoCount(prev => prev + 1);
     clearHint();
     stopTimer();
+
+    // In local mode: un-alternate the slot so the same player replays their move
+    if (isLocal) {
+      setLocalActiveSlot(prev => (prev === 0 ? 1 : 0) as 0 | 1);
+      // If pie rule was pending, cancel it
+      if (pieRulePending) setPieRulePending(false);
+    }
+
     startTimer();
 
-    // Show brief "Move undone" toast
     setUndoToast(true);
     if (undoToastTimerRef.current !== null) window.clearTimeout(undoToastTimerRef.current);
     undoToastTimerRef.current = window.setTimeout(() => {
@@ -525,20 +675,19 @@ const Game: React.FC = () => {
   };
 
   // ── Button visibility / disabled logic ────────────────────────────────────
-  const showHintButton = !!yen && !gameOver && !busy;
-
+  // Hint is only available in bot mode
+  const showHintButton = !isLocal && !!yen && !gameOver && !busy;
   const showUndoButton = allowUndo && !!yen && !gameOver;
 
-  // The undo button is disabled when:
-  //  - the game is busy (waiting for bot)
-  //  - no moves have been made yet (history is empty)
-  //  - the undo limit has been reached
   const undoDisabled =
       busy ||
       yenHistory.length === 0 ||
       (undoLimit > 0 && undoCount >= undoLimit);
 
   const undoRemaining = undoLimit > 0 ? undoLimit - undoCount : null;
+
+  // Board is blocked while pie rule choice is pending
+  const boardBlocked = pieRulePending;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -573,6 +722,27 @@ const Game: React.FC = () => {
             </button>
 
             <h1 style={{ margin: 0, textAlign: "center", paddingTop: 6 }}>{t("app.brand")}</h1>
+
+            {/* Active player indicator — local mode only */}
+            {isLocal && yen && !gameOver && !pieRulePending && (
+                <div style={{
+                  marginTop: 6,
+                  padding: "4px 14px",
+                  borderRadius: 20,
+                  background: localActiveSlot === 0 ? "rgba(30,136,229,.25)" : "rgba(211,47,47,.25)",
+                  border: `1px solid ${localActiveSlot === 0 ? "rgba(30,136,229,.6)" : "rgba(211,47,47,.6)"}`,
+                  color: "white",
+                  fontWeight: 700,
+                  fontSize: "0.88rem",
+                }}>
+                  {t("local.activeturn")}: <strong>{localActivePlayerName}</strong>
+                  {pieRuleUsed && (
+                      <span style={{ marginLeft: 8, fontSize: "0.75rem", opacity: 0.7 }}>
+                        🥧 {t("pierule.used")}
+                      </span>
+                  )}
+                </div>
+            )}
 
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 10 }}>
               <button
@@ -625,9 +795,9 @@ const Game: React.FC = () => {
                 {layoutMatrix.map((row, rowIndex) => {
                   const offsetX = padding + ((boardSize - row.length) * cellSpacing) / 2;
                   return row.map((cell, colIndex) => {
-                    const x        = offsetX + colIndex * cellSpacing;
-                    const y        = padding + rowIndex * rowHeight;
-                    const clickable = cell === "." && !busy && !!yen && !gameOver;
+                    const x         = offsetX + colIndex * cellSpacing;
+                    const y         = padding + rowIndex * rowHeight;
+                    const clickable = cell === "." && !busy && !!yen && !gameOver && !boardBlocked;
                     const isHinted  = hintCell === `${rowIndex}-${colIndex}`;
                     return (
                         <polygon
@@ -653,7 +823,6 @@ const Game: React.FC = () => {
             {/* Side panel — timer + hint + undo */}
             {yen && !gameOver && (
                 <div className="game-side-panel">
-                  {/* Timer section */}
                   {timerEnabled && (
                       <>
                         {busy ? (
@@ -664,13 +833,15 @@ const Game: React.FC = () => {
                         ) : (
                             <>
                               <TurnTimer secondsLeft={timeLeft} totalSeconds={timerSeconds} />
-                              <p className="game-timer-text">{t("timer.yourTurn")}</p>
+                              <p className="game-timer-text">
+                                {isLocal ? localActivePlayerName : t("timer.yourTurn")}
+                              </p>
                             </>
                         )}
                       </>
                   )}
 
-                  {/* Hint button */}
+                  {/* Hint — bot mode only */}
                   {showHintButton && (
                       <button
                           onClick={requestHint}
@@ -682,7 +853,7 @@ const Game: React.FC = () => {
                       </button>
                   )}
 
-                  {/* Undo button — below hint, only when undo is enabled */}
+                  {/* Undo button */}
                   {showUndoButton && (
                       <button
                           onClick={undoMove}
@@ -697,11 +868,7 @@ const Game: React.FC = () => {
                       >
                         {t("game.undo")}
                         {undoRemaining !== null && (
-                            <span style={{
-                              marginLeft: 6,
-                              fontSize: "0.72rem",
-                              opacity: 0.75,
-                            }}>
+                            <span style={{ marginLeft: 6, fontSize: "0.72rem", opacity: 0.75 }}>
                               ({undoRemaining})
                             </span>
                         )}
@@ -711,7 +878,57 @@ const Game: React.FC = () => {
             )}
           </div>
 
-          {/* Undo toast — brief "Move undone" notification */}
+          {/* ── Pie Rule modal ────────────────────────────────────────────── */}
+          {pieRulePending && (
+              <div
+                  style={{
+                    position: "fixed", inset: 0, zIndex: 100,
+                    background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+              >
+                <div
+                    style={{
+                      background: "linear-gradient(135deg, rgba(18,24,38,.92), rgba(18,24,38,.80))",
+                      border: "1px solid rgba(255,255,255,.18)", borderRadius: 20,
+                      padding: "36px 44px", textAlign: "center",
+                      boxShadow: "0 24px 60px rgba(0,0,0,.6)",
+                      display: "flex", flexDirection: "column", gap: 20, minWidth: 280, maxWidth: 380,
+                    }}
+                >
+                  <div style={{ fontSize: 44 }}>🥧</div>
+                  <h2 style={{ margin: 0, fontSize: 22, color: "white" }}>
+                    {t("pierule.modal.title")}
+                  </h2>
+                  <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.92rem", lineHeight: 1.5 }}>
+                    {t("pierule.modal.description", { player: localPlayer2Name })}
+                  </p>
+                  <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+                    <button
+                        onClick={() => handlePieRuleSwap(true)}
+                        style={{
+                          padding: "11px 22px", borderRadius: 12, background: "#1e88e5",
+                          color: "white", border: "none", fontWeight: 800, fontSize: 15, cursor: "pointer",
+                        }}
+                    >
+                      {t("pierule.modal.accept")}
+                    </button>
+                    <button
+                        onClick={() => handlePieRuleSwap(false)}
+                        style={{
+                          padding: "11px 22px", borderRadius: 12,
+                          background: "rgba(255,255,255,.08)", color: "white",
+                          border: "1px solid rgba(255,255,255,.22)", fontWeight: 800, fontSize: 15, cursor: "pointer",
+                        }}
+                    >
+                      {t("pierule.modal.decline")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+          )}
+
+          {/* Undo toast */}
           {undoToast && (
               <div
                   role="status"
@@ -757,16 +974,20 @@ const Game: React.FC = () => {
                 >
                   <div style={{ fontSize: 56 }}>
                     {gameOver.reason === "timeout" ? "⏰"
-                        : gameOver.result === "win"  ? "🏆"
-                            : gameOver.result === "lost" ? "💀"
+                        : gameOver.result === "win"   ? "🏆"
+                            : gameOver.result === "lost"  ? "💀"
                                 : "🤝"}
                   </div>
 
                   <h2 style={{ margin: 0, fontSize: 28, color: "white" }}>
-                    {gameOver.reason === "timeout"   ? t("timer.timeout.lost")
-                        : gameOver.result === "win"    ? t("game.finished.win")
-                            : gameOver.result === "lost"   ? t("game.finished.lost")
-                                : t("game.finished.draw")}
+                    {isLocal
+                        ? gameOver.winnerName
+                            ? `${gameOver.winnerName} ${t("game.finished.wins")}`
+                            : t("game.finished.draw")
+                        : gameOver.reason === "timeout"  ? t("timer.timeout.lost")
+                            : gameOver.result === "win"      ? t("game.finished.win")
+                                : gameOver.result === "lost"     ? t("game.finished.lost")
+                                    : t("game.finished.draw")}
                   </h2>
 
                   {gameOver.reason === "timeout" && (

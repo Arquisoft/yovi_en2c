@@ -71,7 +71,6 @@ class InteropService {
         const selectedBotId = input.bot_id?.trim() || "random_bot";
         const moveResponse = await gamey_client_1.gameyClient.chooseBotMove(selectedBotId, input.position);
         return {
-            bot_id: selectedBotId,
             coords: moveResponse.coords
         };
     }

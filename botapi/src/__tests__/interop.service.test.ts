@@ -240,7 +240,6 @@ describe("interopService", () => {
       layout: "./../..."
     });
     expect(result).toEqual({
-      bot_id: "random_bot",
       coords: { x: 2, y: 0, z: 0 }
     });
   });
@@ -263,7 +262,6 @@ describe("interopService", () => {
     });
 
     expect(result).toEqual({
-      bot_id: "random_bot",
       coords: { x: 2, y: 0, z: 0 }
     });
   });

@@ -24,6 +24,13 @@ const Home: React.FC = () => {
 
   const token = useMemo(() => localStorage.getItem("token") ?? "", []);
 
+  const clearSessionAndGoLogin = useCallback(() => {
+    localStorage.removeItem("username");
+    localStorage.removeItem("token");
+    sessionStorage.clear();
+    navigate("/", { replace: true });
+  }, [navigate]);
+
   const fetchNotifications = useCallback(async () => {
     if (!token) return;
 
@@ -48,10 +55,12 @@ const Home: React.FC = () => {
       );
 
       try {
-        await fetch(`${API_URL}/notifications/${id}/read`, {
+        const res = await fetch(`${API_URL}/notifications/${id}/read`, {
           method: "PATCH",
           headers: { Authorization: `Bearer ${token}` },
         });
+
+        if (!res.ok) throw new Error("Mark read failed");
       } catch {
         setNotifications((prev) =>
           prev.map((n) => (n.id === id ? { ...n, read: false } : n))
@@ -64,9 +73,7 @@ const Home: React.FC = () => {
   useEffect(() => {
     const verifySession = async () => {
       if (!username || !token) {
-        localStorage.removeItem("username");
-        localStorage.removeItem("token");
-        navigate("/", { replace: true });
+        clearSessionAndGoLogin();
         return;
       }
 
@@ -77,9 +84,7 @@ const Home: React.FC = () => {
         });
 
         if (!res.ok) {
-          localStorage.removeItem("username");
-          localStorage.removeItem("token");
-          navigate("/", { replace: true });
+          clearSessionAndGoLogin();
           return;
         }
 
@@ -96,14 +101,27 @@ const Home: React.FC = () => {
         setCheckingSession(false);
         fetchNotifications();
       } catch {
-        localStorage.removeItem("username");
-        localStorage.removeItem("token");
-        navigate("/", { replace: true });
+        clearSessionAndGoLogin();
       }
     };
 
     verifySession();
-  }, [username, token, navigate, fetchNotifications]);
+  }, [username, token, clearSessionAndGoLogin, fetchNotifications]);
+
+  const logout = useCallback(async () => {
+    try {
+      if (token) {
+        await fetch(`${API_URL}/logout`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    } catch {
+      // Cerramos sesión en cliente aunque falle el backend.
+    } finally {
+      clearSessionAndGoLogin();
+    }
+  }, [token, clearSessionAndGoLogin]);
 
   const startQuickGame = () => {
     navigate("/game", { state: { username, bot: "minimax_bot", boardSize: 7 } });
@@ -137,6 +155,7 @@ const Home: React.FC = () => {
     <div className="page">
       <Navbar
         username={username}
+        onLogout={logout}
         isAdmin={isAdmin}
         notifications={notifications}
         onMarkRead={handleMarkRead}
@@ -173,29 +192,7 @@ const Home: React.FC = () => {
               {t("home.multiplayer")}
             </button>
 
-            <button
-              className="btn btn--ghost"
-              onClick={async () => {
-                const token = localStorage.getItem("token");
-
-                try {
-                  if (token) {
-                    await fetch("/api/logout", {
-                      method: "POST",
-                      headers: { Authorization: `Bearer ${token}` },
-                    });
-                  }
-                } catch {
-                  // Cerramos sesión en cliente aunque falle.
-                } finally {
-                  localStorage.removeItem("username");
-                  localStorage.removeItem("token");
-                  sessionStorage.clear();
-                  navigate("/", { replace: true });
-                }
-              }}
-              type="button"
-            >
+            <button className="btn btn--ghost" onClick={logout} type="button">
               {t("home.changeUser")}
             </button>
           </div>
