@@ -8,9 +8,9 @@ connect all three sides of a triangular board with their pieces. The project is 
 Architecture (ASW) course at the University of Oviedo, for the company Micrati.
 
 The platform allows users to play against AI opponents with six difficulty levels, compete against other human players
-online via real-time multiplayer, interact with the social features (friends, notifications), and track their
-performance through match history and statistics. External bots can integrate with the system via a dedicated public
-interoperability API.
+online via real-time multiplayer, interact with social features (friends, notifications), and track their performance
+through match history and statistics. An admin role provides privileged users with a management panel to oversee the
+platform. External bots can integrate with the system via a dedicated public interoperability API.
 
 The system follows a **microservices architecture** composed of eight independent services: a React frontend (`webapp`),
 an API gateway (`gateway`), a JWT authentication service (`authentication`), a user management service (`users`),
@@ -23,7 +23,7 @@ API (`botapi`), and an Nginx reverse proxy. Observability is provided by Prometh
 
 The YOVI system is a web-based gaming platform based on Game Y, developed for the company Micrati. The main goal is
 to allow users to play matches against the machine or against other players online, with support for registration,
-social features, and statistics.
+social features, administration, and statistics.
 
 Key functional requirements include:
 
@@ -31,12 +31,15 @@ Key functional requirements include:
 * Web application in React + TypeScript supporting the classic version of Game Y.
 * Rust game engine to validate game state and compute bot moves.
 * User registration and JWT-based authentication.
+* **Role-based access control**: regular users and administrators.
 * Match history and game statistics with pagination.
 * Six AI difficulty levels selectable by the user.
 * Real-time online multiplayer (Player vs Player) via WebSockets (Socket.IO).
 * Social features: friend requests, friend list management, and user search.
 * In-app notification system (friend requests, welcome messages).
 * User profile with editable fields (name, bio, location, preferred language).
+* **Admin panel**: privileged users can view all registered accounts, grant or revoke admin
+permissions, delete a user's match history, and permanently delete accounts.
 * Public interoperability API for external bots using YEN notation.
 * Interoperability client mode: our bots can play against other teams' APIs.
 * Internationalization (i18n) — English and Spanish supported.
@@ -54,7 +57,8 @@ The main quality attributes for the system architecture are:
 | 1
 | **Functionality**
 | The system must correctly implement Game Y rules and provide all six working AI strategies. The multiplayer mode
-must accurately synchronize game state between two players in real time.
+must accurately synchronize game state between two players in real time. The admin panel must correctly enforce
+role-based access so that only admin users can perform privileged operations.
 
 | 2
 | **Usability**
@@ -73,8 +77,10 @@ Strategy Pattern in `gamey` allows new AI strategies to be added without modifyi
 
 | 5
 | **Security**
-| JWT-based authentication protects user-specific operations. bcrypt hashing is used for passwords. The reverse
-proxy limits direct exposure of internal services. The gateway sanitizes and validates all path parameters.
+| JWT-based authentication protects user-specific operations. bcrypt hashing is used for passwords. Role claims
+in the JWT payload allow the gateway and frontend to enforce admin-only routes without additional service calls.
+The reverse proxy limits direct exposure of internal services. The gateway sanitizes and validates all path
+parameters.
 
 | 6
 | **Testability**
@@ -96,6 +102,11 @@ end-to-end tests via Playwright. Load tests use k6.
 | End Users (Human Players)
 | N/A
 | Usable, stable interface with complete gameplay, multiplayer, social features, and statistics.
+
+| Platform Administrators
+| Privileged users via the admin panel
+| Ability to manage user accounts, grant or revoke admin permissions, delete match histories, and remove accounts
+from the platform.
 
 | Micrati (Client)
 | N/A
