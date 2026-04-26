@@ -272,8 +272,19 @@ export const translations: Record<Lang, Dict> = {
 
     //Admin
     "common.admin": "Admin",
+    "admin.title": "Panel de administración",
+    "admin.user": "Usuario",
+    "admin.email": "Correo",
+    "admin.role": "Rol",
+    "admin.actions": "Acciones",
+    "admin.role.user": "Usuario",
+    "admin.role.admin": "Admin",
+    "admin.makeAdmin": "Hacer admin",
+    "admin.removeAdmin": "Quitar admin",
+    "admin.deleteHistory": "Borrar historial",
+    "admin.deleteHistoryConfirm": "¿Estás seguro de que quieres borrar el historial de partidas de {{username}}? Esta es una opción destructiva.",
     "notifications.adminGranted": "Ahora eres administrador.",
-    "notifications.adminRevoked": "Ya no eres administrador."
+    "notifications.adminRevoked": "Ya no eres administrador.",
   },
 
   en: {
@@ -520,8 +531,8 @@ export const translations: Record<Lang, Dict> = {
     "multiplayer.keepFeaturesText": "Multiplayer keeps board size, hints and the GameY experience.",
     "multiplayer.keepFeaturesPill": "Classic GameY",
     "multiplayer.customSize": "Custom size",
-    "multiplayer.creating": "Creando sala…",
-    "multiplayer.joining": "Uniéndose a la sala…",
+    "multiplayer.creating": "Creating room…",
+    "multiplayer.joining": "Joining room…",
     "common.multiplayer": "Multiplayer",
     "home.multiplayer": "Multiplayer",
     "home.card2.button": "Play multiplayer",
@@ -545,6 +556,17 @@ export const translations: Record<Lang, Dict> = {
 
     //Admin
     "common.admin": "Admin",
+    "admin.title": "Admin panel",
+    "admin.user": "User",
+    "admin.email": "Email",
+    "admin.role": "Role",
+    "admin.actions": "Actions",
+    "admin.role.user": "User",
+    "admin.role.admin": "Admin",
+    "admin.makeAdmin": "Make admin",
+    "admin.removeAdmin": "Remove admin",
+    "admin.deleteHistory": "Delete history",
+    "admin.deleteHistoryConfirm": "Are you sure you want to delete {{username}}'s match history? This is a destructive action.",
     "notifications.adminGranted": "You are now an administrator.",
     "notifications.adminRevoked": "You are no longer an administrator.",
   },
