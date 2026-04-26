@@ -109,17 +109,17 @@ describe("AdminPage", () => {
     mockInitialUsers();
     renderAdminPage();
 
-    expect(await screen.findByText("Alice Liddell")).toBeInTheDocument();
+    expect(await screen.findByText("alice")).toBeInTheDocument();
     expect(screen.getByText("admin")).toBeInTheDocument();
     expect(screen.getByText("bob")).toBeInTheDocument();
-    expect(screen.getByText("Pablo")).toBeInTheDocument();
+    expect(screen.getByText("pablo")).toBeInTheDocument();
   });
 
   test("calls GET /api/admin/users with bearer token", async () => {
     mockInitialUsers();
     renderAdminPage();
 
-    await screen.findByText("Alice Liddell");
+    await screen.findByText("alice");
 
     expect(global.fetch).toHaveBeenCalledWith("/api/admin/users", {
       headers: { Authorization: "Bearer token-123" },
@@ -139,14 +139,14 @@ describe("AdminPage", () => {
     mockInitialUsers();
     renderAdminPage();
 
-    const aliceText = await screen.findByText("Alice Liddell");
+    const aliceText = await screen.findByText("alice");
     const aliceLink = aliceText.closest("a");
 
     expect(aliceLink).toBeInTheDocument();
     expect(aliceLink).toHaveAttribute("href", "/profile/alice");
   });
 
-  test("renders avatar initials from realName", async () => {
+  test("renders avatar initials from username", async () => {
     mockInitialUsers();
     renderAdminPage();
 
@@ -205,7 +205,7 @@ describe("AdminPage", () => {
 
     renderAdminPage();
 
-    const aliceRow = (await screen.findByText("Alice Liddell")).closest("tr") as HTMLTableRowElement;
+    const aliceRow = (await screen.findByText("alice")).closest("tr") as HTMLTableRowElement;
     await user.click(within(aliceRow).getByRole("button", { name: makeAdminRe }));
 
     await waitFor(() => {
@@ -274,7 +274,7 @@ describe("AdminPage", () => {
 
     renderAdminPage();
 
-    const aliceRow = (await screen.findByText("Alice Liddell")).closest("tr") as HTMLTableRowElement;
+    const aliceRow = (await screen.findByText("alice")).closest("tr") as HTMLTableRowElement;
     await user.click(within(aliceRow).getByRole("button", { name: makeAdminRe }));
 
     expect(await screen.findByText(/admin\.error\.role|error/i)).toBeInTheDocument();
@@ -287,7 +287,7 @@ describe("AdminPage", () => {
     mockInitialUsers();
     renderAdminPage();
 
-    const aliceRow = (await screen.findByText("Alice Liddell")).closest("tr") as HTMLTableRowElement;
+    const aliceRow = (await screen.findByText("alice")).closest("tr") as HTMLTableRowElement;
     await user.click(within(aliceRow).getByRole("button", { name: resetRe }));
 
     expect(window.confirm).toHaveBeenCalled();
@@ -307,7 +307,7 @@ describe("AdminPage", () => {
 
     renderAdminPage();
 
-    const aliceRow = (await screen.findByText("Alice Liddell")).closest("tr") as HTMLTableRowElement;
+    const aliceRow = (await screen.findByText("alice")).closest("tr") as HTMLTableRowElement;
     await user.click(within(aliceRow).getByRole("button", { name: resetRe }));
 
     await waitFor(() => {
@@ -326,7 +326,7 @@ describe("AdminPage", () => {
     mockInitialUsers();
     renderAdminPage();
 
-    const aliceRow = (await screen.findByText("Alice Liddell")).closest("tr") as HTMLTableRowElement;
+    const aliceRow = (await screen.findByText("alice")).closest("tr") as HTMLTableRowElement;
     await user.click(within(aliceRow).getByRole("button", { name: resetRe }));
 
     expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("alice"));
@@ -344,7 +344,7 @@ describe("AdminPage", () => {
 
     renderAdminPage();
 
-    const aliceRow = (await screen.findByText("Alice Liddell")).closest("tr") as HTMLTableRowElement;
+    const aliceRow = (await screen.findByText("alice")).closest("tr") as HTMLTableRowElement;
     await user.click(within(aliceRow).getByRole("button", { name: resetRe }));
 
     expect(await screen.findByText(/admin\.error\.deleteHistory|error/i)).toBeInTheDocument();
@@ -357,7 +357,7 @@ describe("AdminPage", () => {
     mockInitialUsers();
     renderAdminPage();
 
-    const aliceRow = (await screen.findByText("Alice Liddell")).closest("tr") as HTMLTableRowElement;
+    const aliceRow = (await screen.findByText("alice")).closest("tr") as HTMLTableRowElement;
     await user.click(within(aliceRow).getByRole("button", { name: deleteUserRe }));
 
     expect(window.confirm).toHaveBeenCalled();
@@ -377,7 +377,7 @@ describe("AdminPage", () => {
 
     renderAdminPage();
 
-    const aliceRow = (await screen.findByText("Alice Liddell")).closest("tr") as HTMLTableRowElement;
+    const aliceRow = (await screen.findByText("alice")).closest("tr") as HTMLTableRowElement;
     await user.click(within(aliceRow).getByRole("button", { name: deleteUserRe }));
 
     await waitFor(() => {
@@ -396,7 +396,7 @@ describe("AdminPage", () => {
     mockInitialUsers();
     renderAdminPage();
 
-    const aliceRow = (await screen.findByText("Alice Liddell")).closest("tr") as HTMLTableRowElement;
+    const aliceRow = (await screen.findByText("alice")).closest("tr") as HTMLTableRowElement;
     await user.click(within(aliceRow).getByRole("button", { name: deleteUserRe }));
 
     expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("alice"));
@@ -416,7 +416,7 @@ describe("AdminPage", () => {
     mockInitialUsers();
     renderAdminPage();
 
-    const pabloRow = (await screen.findByText("Pablo")).closest("tr") as HTMLTableRowElement;
+    const pabloRow = (await screen.findByText("pablo")).closest("tr") as HTMLTableRowElement;
     const deleteButton = within(pabloRow).getByRole("button", { name: deleteUserRe });
 
     expect(deleteButton).toBeDisabled();
@@ -434,7 +434,7 @@ describe("AdminPage", () => {
 
     renderAdminPage();
 
-    const aliceRow = (await screen.findByText("Alice Liddell")).closest("tr") as HTMLTableRowElement;
+    const aliceRow = (await screen.findByText("alice")).closest("tr") as HTMLTableRowElement;
     await user.click(within(aliceRow).getByRole("button", { name: deleteUserRe }));
 
     expect(await screen.findByText(/admin\.error\.deleteUser|error/i)).toBeInTheDocument();
