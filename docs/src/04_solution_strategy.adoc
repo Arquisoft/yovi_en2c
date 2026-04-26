@@ -291,7 +291,7 @@ Used in `PlayerSet` with `parent`, `touches_side_a/b/c` flags.
 | Implemented ✅ (updated)
 
 | **ADR-004**
-| Nginx as public reverse proxy + dedicated API gateway for webapp traffic
+| Nginx as public reverse proxy with WebSocket upgrade support for Socket.IO
 | Implemented ✅ (updated)
 
 | **ADR-005**
@@ -312,6 +312,34 @@ Used in `PlayerSet` with `parent`, `touches_side_a/b/c` flags.
 
 | **ADR-009**
 | Socket.IO for real-time multiplayer — dedicated service, in-memory rooms, delegates rules to Gamey
+| Implemented ✅
+
+| **ADR-010**
+| 400ms debounce on social search — vs. throttle and search-on-submit
+| Implemented ✅
+
+| **ADR-011**
+| React Context for theme and i18n — vs. Redux/Zustand
+| Implemented ✅
+
+| **ADR-012**
+| Unambiguous alphabet for room codes — excludes O/0/I/1 to minimise transcription errors
+| Implemented ✅
+
+| **ADR-013**
+| `express-prom-bundle` with `normalizePath: true` — prevents metric cardinality explosion
+| Implemented ✅
+
+| **ADR-014**
+| Test DB isolation via `_test` suffix using regex — workaround for Atlas multi-host URI format
+| Implemented ✅
+
+| **ADR-015**
+| Express 5 in REST services, Express 4 in multiplayer — Socket.IO compatibility constraint
+| Implemented ✅
+
+| **ADR-016**
+| In-memory state for BotAPI and multiplayer — conscious decision vs. Redis/MongoDB
 | Implemented ✅
 |===
 
