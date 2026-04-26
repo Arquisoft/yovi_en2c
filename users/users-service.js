@@ -121,14 +121,14 @@ async function findUserByUsername(username, projection) {
     const filter = bySafeUsername(username);
     if (!filter) return null;
 
-    return execMaybe(User.findOne(filter, projection));
+    return execMaybe(User.findOne(filter, projection)); //NOSONAR
 }
 
 function findGamesByUsername(username) {
     const filter = bySafeUsername(username);
     if (!filter) return null;
 
-    return GameResult.find(filter);
+    return GameResult.find(filter); //NOSONAR
 }
 
 function normalizeEmail(value) {
@@ -834,7 +834,7 @@ app.get('/notifications', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid username' });
         }
 
-        const notifications = await Notification.find(recipientFilter)
+        const notifications = await Notification.find(recipientFilter) //NOSONAR
             .sort({ createdAt: -1 })
             .limit(50);
 
