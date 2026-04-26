@@ -1,0 +1,607 @@
+ifndef::imagesdir[:imagesdir: ../images]
+
+[[section-api-reference]]
+== API Reference
+
+This section provides a centralised reference of all HTTP endpoints exposed by every YOVI service.
+Endpoints are grouped by service. All internal services communicate over the Docker bridge network
+(`monitor-net`); only the routes listed under **Gateway** and **BotAPI** are reachable by external
+clients through Nginx.
+
+For the full interactive OpenAPI specification of the Bot API, see
+link:https://github.com/Arquisoft/yovi_en2c/tree/master/botapi/src/openapi/openapi.yaml[botapi/src/openapi/openapi.yaml].
+
+=== Gateway (`/api/*`)
+
+The gateway is the single entry point for all webapp traffic. All routes listed here are accessible
+at `https://yovi.13.63.89.84.sslip.io/api/<route>` in production. JWT is required on all protected
+routes unless stated otherwise.
+
+==== Authentication Routes
+
+[options="header", cols="1,2,1,1,3"]
+|===
+| Method | Path | Auth | Body / Params | Description
+
+| `POST`
+| `/register`
+| None
+| `{username, password, repeatPassword, email?}`
+| Validates payload, hashes password with bcrypt, creates user, returns JWT. Forwards to Auth Service.
+
+| `POST`
+| `/login`
+| None
+| `{username, password}`
+| Verifies bcrypt hash, returns JWT with role claim. Forwards to Auth Service.
+
+| `GET`
+| `/verify`
+| Bearer JWT
+| —
+| Validates JWT signature and expiry. Returns decoded claims `{id, username, role}`.
+|===
+
+==== User Routes
+
+[options="header", cols="1,2,1,1,3"]
+|===
+| Method | Path | Auth | Body / Params | Description
+
+| `GET`
+| `/users/:username/profile`
+| Bearer JWT
+| —
+| Returns public profile (no password): username, email, realName, bio, location, preferredLanguage, friends count.
+
+| `PUT`
+| `/users/:username/profile`
+| Bearer JWT
+| `{email?, realName?, bio?, location?, preferredLanguage?}`
+| Updates editable profile fields. Only allowed fields are applied (`$set`).
+
+| `DELETE`
+| `/users/:username`
+| Bearer JWT
+| —
+| Deletes own account and all associated game results and notifications.
+|===
+
+==== Game Routes
+
+[options="header", cols="1,2,1,1,3"]
+|===
+| Method | Path | Auth | Body / Params | Description
+
+| `POST`
+| `/game/new`
+| Bearer JWT
+| `{size: number}`
+| Creates a new empty game board. Returns initial YEN state. Forwards to Gamey.
+
+| `POST`
+| `/game/pvb/move`
+| Bearer JWT
+| `{yen, bot, row, col}`
+| Applies player move and returns bot response. `bot` is the bot ID string (e.g., `"minimax_bot"`).
+Forwards to `POST /v1/game/pvb/:bot_id` on Gamey.
+
+| `POST`
+| `/hint`
+| Bearer JWT
+| `{yen}`
+| Returns a suggested move for the current position using `alfa_beta_bot`. Forwards to
+`POST /v1/ybot/choose/alfa_beta_bot` on Gamey.
+|===
+
+==== Game Result Routes
+
+[options="header", cols="1,2,1,1,3"]
+|===
+| Method | Path | Auth | Body / Params | Description
+
+| `POST`
+| `/gameresult`
+| Bearer JWT
+| `{username, opponent, result, winner?, score?, boardSize?, gameMode?}`
+| Saves a game result. `result` must be `"win"` or `"loss"`. Forwards to Users Service.
+
+| `GET`
+| `/gameresults/:username`
+| Bearer JWT
+| —
+| Returns all game results for a user, newest first.
+
+| `GET`
+| `/ranking`
+| Bearer JWT
+| —
+| Returns top-10 users by wins. MongoDB aggregation pipeline.
+|===
+
+==== Social Routes
+
+[options="header", cols="1,2,1,1,3"]
+|===
+| Method | Path | Auth | Body / Params | Description
+
+| `GET`
+| `/search`
+| Bearer JWT
+| `?q=<query>`
+| Searches users by username or realName. Returns matching user profiles (no passwords).
+
+| `GET`
+| `/friends/:username`
+| Bearer JWT
+| —
+| Returns the accepted friends list of a user.
+
+| `POST`
+| `/friends/request/:username`
+| Bearer JWT
+| —
+| Sends a friend request to `:username`. Sender is extracted from JWT. Creates a `friend_request`
+notification for the recipient.
+
+| `POST`
+| `/friends/accept/:username`
+| Bearer JWT
+| —
+| Accepts a friend request from `:username`. Adds both users to each other's `friends[]` array.
+
+| `POST`
+| `/friends/reject/:username`
+| Bearer JWT
+| —
+| Rejects a friend request from `:username`. Removes from `friendRequests[]`.
+
+| `DELETE`
+| `/friends/:username`
+| Bearer JWT
+| —
+| Removes `:username` from the authenticated user's friends list (bidirectional `$pull`).
+|===
+
+==== Notification Routes
+
+[options="header", cols="1,2,1,1,3"]
+|===
+| Method | Path | Auth | Body / Params | Description
+
+| `GET`
+| `/notifications`
+| Bearer JWT
+| —
+| Returns all notifications for the authenticated user, newest first. Username extracted from JWT.
+
+| `PATCH`
+| `/notifications/:id/read`
+| Bearer JWT
+| —
+| Marks notification `:id` as read (`{read: true}`).
+|===
+
+==== Admin Routes
+
+Admin routes require a valid JWT with `role: "admin"`. Regular user tokens receive `403 Forbidden`.
+
+[options="header", cols="1,2,1,1,3"]
+|===
+| Method | Path | Auth | Body / Params | Description
+
+| `GET`
+| `/admin/users`
+| Admin JWT
+| `?page=<n>&limit=<n>`
+| Returns paginated list of all registered users with profile and role information.
+
+| `PATCH`
+| `/admin/users/:username/role`
+| Admin JWT
+| `{role: "admin" \| "user"}`
+| Grants or revokes admin privileges on the target user account.
+
+| `DELETE`
+| `/admin/users/:username/history`
+| Admin JWT
+| —
+| Deletes all game results for `:username`. User account is preserved.
+
+| `DELETE`
+| `/admin/users/:username`
+| Admin JWT
+| —
+| Permanently deletes the user account and all associated data (game results, notifications). Also
+removes the user from all other users' friend lists via `$pull`.
+|===
+
+==== Multiplayer REST Routes (via Gateway)
+
+[options="header", cols="1,2,1,1,3"]
+|===
+| Method | Path | Auth | Body / Params | Description
+
+| `POST`
+| `/multiplayer/room/create`
+| Bearer JWT
+| `{username, size}`
+| Creates a new room. Calls Gamey for initial YEN. Returns room code and player color (`"B"`).
+
+| `POST`
+| `/multiplayer/room/join`
+| Bearer JWT
+| `{code, username}`
+| Joins an existing room by code. Returns room state and player color (`"R"`). Emits Socket.IO
+`room_updated` and `game_started` events to connected clients.
+
+| `POST`
+| `/multiplayer/room/state`
+| Bearer JWT
+| `{code, username?}`
+| Returns current room state and the requesting user's color.
+
+| `POST`
+| `/multiplayer/room/move`
+| Bearer JWT
+| `{code, username, row, col}`
+| Submits a move. Validates turn order, forwards to Gamey, emits `game_updated` event.
+
+| `POST`
+| `/multiplayer/room/leave`
+| Bearer JWT
+| `{code, username}`
+| Removes player from room. Emits `opponent_left` event to remaining player.
+|===
+
+=== Gamey — Game Engine (`gamey:4000`)
+
+Internal service — not directly accessible from outside the Docker network. Called by Gateway,
+Multiplayer, and BotAPI.
+
+[options="header", cols="1,2,1,3"]
+|===
+| Method | Path | Body | Description
+
+| `GET`
+| `/status`
+| —
+| Health check. Returns `"OK"` plain text.
+
+| `GET`
+| `/metrics`
+| —
+| Prometheus metrics endpoint. Scraped by Prometheus every 15 seconds.
+
+| `POST`
+| `/game/new`
+| `{size: number}`
+| Creates a new empty game. Returns initial YEN with all `.` cells.
+
+| `POST`
+| `/game/check`
+| YEN body
+| Checks current win condition without applying a move. Returns `{finished, winner, winning_edges}`.
+
+| `POST`
+| `/v1/game/pvb/:bot_id`
+| `{yen, row, col}`
+| Applies player move at `(row, col)`, then computes bot response using `:bot_id`. Returns
+`{yen, finished, winner, winning_edges}`.
+
+| `POST`
+| `/v1/game/pvp/move`
+| `{yen, row, col}`
+| Applies a PvP move at `(row, col)`. Returns `{yen, finished, winner, winning_edges}`.
+Used by the Multiplayer service.
+
+| `POST`
+| `/v1/ybot/choose/:bot_id`
+| YEN body
+| Returns the bot's chosen move coordinates without applying it to the board.
+Returns `{api_version, bot_id, coords: {x, y, z}}`.
+|===
+
+Available `bot_id` values:
+
+[options="header", cols="1,1,1"]
+|===
+| bot_id | Algorithm | Difficulty
+
+| `random_bot` | Random valid move | —
+| `heuristic_bot` | Side connection heuristic | Easy
+| `minimax_bot` | Minimax (depth 3) | Medium
+| `alfa_beta_bot` | Minimax + alpha-beta pruning | Hard
+| `monte_carlo_hard` | Monte Carlo Tree Search | Expert
+| `monte_carlo_extreme` | MCTS (more iterations) | Extreme
+|===
+
+=== Authentication Service (`authentication:5000`)
+
+Internal service — called exclusively by the Gateway.
+
+[options="header", cols="1,1,1,3"]
+|===
+| Method | Path | Body | Description
+
+| `POST`
+| `/register`
+| `{username, password, repeatPassword, email?}`
+| Validates payload, hashes password, calls Users Service to create user, returns JWT.
+
+| `POST`
+| `/login`
+| `{username, password}`
+| Fetches user from Users Service, bcrypt compares password, returns JWT with role claim.
+
+| `GET`
+| `/verify`
+| Authorization header
+| Verifies JWT signature and expiry. Returns decoded claims.
+
+| `GET`
+| `/health`
+| —
+| Returns `{status: "OK", service: "auth-service", timestamp}`.
+|===
+
+=== Users Service (`users:3000`)
+
+Internal service — called by Gateway and Authentication Service. Swagger UI available at
+`http://users:3000/api-docs` (note: currently documents only a subset of endpoints — tracked as TD3).
+
+[options="header", cols="1,2,1,3"]
+|===
+| Method | Path | Body / Params | Description
+
+| `POST`
+| `/createuser`
+| `{username, email?, password}`
+| Creates a new user with bcrypt-hashed password and welcome notification.
+
+| `GET`
+| `/users/:username`
+| —
+| Returns user including hashed password (used by Auth Service for bcrypt comparison).
+
+| `GET`
+| `/users/:username/profile`
+| —
+| Returns user profile without password field.
+
+| `PUT`
+| `/users/:username/profile`
+| `{email?, realName?, bio?, location?, preferredLanguage?}`
+| Updates allowed profile fields using `$set`.
+
+| `DELETE`
+| `/users/:username`
+| —
+| Deletes user and all associated game results and notifications.
+
+| `GET`
+| `/users/:username/friends`
+| —
+| Returns the `friends[]` array for the user.
+
+| `POST`
+| `/users/:username/friends/request`
+| `{from}`
+| Adds `from` to `friendRequests[]`. Creates `friend_request` notification.
+
+| `POST`
+| `/users/:username/friends/accept`
+| `{from}`
+| Removes `from` from `friendRequests[]`, adds to `friends[]` on both users.
+
+| `POST`
+| `/users/:username/friends/reject`
+| `{from}`
+| Removes `from` from `friendRequests[]`.
+
+| `DELETE`
+| `/users/:username/friends/:friend`
+| —
+| Bidirectional `$pull` — removes the friendship on both sides.
+
+| `GET`
+| `/users/:username/notifications`
+| —
+| Returns all notifications for the user, sorted newest first.
+
+| `PATCH`
+| `/users/:username/notifications/:id/read`
+| —
+| Sets `{read: true}` on the notification.
+
+| `POST`
+| `/gameresults`
+| `{username, opponent, result, winner?, score?, boardSize?, gameMode?}`
+| Saves a game result document.
+
+| `GET`
+| `/gameresults/:username`
+| —
+| Returns all game results for the user, newest first.
+
+| `GET`
+| `/ranking`
+| —
+| Top-10 users by wins via MongoDB aggregation.
+
+| `GET`
+| `/search`
+| `?q=<query>`
+| Text search on username and realName fields.
+
+| `GET`
+| `/admin/users`
+| `?page=&limit=`
+| (Admin) Paginated list of all users.
+
+| `PATCH`
+| `/admin/users/:username/role`
+| `{role}`
+| (Admin) Grants or revokes admin role.
+
+| `DELETE`
+| `/admin/users/:username/history`
+| —
+| (Admin) Deletes all game results for user.
+
+| `DELETE`
+| `/admin/users/:username`
+| —
+| (Admin) Deletes user account and all associated data.
+
+| `GET`
+| `/health`
+| —
+| Returns `{status: "OK", service: "users-service"}`.
+
+| `GET`
+| `/metrics`
+| —
+| Prometheus metrics endpoint.
+|===
+
+=== Multiplayer Service (`multiplayer:7000`)
+
+Internal service — REST endpoints called by Gateway. Socket.IO server accessible via Nginx at
+`/socket.io/*`. See <<section-concepts,Section 8 (Cross-cutting Concepts)>> for the full Socket.IO
+event catalogue.
+
+[options="header", cols="1,2,1,3"]
+|===
+| Method | Path | Body | Description
+
+| `GET`
+| `/health`
+| —
+| Returns `{status: "ok", service: "multiplayer"}`.
+
+| `GET`
+| `/rooms/:code`
+| —
+| Returns serialized room state (no socket IDs).
+
+| `POST`
+| `/rooms/create`
+| `{username, size}`
+| Creates room, calls Gamey for initial YEN, returns `{ok, room, yourColor: "B"}`.
+
+| `POST`
+| `/rooms/join`
+| `{code, username}`
+| Joins room, sets status to `"active"`, emits `room_updated` and `game_started`.
+
+| `POST`
+| `/rooms/state`
+| `{code, username?}`
+| Returns current room state and player color.
+
+| `POST`
+| `/rooms/move`
+| `{code, username, row, col}`
+| Validates turn, calls Gamey PvP move, emits `game_updated`. Returns updated room.
+
+| `POST`
+| `/rooms/leave`
+| `{code, username}`
+| Removes player, emits `opponent_left` to remaining player.
+|===
+
+=== BotAPI — Interoperability Service (`/interop/*`)
+
+Public service — accessible at `https://yovi.13.63.89.84.sslip.io/interop` via Nginx.
+Full OpenAPI 3.1 spec:
+link:https://github.com/Arquisoft/yovi_en2c/tree/master/botapi/src/openapi/openapi.yaml[openapi.yaml].
+
+==== Local Game Endpoints (Server Mode)
+
+External bots use these endpoints to play against YOVI's bots.
+
+[options="header", cols="1,2,1,3"]
+|===
+| Method | Path | Body / Params | Description
+
+| `GET`
+| `/health`
+| —
+| Returns `{status: "ok"}`.
+
+| `POST`
+| `/games`
+| `{size, bot_id}`
+| Creates a new active game session. Returns `{game_id, bot_id, position: YEN, status}`.
+
+| `GET`
+| `/games/:gameId`
+| —
+| Returns current state of an active game.
+
+| `POST`
+| `/games/:gameId/play`
+| `{position: YEN}`
+| Submits opponent move (detects single added move vs. stored YEN), gets bot response. Returns updated state.
+
+| `GET`
+| `/play`
+| `?position=<YEN_JSON>&bot_id=<id>`
+| Stateless move: given a YEN position, returns bot move coordinates without storing state.
+|===
+
+==== Remote Session Endpoints (Client Mode)
+
+YOVI's bots use these endpoints to play against rival teams' APIs.
+
+[options="header", cols="1,2,1,3"]
+|===
+| Method | Path | Body | Description
+
+| `POST`
+| `/remote-games/connect`
+| `{base_url, game_id, local_bot_id, our_player_index}`
+| Connects to an existing game on a rival API. Creates a local session tracking the remote game.
+
+| `POST`
+| `/remote-games/create`
+| `{base_url, size, remote_bot_id, local_bot_id, our_player_index?}`
+| Creates a new game on a rival API and stores a local session.
+
+| `GET`
+| `/remote-games/:sessionId`
+| —
+| Returns stored remote session information including last known state.
+
+| `POST`
+| `/remote-games/:sessionId/play-turn`
+| —
+| Syncs remote state. If it is our turn: chooses move via Gamey, applies to remote API. Returns
+`{action: "WAITING_OPPONENT" \| "MOVE_SUBMITTED" \| "GAME_FINISHED", session, move?}`.
+|===
+
+=== Error Response Format
+
+All Node.js services return errors in the following format:
+
+[source,json]
+----
+{
+  "ok": false,
+  "error": "Human-readable error message"
+}
+----
+
+The BotAPI (TypeScript) uses a slightly different format matching the OpenAPI spec:
+
+[source,json]
+----
+{
+  "code": "NOT_FOUND",
+  "message": "game abc123 not found"
+}
+----
+
+Standard HTTP status codes apply across all services. See
+<<section-concepts,Section 8 (Cross-cutting Concepts)>> for the complete status code reference.
