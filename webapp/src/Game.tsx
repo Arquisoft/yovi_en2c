@@ -132,11 +132,6 @@ const Game: React.FC = () => {
     if (!username) navigate("/", { replace: true });
   }, [username, navigate]);
 
-  const logout = () => {
-    localStorage.removeItem("username");
-    navigate("/", { replace: true });
-  };
-
   const [yen, setYen] = useState<any>(null);
 
   const botId = useMemo(() => {
@@ -549,7 +544,7 @@ const Game: React.FC = () => {
 
   return (
       <div className="page" style={{ height: "100dvh", overflow: "auto", display: "flex", flexDirection: "column" }}>
-        <Navbar username={username} onLogout={logout} />
+        <Navbar username={username} />
 
         <main
             style={{

@@ -18,18 +18,12 @@ const Instructions: React.FC = () => {
     if (!username) navigate("/", { replace: true });
   }, [username, navigate]);
 
-  const logout = () => {
-    localStorage.removeItem("username");
-    localStorage.removeItem("token");
-    navigate("/", { replace: true });
-  };
-
   if (!username) return null;
 
   return (
     <div className="page">
-      <Navbar username={username} onLogout={logout} />
-
+      <Navbar username={username} />
+      
       <main className="container" style={{ paddingTop: 40 }}>
         <div className="instructions-page">
           <div className="hero instructions-header">

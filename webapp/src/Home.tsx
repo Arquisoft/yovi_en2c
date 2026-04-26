@@ -105,12 +105,6 @@ const Home: React.FC = () => {
     verifySession();
   }, [username, token, navigate, fetchNotifications]);
 
-  const logout = () => {
-    localStorage.removeItem("username");
-    localStorage.removeItem("token");
-    navigate("/", { replace: true });
-  };
-
   const startQuickGame = () => {
     navigate("/game", { state: { username, bot: "minimax_bot", boardSize: 7 } });
   };
@@ -143,7 +137,6 @@ const Home: React.FC = () => {
     <div className="page">
       <Navbar
         username={username}
-        onLogout={logout}
         isAdmin={isAdmin}
         notifications={notifications}
         onMarkRead={handleMarkRead}
@@ -182,7 +175,25 @@ const Home: React.FC = () => {
 
             <button
               className="btn btn--ghost"
-              onClick={logout}
+              onClick={async () => {
+                const token = localStorage.getItem("token");
+
+                try {
+                  if (token) {
+                    await fetch("/api/logout", {
+                      method: "POST",
+                      headers: { Authorization: `Bearer ${token}` },
+                    });
+                  }
+                } catch {
+                  // Cerramos sesión en cliente aunque falle.
+                } finally {
+                  localStorage.removeItem("username");
+                  localStorage.removeItem("token");
+                  sessionStorage.clear();
+                  navigate("/", { replace: true });
+                }
+              }}
               type="button"
             >
               {t("home.changeUser")}
