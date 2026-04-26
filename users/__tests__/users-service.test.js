@@ -338,16 +338,8 @@ describe('POST /createuser', () => {
             saveSpy.mockRestore()
         })
 
-        it('should handle ValidationError with multiple field messages', async () => {
-            const validationError = new Error('Validation error');
-            validationError.name = 'ValidationError';
-            validationError.errors = {
-                email: { message: 'Email is invalid' },
-                username: { message: 'Username is invalid' }
-            };
-
-            const saveSpy = vi.spyOn(mongoose.Model.prototype, 'save')
-                .mockRejectedValueOnce(validationError)
+        it('should reject invalid username before model validation', async () => {
+            const saveSpy = vi.spyOn(mongoose.Model.prototype, 'save');
 
             const res = await request(app)
                 .post('/createuser')
@@ -356,15 +348,15 @@ describe('POST /createuser', () => {
                     email: 'invalid-email',
                     password: '123456'
                 })
-                .set('Accept', 'application/json')
+                .set('Accept', 'application/json');
 
-            expect(res.status).toBe(400)
-            expect(res.body.success).toBe(false)
-            expect(res.body.error).toContain('Email is invalid')
-            expect(res.body.error).toContain('Username is invalid')
+            expect(res.status).toBe(400);
+            expect(res.body.success).toBe(false);
+            expect(res.body.error).toBe('Invalid username');
+            expect(saveSpy).not.toHaveBeenCalled();
 
-            saveSpy.mockRestore()
-        })
+            saveSpy.mockRestore();
+        });
 
         it('should handle errors with no code or name property', async () => {
             const malformedError = { someProperty: 'this is not a standard error' };
