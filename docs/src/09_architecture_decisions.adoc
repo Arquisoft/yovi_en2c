@@ -1,13 +1,11 @@
-
+ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-design-decisions]]
 == Architecture Decisions
 
-This section documents the most significant architectural decisions made during the design and development of the YOVI
-platform.
-Each decision follows the ADR (Architecture Decision Record) format to provide context, rationale, and
-consequences.
-These decisions complement the solution strategy outlined in Section 4, providing deeper rationale for key choices.
+This section documents the most significant architectural decisions made during the design and development
+of the YOVI platform. Each decision follows the ADR (Architecture Decision Record) format providing context,
+rationale, and consequences.
 
 === ADR-001: Game Modes Available to the User
 
@@ -16,31 +14,26 @@ These decisions complement the solution strategy outlined in Section 4, providin
 * **Deciders**: Development Team
 
 **Context**:
-The platform needs to offer users different ways to play Game Y. The initial requirements specify player-versus-machine mode, but the architecture should be extensible to support additional modes in the future (multiplayer, different variants, etc.).
+The platform needs to offer users different ways to play Game Y. The initial requirements specify
+player-versus-machine mode, but the architecture should be extensible to support additional modes.
+Real-time player-versus-player was subsequently added as a core requirement.
 
 **Decision**:
-We will design the game mode system with **extensibility as a core principle**. The architecture will separate game mode logic from core game rules, allowing new modes to be added by:
-
-* Defining new mode types in the webapp UI
-* Extending the game engine to support mode-specific rules
-* Keeping mode state separate from core game state
-
-**Alternatives Considered**:
-
-* **Hard-code only PvM mode**: Rejected - would require major refactoring for future modes
-* **Configuration-driven modes**: Considered but deferred - adds complexity for current requirements
-* **Plugin architecture**: Rejected - overkill for project scope
+Design the game mode system with **extensibility as a core principle**. Implement PvM as the primary
+mode; add real-time PvP via Socket.IO as a dedicated multiplayer service that delegates all rule
+enforcement to `gamey`. Additionally expose a local PvP mode (same device, two players) as a variant
+of the PvM game component.
 
 **Consequences**:
 
-*  Positive: New game modes can be added without modifying core game logic
-*  Positive: Clear separation between "how game is played" and "game rules"
-*  Positive: Meets current requirements while preparing for future
-*  Negative: Slightly more complex initial implementation
-*  Negative: Requires careful design to avoid over-engineering
-* ️ Mitigation: Focus on PvM mode first, ensure extension points are clean
+* ✅ New game modes can be added without modifying core game logic
+* ✅ PvM and PvP share the same game engine (`gamey`) via different HTTP endpoints
+* ✅ Multiplayer state (rooms) is isolated — failure does not affect PvM
+* ⚠ Two separate game flows (REST for PvM, Socket.IO for PvP) increase client complexity
+* Mitigation: Clear separation in webapp components (`Game.tsx` for PvM, `MultiplayerGame.tsx` for PvP)
 
 ---
+
 === ADR-002: MongoDB for User Data Persistence
 
 * **Status**: Implemented ✅
@@ -48,294 +41,720 @@ We will design the game mode system with **extensibility as a core principle**. 
 * **Deciders**: Development Team
 
 **Context**:
-The users service needs to persist user profiles, authentication data, and match history. The team needed to choose a database technology that balances development speed with future flexibility.
+The users service needs to persist user profiles, credentials, friend graphs, notifications, and game
+results. The schema evolves as new features are added (friends, notifications, admin role, profile fields).
 
 **Decision**:
-We will use **MongoDB** for user data persistence, managed via **Mongoose ODM**. The schema will be designed to accommodate:
-
-* User profiles (username, email, password)
-* Game results (username, opponent, result, score, date)
-
-**Alternatives Considered**:
-
-* **PostgreSQL**: Rejected - schema changes for evolving requirements would be slower
-* **MySQL**: Rejected - similar concerns
-* **In-memory storage**: Rejected - data must persist
-* **SQLite**: Rejected - not suitable for concurrent access
+Use **MongoDB** via **Mongoose ODM**. Three collections: `users`, `gameresults`, `notifications`.
 
 **Consequences**:
 
-*  Positive: Flexible schema allows easy addition of user fields
-*  Positive: Excellent integration with Node.js via Mongoose ODM
-*  Positive: Fast prototyping and iteration on data models
-*  Positive: Aggregation pipelines support ranking and statistics queries
-*  Negative: No built-in relations (handled in application code)
-*  Negative: Eventual consistency (not critical for this domain)
-*  Mitigation: Use atomic operations for critical updates (e.g., game statistics)
+* ✅ Schema flexibility — adding `friends[]`, `role`, `bio`, `location` required no migration scripts
+* ✅ Aggregation pipelines support ranking (`$group`, `$sort`, `$limit 10`)
+* ✅ Compound index on `(recipient, createdAt DESC)` for efficient notification queries
+* ⚠ No built-in referential integrity — orphan cleanup handled in application code on user delete
+* Mitigation: Explicit cascade deletes in `DELETE /admin/users/:username` handler
 
 ---
-=== ADR-003: Five-Service Microservices Architecture
 
-* **Status**: Implemented ✅ — **Updated 2026-02-24** (previously "Three-Service Architecture")
-* **Date**: 2026-01-15
-* **Last Update**: 2026-02-24
+=== ADR-003: Eight-Service Microservices Architecture
+
+* **Status**: Implemented ✅ — **Updated 2026-03-20** (originally three-service)
+* **Date**: 2026-01-15 | **Last Update**: 2026-03-20
 * **Deciders**: Development Team
 
-NOTE: This ADR supersedes the original decision of a three-service architecture (`webapp`, `users`, `gamey`).
-As the project evolved, authentication and gateway responsibilities were extracted into dedicated services.
-The original decision and its rationale are preserved below for traceability.
-
 **Context**:
-The lab assignment requires a web application in TypeScript and a game engine in Rust. These technologies cannot run in the same process. Additionally, user management (registration, history) is a distinct responsibility that could be separated. As the project scaled, authentication logic and API routing were identified as further responsibilities that benefit from their own dedicated services.
+Technology constraints (TypeScript + Rust) force at least a frontend/backend split. As the project grew,
+authentication, API gateway, real-time multiplayer, and bot interoperability were identified as distinct
+responsibilities benefiting from dedicated services.
+
+**Evolution**:
+
+[options="header", cols="1,3"]
+|===
+| Version | Services
+| v1 (2026-01-15) | `webapp`, `users`, `gamey`
+| v2 (2026-02-24) | + `authentication`, `gateway`
+| v3 (2026-03-20) | + `multiplayer`, `botapi`, `nginx`
+|===
 
 **Decision**:
-
-We implement a **microservices architecture** with five independent services:
-
-* `webapp/` - TypeScript/React frontend (port 80)
-* `users/` - Node.js/Express user management and data persistence (port 3000)
-* `authentication/` - Node.js/Express JWT authentication service (port 5000)
-* `gateway/` - Node.js/Express API gateway — single external entry point (port 8080)
-* `gamey/` - Rust game engine and bot service (port 4000)
-
-All services communicate via REST APIs and are orchestrated with Docker Compose. Prometheus (port 9090) and Grafana (port 9091) provide monitoring.
-
-**Original decision (2026-01-15)**:
-Three services were originally planned: `webapp`, `users`, and `gamey`. The gateway was considered part of the infrastructure rather than a standalone service, and authentication was to be handled inside the users service.
-
-**Reason for update**:
-Mixing authentication logic into the users service violated the single responsibility principle and reduced testability. Extracting both authentication and the gateway into dedicated services improved separation of concerns and aligned with ADR-006.
-
-**Alternatives Considered**:
-
-* **Three-service architecture (original)**: Superseded - authentication and gateway extracted for better separation of concerns
-* **Authentication inside users service**: Rejected - coupling user data management with token generation reduces testability
-* **Single monolith**: Rejected - technology constraints (TypeScript + Rust) make this impossible
+Eight independent services, each with a single responsibility, orchestrated via Docker Compose and
+exposed through Nginx.
 
 **Consequences**:
 
-*  Positive: Clear separation of concerns — each service has a single responsibility
-*  Positive: Each service can be developed and tested independently
-*  Positive: Technology-specific optimizations possible (Rust for performance, Node.js for productivity)
-*  Positive: Authentication logic is independently testable and replaceable
-*  Negative: Increased operational complexity (five services to deploy and monitor)
-*  Negative: More inter-service HTTP calls add latency (e.g., auth → users on login)
-*  Negative: Network latency between services
-*  Mitigation: Docker Compose simplifies local development; Prometheus + Grafana provide visibility into inter-service performance
+* ✅ Each service can be developed, tested, and deployed independently
+* ✅ Technology-specific optimizations per service
+* ✅ Failure in one service does not affect others
+* ⚠ Eight containers, more inter-service HTTP calls
+* Mitigation: Docker Compose simplifies local development; Prometheus + Grafana provide observability
 
 ---
-=== ADR-004: API Gateway as Single Entry Point
 
-* **Status**: Implemented ✅ — **Updated 2026-02-24** (routing rules revised)
-* **Date**: 2026-01-20
-* **Last Update**: 2026-02-24
-* **Deciders**: Development Team
+=== ADR-004: Nginx as Public Reverse Proxy
+
+* **Status**: Implemented ✅ — **Updated 2026-03-20**
+* **Date**: 2026-01-20 | **Last Update**: 2026-03-20
 
 **Context**:
-With five independent services, external clients (human users and bots) would need to know multiple endpoints. This increases complexity and exposes internal service topology.
+With eight services, external clients need a single entry point. Socket.IO requires WebSocket upgrade
+support. BotAPI needs its own path prefix (`/interop/`).
 
 **Decision**:
+Nginx handles HTTPS termination, HTTP→HTTPS redirect, and routes to four services:
 
-We implement an **API Gateway** (`gateway/`) as the single entry point for all external requests. The gateway:
-
-* Routes `/game/*` → gamey service (port 4000)
-* Routes `/register`, `/login`, `/verify` → authentication service (port 5000)
-* Handles CORS centrally for all services
-* Propagates errors from internal services to clients
-* Hides the internal service topology from external clients
-
-Nginx acts as a reverse proxy in front of the gateway, handling SSL termination and routing web traffic to the webapp.
-
-**Original decision (2026-01-20)**:
-The gateway was originally planned to route `/users/*` to the users service and `/game/*` to the gamey service. With the extraction of the authentication service (ADR-006), auth-related routes (`/register`, `/login`, `/verify`) now forward to the authentication service instead. The users service is no longer directly reachable from external clients.
-
-**Alternatives Considered**:
-
-* **Direct client-to-service communication**: Rejected - exposes internal services, complicates client logic
-* **Load balancer only**: Rejected - doesn't provide routing based on paths
-* **No gateway**: Rejected - security concerns
+* `/` → `webapp:80`
+* `/api/*` → `gateway:8080`
+* `/socket.io/*` → `multiplayer:7000` (WebSocket upgrade)
+* `/interop/*` → `botapi:4001`
 
 **Consequences**:
 
-*  Positive: Single URL for all clients simplifies access
-*  Positive: Internal services remain hidden from external clients
-*  Positive: Centralized CORS and error handling policies
-*  Negative: Additional component to deploy and maintain
-*  Negative: Potential single point of failure (mitigated by Docker restart policies)
-*  Mitigation: Gateway is stateless and can be scaled horizontally
+* ✅ Single public URL; internal topology hidden from clients
+* ✅ TLS managed centrally — internal services use plain HTTP
+* ✅ WebSocket upgrade transparent to the client
+* ⚠ Single point of failure — mitigated by Docker restart policy
+* ⚠ Certificate renewal requires Nginx reload
 
 ---
-=== ADR-005: Strategy Pattern for AI Bot Behaviors
 
-* **Status**: Implemented ✅ — **Updated 2026-03-15** (previously "In Progress")
-* **Date**: 2026-01-25
-* **Last Update**: 2026-03-15
-* **Deciders**: Development Team
+=== ADR-005: Strategy Pattern for AI Bot Behaviours
+
+* **Status**: Implemented ✅ — **Updated 2026-03-15**
+* **Date**: 2026-01-25 | **Last Update**: 2026-03-15
 
 **Context**:
-The system must support multiple AI strategies and difficulty levels. New strategies may be added in the future without modifying existing code. The requirement states "more than one strategy" must be available.
+The system must support multiple AI strategies selectable at runtime. New strategies may be added without
+modifying existing code. The `YBot` trait must be `Send + Sync` for Axum's async handlers.
 
 **Decision**:
-We implement the **Strategy Pattern** in the `gamey` service using Rust traits. Each AI strategy is a separate module implementing the `YBot` trait:
+Implement the **Strategy Pattern** via the `YBot` trait in Rust. All six strategies are registered in
+`YBotRegistry` and selected by name at runtime.
 
-[source,rust]
-----
-pub trait YBot: Send + Sync {
-    fn name(&self) -> &str;
-    fn choose_move(&self, board: &GameY) -> Option<Coordinates>;
-}
-----
-
-The `YBotRegistry` manages all registered bots and allows dynamic selection by name at runtime.
-
-**Original decision (2026-01-25)**:
-Only three strategies were initially planned: random move (implemented), heuristic-based (in discussion), and minimax (in discussion).
-
-**Current implementation (2026-03-15)**:
-All six strategies are now fully implemented:
-
+[options="header", cols="2,2,2"]
 |===
 | Bot ID | Algorithm | Difficulty
-
 | `random_bot` | Random valid move | —
 | `heuristic_bot` | Side connection heuristic | Easy
 | `minimax_bot` | Minimax (depth 3) | Medium
-| `alfa_beta_bot` | Minimax with alpha-beta pruning | Hard
+| `alfa_beta_bot` | Minimax + alpha-beta pruning | Hard
 | `monte_carlo_hard` | Monte Carlo Tree Search | Expert
-| `monte_carlo_extreme` | Monte Carlo Tree Search (more iterations) | Extreme
+| `monte_carlo_extreme` | MCTS (more iterations) | Extreme
 |===
-
-**Alternatives Considered**:
-
-* **Conditional logic** (if/else or switch): Rejected - violates Open/Closed principle, hard to extend
-* **Configuration flags with hard-coded algorithms**: Rejected - similar concerns
-* **Machine learning model**: Rejected - overkill for requirements, unpredictable performance
 
 **Consequences**:
 
-*  Positive: New strategies can be added without modifying core game logic — just implement `YBot` and register in `YBotRegistry`
-*  Positive: Each strategy can be tested independently
-*  Positive: Clear separation of concerns
-*  Positive: `Send + Sync` bounds allow safe concurrent use across async Axum handlers
-*  Negative: Slight indirection overhead (negligible in practice)
-*  Negative: More complex bots (minimax, Monte Carlo) can be slow on large boards
-*  Mitigation: Performance budget of < 2 seconds per move; depth is configurable per bot
+* ✅ New strategy = new struct + one `with_bot()` call — no existing code changed
+* ✅ Each strategy tested independently
+* ⚠ MCTS Extreme can exceed 2s on boards > 11×11
+* Mitigation: performance budget enforced in k6; depth configurable per constructor
 
 ---
+
 === ADR-006: Dedicated Authentication Microservice
 
 * **Status**: Implemented ✅
 * **Date**: 2026-02-24
-* **Deciders**: Development Team
 
 **Context**:
-Initially, authentication responsibilities (JWT generation, credential validation) were planned as part of the users service. As the project grew it became clear that mixing user data persistence with authentication logic violated the single responsibility principle and reduced testability. A dedicated authentication service allows each to evolve independently.
+Authentication (JWT generation, bcrypt comparison) and user data management are distinct responsibilities.
+Mixing them in the users service violates SRP and reduces testability.
 
 **Decision**:
-We extract authentication into a **separate `authentication/` microservice** responsible exclusively for:
-
-* Validating registration payloads and delegating user creation to the users service via HTTP
-* Authenticating users by querying the users service and verifying credentials
-* Generating and validating **JWT tokens** (via `jsonwebtoken`)
-* Exposing `/register`, `/login`, and `/verify` endpoints
-
-The users service remains a pure data store with no knowledge of JWTs. The authentication service calls the users service internally via HTTP on the Docker internal network.
-
-**Alternatives Considered**:
-
-* **Auth logic inside users service**: Rejected - violates single responsibility, harder to test JWT logic in isolation
-* **Auth logic inside gateway**: Rejected - gateway should only route, not implement business logic
-* **Third-party auth provider (Auth0, Firebase)**: Rejected - external dependency, overkill for project scope
+Extract a dedicated `authentication/` service responsible for: payload validation, bcrypt comparison,
+JWT generation with role claims, and exposing `/register`, `/login`, `/verify`, `/health`.
 
 **Consequences**:
 
-*  Positive: Clean separation — users service handles data, auth service handles identity
-*  Positive: JWT logic is independently testable
-*  Positive: Future auth strategies (OAuth, refresh tokens) can be added without touching the users service
-*  Negative: Login requires two HTTP calls: auth service → users service (adds minimal latency on Docker internal network)
-*  Negative: One more service to deploy and maintain
-*  Negative: Passwords are currently compared in plain text — bcrypt hashing is tracked as pending technical debt
-*  Mitigation: Inter-service calls are on Docker's internal network (sub-millisecond latency). Bcrypt is planned for a future sprint.
+* ✅ JWT logic is independently testable
+* ✅ Future auth strategies (OAuth) can be added without touching users service
+* ⚠ Login requires two HTTP calls: auth → users (sub-millisecond on Docker network)
 
 ---
+
 === ADR-007: Axum as HTTP Framework for the Rust Game Engine
 
 * **Status**: Implemented ✅
 * **Date**: 2026-02-01
-* **Deciders**: Development Team
 
 **Context**:
-The `gamey` Rust service needs to expose a REST API. Rust has several HTTP framework options. The choice affects ergonomics, async support, compile times, and ecosystem maturity.
+The `gamey` Rust service needs to expose a REST API. The choice affects ergonomics, async support, and
+testability.
 
 **Decision**:
-We use **Axum** as the HTTP framework for the game engine, with **Tokio** as the async runtime. The server exposes versioned REST endpoints (`/v1/...`) and uses Axum's extractor pattern for request parsing and shared state (`AppState` wrapping `Arc<YBotRegistry>`).
+Use **Axum** with **Tokio**. Key reasons: extractor-based API, `State<AppState>` for shared
+`Arc<YBotRegistry>`, `tower::ServiceExt::oneshot` for port-free integration tests, and `axum-prometheus`
+for native metrics.
 
 **Alternatives Considered**:
 
-* **Actix-web**: Rejected - more complex, historically used unsafe code, steeper learning curve
-* **Warp**: Rejected - less ergonomic API, less active community
-* **Rocket**: Rejected - async support was immature at time of decision
-* **Raw hyper**: Rejected - too low-level, excessive boilerplate
+* **Actix-web**: Rejected — more complex, historically used unsafe code
+* **Rocket**: Rejected — async support was immature at time of decision
+* **Raw hyper**: Rejected — excessive boilerplate
 
 **Consequences**:
 
-*  Positive: Ergonomic extractor-based API that integrates naturally with Tokio
-*  Positive: Excellent performance for concurrent game move calculations
-*  Positive: Type-safe shared state via `State<AppState>` across all handlers
-*  Positive: `Send + Sync` requirements on `YBot` trait align naturally with Axum's threading model
-*  Positive: Integration tests use `tower::ServiceExt::oneshot` without binding to a network port
-*  Negative: Rust async adds compile-time complexity
-*  Negative: Team needed time to learn Axum's extractor pattern
-*  Mitigation: Axum's documentation and examples are thorough; the extractor pattern becomes intuitive quickly
+* ✅ Type-safe shared state; compile-time handler signature guarantees
+* ✅ Integration tests run without network binding
+* ⚠ Rust async adds compile-time complexity
 
 ---
+
 === ADR-008: Custom i18n Implementation in the Frontend
 
 * **Status**: Implemented ✅
 * **Date**: 2026-03-01
-* **Deciders**: Development Team
 
 **Context**:
-The webapp needs to support English and Spanish as stated in quality requirement QS-07. We need to decide between a third-party i18n library and a lightweight custom implementation, considering the project scope and the number of strings involved (< 100 keys).
+The webapp needs EN/ES support. Scope is < 200 keys, two languages only.
 
 **Decision**:
-We implement a **custom i18n solution** using React Context API (`I18nProvider`) with a static `translations.ts` dictionary. Features:
-
-* Language preference persisted in `localStorage`
-* Template variable interpolation via `{variableName}` syntax (e.g., `"home.welcome": "Hello {username}"`)
-* Fallback to Spanish if a key is missing in the selected language
-* `LanguageToggle` component available on all pages (Login, Register, Navbar)
+Custom `I18nProvider` using React Context API with a static `translations.ts` dictionary.
+Features: `{variable}` interpolation, `localStorage` persistence, Spanish fallback for missing keys.
 
 **Alternatives Considered**:
 
-* **react-i18next**: Rejected - adds dependency and configuration overhead disproportionate to the number of strings
-* **FormatJS / react-intl**: Rejected - same concern; better suited for large-scale applications
-* **No i18n**: Rejected - internationalization is a stated quality requirement (QS-07)
+* **react-i18next**: Rejected — dependency overhead disproportionate to the number of strings
+* **FormatJS / react-intl**: Rejected — same concern; better for large-scale applications
 
 **Consequences**:
 
-*  Positive: Zero additional dependencies
-*  Positive: Full control over the implementation
-*  Positive: Simple to add new languages — just add a new entry in `translations.ts`
-*  Positive: SonarQube false positives on password-related keys managed with `// NOSONAR` comments
-*  Negative: No pluralization support (not currently needed)
-*  Negative: No lazy loading of translation files (acceptable given the small dictionary size)
-*  Negative: Manual maintenance of translation keys across both languages
-*  Mitigation: TypeScript typing on the `Dict` type helps catch missing or inconsistent keys
+* ✅ Zero additional dependencies
+* ✅ TypeScript `Dict` type catches missing keys at compile time
+* ⚠ No pluralization support (not currently needed)
 
 ---
 
-=== Summary of Architectural Decisions
+=== ADR-009: Socket.IO for Real-Time Multiplayer
 
-|===
-| ID | Decision | Key Rationale | Status
+* **Status**: Implemented ✅
+* **Date**: 2026-03-10
 
-| **ADR-001** | Game Modes (PvM first, extensible) | Extensibility for future modes | Implemented ✅
-| **ADR-002** | MongoDB for User Data | Schema flexibility, Node.js + Mongoose integration | Implemented ✅
-| **ADR-003** | Five-Service Architecture | Technology constraints + separation of concerns | Implemented ✅ (updated)
-| **ADR-004** | API Gateway | Security, single entry point | Implemented ✅ (updated)
-| **ADR-005** | Strategy Pattern for AI (6 strategies) | Extensibility, multiple difficulties | Implemented ✅ (updated)
-| **ADR-006** | Dedicated Authentication Microservice | Single responsibility, testability | Implemented ✅
-| **ADR-007** | Axum as HTTP Framework for Rust | Ergonomics, async, performance | Implemented ✅
-| **ADR-008** | Custom i18n in Frontend | Lightweight, zero dependencies | Implemented ✅
+**Context**:
+PvP game mode requires real-time bidirectional communication between two clients coordinated by a server.
+
+**Decision**:
+Use **Socket.IO** in a dedicated `multiplayer/` service. The service manages room state in memory,
+enforces turn order, and delegates game rules to `gamey` via HTTP. Socket.IO provides room management,
+reconnection, and WebSocket/long-polling fallback out of the box.
+
+**Alternatives Considered**:
+
+* **Raw WebSocket**: Rejected — no room management; reconnection would need custom implementation
+* **SSE**: Rejected — unidirectional; clients cannot send moves without a separate REST endpoint
+* **HTTP polling**: Rejected — too much latency and server load for turn-based sync
+* **Multiplayer inside gateway**: Rejected — mixes stateful logic with stateless REST routing
+
+**Consequences**:
+
+* ✅ Room management and event broadcasting handled by Socket.IO
+* ✅ Game rule enforcement remains in `gamey` — no duplication
+* ⚠ Room state is in-memory — lost on container restart
+* ⚠ Cannot scale horizontally without Redis Socket.IO adapter
+* Mitigation: Acceptable for current scope; Redis adapter is documented upgrade path
+
+---
+
+=== ADR-010: YEN as Universal Game State Format
+
+* **Status**: Implemented ✅
+* **Date**: 2026-01-20
+
+**Context**:
+Multiple services (gateway, multiplayer, botapi, webapp) need to exchange game state. A shared format
+must be human-readable, JSON-serializable, and parseable by both Rust and JavaScript without lossy
+conversion.
+
+**Decision**:
+Adopt **YEN (Y Exchange Notation)** as the sole game state format across all services. YEN is a
+JSON object with four fields: `size` (integer), `turn` (player index), `players` (token array),
+and `layout` (row-separated string of cell characters).
+
+[source,json]
+----
+{ "size": 5, "turn": 0, "players": ["B","R"], "layout": "B/BR/.R./..../....." }
+----
+
+**Alternatives Considered**:
+
+* **Flat cell array**: Rejected — loses the triangular structure; requires extra size metadata
+* **Coordinate list (only occupied cells)**: Rejected — harder to detect empty cells; requires full board
+size for validation; not human-readable
+* **Binary encoding**: Rejected — not human-readable; harder to debug across languages
+
+**Consequences**:
+
+* ✅ Single format understood by Rust (`gamey`), Node.js (gateway, multiplayer, botapi), and TypeScript (webapp)
+* ✅ Human-readable layout string simplifies debugging
+* ✅ Enables cross-team interoperability without format negotiation
+* ✅ `assertValidYen()` and `GameY::try_from(yen)` provide validation at every entry point
+* ⚠ Layout string grows quadratically with board size (size 11 = 66 chars)
+* ⚠ Strict row-length validation (`row i must have i+1 chars`) can reject valid states if serialized incorrectly
+
+---
+
+=== ADR-011: Role-Based Access Control via JWT Claims
+
+* **Status**: Implemented ✅
+* **Date**: 2026-03-15
+
+**Context**:
+The admin panel requires differentiating regular users from administrators on every request. Two options
+exist: (1) embed the role in the JWT payload, or (2) look up the role from the database on every request.
+
+**Decision**:
+Embed the `role` field (`"user"` or `"admin"`) directly in the JWT payload at token generation time.
+The gateway reads the role from the decoded token without querying the users service.
+
+[source,json]
+----
+{ "id": "...", "username": "alice", "email": "...", "role": "admin", "iat": ..., "exp": ... }
+----
+
+Enforcement is applied at two layers:
+* **Client-side**: Webapp checks `role` claim before rendering admin routes; redirects non-admins to `/home`
+* **Server-side**: Gateway middleware decodes JWT and rejects requests to `/admin/*` if `role !== "admin"`
+
+**Alternatives Considered**:
+
+* **Database lookup on every admin request**: Rejected — adds latency and database load; the users service
+becomes a synchronous dependency on every protected request
+* **Separate admin token**: Rejected — doubles the authentication flow and complicates token storage
+* **Scope-based OAuth claims**: Considered — more standard but overkill for two roles; no OAuth provider in use
+
+**Consequences**:
+
+* ✅ Zero additional latency for role checks — role is in the token
+* ✅ Admin routes are protected even if the users service is temporarily unavailable
+* ⚠ Role changes (grant/revoke admin) only take effect on the next login — existing tokens retain the old role
+* ⚠ Token cannot be invalidated without a blocklist (not implemented)
+* Mitigation: Acceptable for current scale; role revocation edge case documented as known limitation
+
+---
+
+=== ADR-012: Union-Find for Win Condition Detection
+
+* **Status**: Implemented ✅
+* **Date**: 2026-02-10
+
+**Context**:
+Game Y is won by connecting all three sides of the triangular board. After every move, the system must
+determine whether any player has formed a connected path touching sides A, B, and C simultaneously.
+The check must be fast (< 2s total including bot move).
+
+**Decision**:
+Use a **Union-Find (Disjoint Set Union)** data structure in the game core. Each placed piece is
+represented as a `PlayerSet` node with three boolean flags: `touches_side_a`, `touches_side_b`,
+`touches_side_c`. When a piece is placed, it is merged with all adjacent same-color pieces. The win
+condition is detected when any root node has all three flags set to `true`.
+
+**Alternatives Considered**:
+
+* **BFS/DFS on every move**: Considered — correct but O(N) per move where N is board size; Union-Find
+achieves near-O(1) amortized per union/find operation
+* **Pre-compute all winning paths**: Rejected — exponential number of paths on a triangular board
+* **Side-connectivity matrix**: Rejected — more complex to maintain incrementally
+
+**Consequences**:
+
+* ✅ Win condition check is near-O(1) amortized after each move
+* ✅ Naturally integrates with move application — no separate pass over the board
+* ✅ Side-touch flags are propagated correctly through path compression
+* ⚠ Union-Find requires careful implementation of path compression with flag merging
+* ⚠ Barycentric coordinate system (`x + y + z = size - 1`) requires non-trivial index conversion
+
+---
+
+=== ADR-013: Barycentric Coordinate System for the Game Board
+
+* **Status**: Implemented ✅
+* **Date**: 2026-02-10
+
+**Context**:
+A triangular Game Y board needs a coordinate system for identifying cells, computing adjacency, and
+detecting side contact. Standard (row, col) coordinates work but make side-touch detection verbose.
+
+**Decision**:
+Use **barycentric coordinates** `(x, y, z)` where `x + y + z = size - 1`. Each coordinate represents
+the distance from one of the three sides:
+
+* `x = 0` → cell touches side A
+* `y = 0` → cell touches side B
+* `z = 0` → cell touches side C
+
+Conversion functions `from_index(idx, size)` and `to_index(size)` map between the linear array
+representation (for board storage) and barycentric coordinates (for rule logic).
+
+**Alternatives Considered**:
+
+* **(row, col) only**: Rejected — side detection requires `row == 0`, `col == 0`, `col == row` checks
+separately; adjacency computation is less elegant
+* **Axial coordinates (q, r)**: Considered — common for hex grids but not natural for triangular boards
+
+**Consequences**:
+
+* ✅ Side-touch detection is `x == 0`, `y == 0`, or `z == 0` — one comparison each
+* ✅ Property-based tests verify `x + y + z == size - 1` invariant holds for all valid indices
+* ✅ Human-readable in API responses (YEN coordinates use `{x, y, z}`)
+* ⚠ Three-coordinate system is unfamiliar to developers new to the codebase
+* ⚠ `from_index` uses floating-point arithmetic (sqrt) — validated by round-trip property tests
+
+---
+
+=== ADR-014: Express 5 for Node.js Services
+
+* **Status**: Implemented ✅
+* **Date**: 2026-02-15
+
+**Context**:
+Three Node.js services (gateway, authentication, users) need an HTTP framework. Express is the
+industry-standard choice for Node.js REST APIs. Express 4 vs Express 5 was evaluated.
+
+**Decision**:
+Use **Express 5** (`^5.0.0`) for gateway and authentication services. Express 5 provides native
+`async/await` error propagation — unhandled promise rejections in route handlers are automatically
+passed to the error middleware without requiring explicit `try/catch` wrappers in every handler.
+
+NOTE: The users service uses Express 5 as well (`^5.2.1`). The multiplayer service uses Express 4
+(`^4.21.1`) since it was developed slightly earlier.
+
+**Alternatives Considered**:
+
+* **Fastify**: Rejected — team familiarity with Express; Fastify's schema validation adds setup overhead
+* **Hono**: Considered — fast and TypeScript-native but less ecosystem maturity for course timeframe
+* **Express 4**: Still used in multiplayer — acceptable since multiplayer handlers use explicit
+`try/catch` throughout
+
+**Consequences**:
+
+* ✅ Native async error propagation reduces boilerplate in route handlers
+* ✅ Familiarity across the team — no learning curve
+* ⚠ Express 5 was in release candidate status during development — minor API differences from Express 4
+* ⚠ Some middleware (e.g., older versions of `express-prom-bundle`) required version pinning
+
+---
+
+=== ADR-015: In-Memory State for BotAPI and Multiplayer Sessions
+
+* **Status**: Implemented ✅
+* **Date**: 2026-03-10
+
+**Context**:
+Both the multiplayer service (rooms) and the BotAPI (game sessions, remote interop sessions) need to
+maintain short-lived state across multiple HTTP requests or Socket.IO events. Options: in-memory,
+Redis, MongoDB.
+
+**Decision**:
+Use **in-memory `Map`-based stores** (`RoomManager`, `ActiveGamesStore`, `RemoteGameSessionsStore`)
+in both services. State is lost on container restart.
+
+**Rationale**:
+
+* Bot games and multiplayer rooms are short-lived (typically < 30 minutes)
+* Adding Redis introduces a new infrastructure dependency and operational complexity
+* MongoDB writes on every move would add latency and storage overhead for ephemeral data
+* Course evaluation scale (< 50 concurrent sessions) does not require persistence
+
+**Consequences**:
+
+* ✅ Zero additional infrastructure — no Redis or extra MongoDB collections needed
+* ✅ Sub-millisecond state access — no network round-trip
+* ✅ Simple implementation — `Map<string, Room>` with helper methods
+* ⚠ State lost on container restart — players must create new rooms after deployments
+* ⚠ Cannot scale horizontally without a shared store
+* Mitigation: Documented as TD1 (multiplayer) and acceptable limitation for BotAPI; Redis adapter
+is the documented upgrade path
+
+---
+
+=== ADR-016: Dedicated `db.js` with Test Database Isolation in Users Service
+
+* **Status**: Implemented ✅
+* **Date**: 2026-02-20
+
+**Context**:
+The users service needs to connect to MongoDB. Tests must not read from or write to the production
+database. The MongoDB URI format (`host1:port,host2:port/db`) is not a valid URL, ruling out the
+standard `URL` constructor for parsing.
+
+**Decision**:
+Centralise MongoDB connection in `db.js` with a `buildConnectionUri()` function that appends `_test`
+to the database name when `NODE_ENV === "test"` using **regex-based URI manipulation** instead of
+URL parsing.
+
+[source,javascript]
+----
+// Append _test suffix without URL parsing (handles multi-host URIs)
+if (/\/[^/?]+\?/.test(uri)) return uri.replace(/\/([^/?]+)\?/, '/$1_test?')
+if (/\/[^/?]+$/.test(uri)) return uri.replace(/\/([^/?]+)$/, '/$1_test')
+----
+
+The `vitest.globalSetup.js` drops the `_test` database after all test suites complete.
+
+**Alternatives Considered**:
+
+* **`mongodb-memory-server` always**: Considered — fully isolated but slower startup; does not test
+against real MongoDB behavior
+* **Separate `.env.test` file**: Considered — requires manual configuration; regex approach is automatic
+* **URL constructor**: Rejected — multi-host MongoDB Atlas URIs (`host1,host2/db`) are not valid URLs
+
+**Consequences**:
+
+* ✅ Tests run against a real MongoDB instance (`_test` DB) without affecting production data
+* ✅ Works with any MongoDB URI format including Atlas cluster URIs
+* ✅ `vitest.globalSetup.js` ensures clean state between CI runs
+* ⚠ Requires a running MongoDB instance for tests (CI provides one)
+* ⚠ Regex-based URI manipulation could fail on unusual URI formats
+
+---
+
+=== ADR-017: Vitest as Test Runner for Node.js Services
+
+* **Status**: Implemented ✅
+* **Date**: 2026-02-15
+
+**Context**:
+Node.js services need a test runner. Options considered: Jest (established, CommonJS-friendly),
+Vitest (fast, native ESM support), Mocha (flexible but requires more setup).
+
+**Decision**:
+Use **Vitest** (`^4.0.x`) for gateway, authentication, and botapi services (all ESM). Use **Jest**
+(`^29.x`) for users and multiplayer services (CommonJS). Both integrate with `@vitest/coverage-v8`
+and `jest --coverage` for SonarCloud coverage reporting.
+
+**Rationale**:
+Gateway and authentication use `"type": "module"` (ESM). Jest has historically poor ESM support
+requiring Babel transforms. Vitest natively supports ESM with no configuration. Users and multiplayer
+use CommonJS (`require()`), where Jest is the natural choice.
+
+**Alternatives Considered**:
+
+* **Vitest for all**: Considered — CommonJS support requires `"type": "module"` migration of users
+and multiplayer, which would have been a large refactor mid-project
+* **Jest for all**: Rejected — ESM support in Jest requires `--experimental-vm-modules` flag and
+Babel configuration overhead
+* **Mocha**: Rejected — no built-in coverage; requires additional plugins for assertions and mocking
+
+**Consequences**:
+
+* ✅ Each service uses the test runner best suited to its module system
+* ✅ Both produce LCOV coverage reports compatible with SonarCloud
+* ⚠ Two different test runners in the same repository increase onboarding friction
+* Mitigation: Consistent `npm test` and `npm run test:coverage` scripts across all services hide
+the underlying runner differences
+
+---
+
+=== ADR-018: ESM vs CommonJS Module System Split
+
+* **Status**: Implemented ✅
+* **Date**: 2026-01-20
+
+**Context**:
+Node.js supports two module systems: CommonJS (`require()`) and ES Modules (`import/export`). The
+project started with CommonJS (users service) and progressively adopted ESM (gateway, authentication)
+as newer services were added. This created a split.
+
+**Decision**:
+Accept the mixed module system rather than migrating all services to ESM at once:
+
+* **CommonJS** (`"type": "commonjs"` or no `type` field): `users/`, `multiplayer/`
+* **ESM** (`"type": "module"`): `gateway/`, `authentication/`
+* **TypeScript compiled to CommonJS**: `botapi/` (TypeScript source, compiled to `dist/` as CJS via
+`tsconfig.json` with `"module": "Node16"`)
+
+The `users-service.js` uses a hybrid approach: the main file uses ESM (`import`), but loads CommonJS
+models via `createRequire(import.meta.url)` to bridge the module system gap.
+
+**Alternatives Considered**:
+
+* **Migrate all to ESM**: Considered — Mongoose and some Express middleware had ESM compatibility
+issues at the time; migration risk was high mid-project
+* **Migrate all to CommonJS**: Rejected — gateway and auth were already written in ESM; rewriting
+would lose async error propagation benefits of Express 5 + ESM
+
+**Consequences**:
+
+* ✅ Each service works correctly with its chosen module system
+* ✅ No breaking changes required to existing services
+* ⚠ Inconsistency increases onboarding friction and makes copy-paste between services error-prone
+* ⚠ `createRequire` bridge in `users-service.js` is unusual and requires a comment explaining why
+* Mitigation: Each service has its own `package.json` clearly indicating module system;
+`"type"` field is explicit in all cases
+
+---
+
+=== ADR-019: express-prom-bundle for Prometheus Metrics in Node.js Services
+
+* **Status**: Implemented ✅
+* **Date**: 2026-03-01
+
+**Context**:
+Gateway and users services need to expose Prometheus metrics. Options: manual metric registration
+with `prom-client`, or a middleware wrapper that auto-instruments all HTTP requests.
+
+**Decision**:
+Use **`express-prom-bundle`** as Express middleware in gateway and users services. Configuration:
+
+[source,javascript]
+----
+promBundle({
+  includeMethod: true,
+  includePath: true,
+  includeStatusCode: true,
+  normalizePath: true,
+})
+----
+
+`normalizePath: true` collapses parametric paths (e.g., `/users/alice` and `/users/bob` → `/users/#val`)
+to prevent high-cardinality metric labels.
+
+**Alternatives Considered**:
+
+* **Manual `prom-client` counters**: Rejected — requires instrumenting every route handler individually;
+high boilerplate; easy to miss routes
+* **OpenTelemetry**: Considered — more powerful but significantly more complex to configure for a
+course project; overkill for three services
+
+**Consequences**:
+
+* ✅ All HTTP requests automatically tracked with method, path, and status code labels
+* ✅ `normalizePath` prevents cardinality explosion from user-specific paths
+* ✅ Consistent metric names across gateway and users (`http_requests_total`,
+`http_request_duration_seconds`)
+* ⚠ `normalizePath` may collapse paths that should be tracked separately
+* ⚠ Metrics endpoint (`/metrics`) is publicly accessible — acceptable since it contains no sensitive data
+
+---
+
+=== ADR-020: React Context API for Global State (Theme and i18n)
+
+* **Status**: Implemented ✅
+* **Date**: 2026-03-01
+
+**Context**:
+The webapp needs two pieces of global state shared across all components: the current language (EN/ES)
+and the current theme (dark/light). Options: prop drilling, React Context, or a state management
+library (Redux, Zustand, Jotai).
+
+**Decision**:
+Use the **React Context API** with custom providers (`ThemeProvider`, `I18nProvider`) wrapping the
+entire application at the `main.tsx` level. Each provider exposes a custom hook (`useTheme()`,
+`useI18n()`) that components call directly.
+
+**Alternatives Considered**:
+
+* **Prop drilling**: Rejected — theme and language are needed in virtually every component; prop drilling
+would pollute every component signature
+* **Redux Toolkit**: Rejected — significant boilerplate for two simple global values; no async state needed
+* **Zustand**: Considered — lightweight, but adds a dependency; React Context is sufficient for
+synchronous, rarely-changing global state
+
+**Consequences**:
+
+* ✅ Zero additional dependencies
+* ✅ Clean API: `const { t } = useI18n()` and `const { theme, toggleTheme } = useTheme()`
+* ✅ Providers are independently testable
+* ⚠ Context re-renders all consumers on every change — acceptable since theme/language changes are rare
+* ⚠ `useTheme()` and `useI18n()` return fallback values if called outside their provider, preventing
+runtime errors but potentially silencing configuration mistakes
+
+---
+
+=== ADR-021: Room Code Generation Without Ambiguous Characters
+
+* **Status**: Implemented ✅
+* **Date**: 2026-03-10
+
+**Context**:
+Multiplayer rooms need unique, human-typeable codes that players share out of band (chat, voice).
+Codes must be short, unambiguous, and easy to read aloud.
+
+**Decision**:
+Generate 6-character codes from a custom alphabet `"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"` that
+**excludes** visually ambiguous characters: `O` (confused with `0`), `I` (confused with `1`),
+`0` (zero), and `1` (one). The generator retries up to 1000 times to guarantee uniqueness against
+existing room codes.
+
+**Alternatives Considered**:
+
+* **UUID**: Rejected — 36 characters; impossible to type from memory or dictate verbally
+* **Sequential numeric ID**: Rejected — predictable; allows enumeration of all active rooms
+* **Full alphabet including ambiguous chars**: Rejected — `O`/`0` and `I`/`1` confusion causes UX
+friction when sharing codes verbally
+
+**Consequences**:
+
+* ✅ Codes are short (6 chars), unique, and unambiguous when read aloud
+* ✅ 32^6 ≈ 1 billion possible codes — no practical collision risk at current scale
+* ✅ `generateUniqueRoomCode()` retries up to 1000 times — effectively guaranteed for any reasonable
+number of active rooms
+* ⚠ Case-sensitive codes (all uppercase) — enforced by `toUpperCase()` on input
+
+---
+
+=== ADR-022: Debounced Search in Social Features
+
+* **Status**: Implemented ✅
+* **Date**: 2026-03-18
+
+**Context**:
+The Social page provides a live user search. Without rate limiting, every keystroke would trigger an
+API call to the users service, causing unnecessary load and poor UX for slow typists.
+
+**Decision**:
+Implement a **400ms debounce** on the search input using a `useRef<NodeJS.Timeout>` timer in the
+`Social.tsx` component. The search request is only sent after the user stops typing for 400ms.
+Minimum query length is 1 character.
+
+**Alternatives Considered**:
+
+* **No debounce (fire on every keystroke)**: Rejected — excessive API calls; users service and MongoDB
+would receive a request per character typed
+* **Search-on-submit (button click)**: Rejected — poor UX; most modern search UIs are live
+* **Throttle instead of debounce**: Rejected — debounce is more appropriate for search: we want to
+wait until the user finishes typing, not limit to one request per N ms
+
+**Consequences**:
+
+* ✅ Significant reduction in API calls during normal typing (e.g., typing "alice" = 1 request vs 5)
+* ✅ Zero additional dependencies — implemented with native `setTimeout`/`clearTimeout`
+* ⚠ 400ms delay is noticeable on fast connections — acceptable trade-off for reduced server load
+* ⚠ Debounce timer must be cleared on component unmount to avoid memory leaks — handled via
+`useRef` pattern
+
+---
+
+=== Summary of All Architectural Decisions
+
+[options="header", cols="1,3,1,1"]
 |===
+| ID | Decision | Date | Status
+
+| **ADR-001** | Extensible game modes — PvM, PvP, local PvP | 2026-01-15 | ✅
+| **ADR-002** | MongoDB + Mongoose for user data | 2026-01-20 | ✅
+| **ADR-003** | Eight-service microservices (evolved from three) | 2026-01-15 | ✅ updated
+| **ADR-004** | Nginx as public reverse proxy with WS upgrade | 2026-01-20 | ✅ updated
+| **ADR-005** | Strategy Pattern for AI — six `YBot` implementations | 2026-01-25 | ✅ updated
+| **ADR-006** | Dedicated authentication microservice with bcrypt | 2026-02-24 | ✅
+| **ADR-007** | Axum as HTTP framework for Rust game engine | 2026-02-01 | ✅
+| **ADR-008** | Custom i18n — zero dependencies, EN/ES | 2026-03-01 | ✅
+| **ADR-009** | Socket.IO for real-time multiplayer in dedicated service | 2026-03-10 | ✅
+| **ADR-010** | YEN as universal game state format | 2026-01-20 | ✅
+| **ADR-011** | Role-based access control via JWT claims | 2026-03-15 | ✅
+| **ADR-012** | Union-Find for win condition detection | 2026-02-10 | ✅
+| **ADR-013** | Barycentric coordinate system for the game board | 2026-02-10 | ✅
+| **ADR-014** | Express 5 for Node.js services | 2026-02-15 | ✅
+| **ADR-015** | In-memory state for BotAPI and multiplayer sessions | 2026-03-10 | ✅
+| **ADR-016** | Test database isolation via URI suffix `_test` | 2026-02-20 | ✅
+| **ADR-017** | Vitest (ESM) + Jest (CJS) as test runners | 2026-02-15 | ✅
+| **ADR-018** | ESM vs CommonJS module system split | 2026-01-20 | ✅
+| **ADR-019** | `express-prom-bundle` for auto-instrumented metrics | 2026-03-01 | ✅
+| **ADR-020** | React Context API for theme and i18n global state | 2026-03-01 | ✅
+| **ADR-021** | Room code generation without ambiguous characters | 2026-03-10 | ✅
+| **ADR-022** | 400ms debounced search in social features | 2026-03-18 | ✅
+|===
+
+---
+
