@@ -37,11 +37,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
   onClose,
   t,
 }) => {
-  const handleMarkRead = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    onMarkRead(id);
-  };
-
   const notificationText = (n: Notification) => {
     if (n.type === "welcome") return t("notifications.welcomeText");
     if (n.type === "admin_granted") return t("notifications.adminGranted");
@@ -74,9 +69,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
         open
       >
         <div className="navbar__notif-header">
-          <span className="navbar__notif-title">
-            {t("notifications.title")}
-          </span>
+          <span className="navbar__notif-title">{t("notifications.title")}</span>
 
           <button
             type="button"
@@ -101,9 +94,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     : "navbar__notif-item--unread"
                 }`}
               >
-                <span className="navbar__notif-icon">
-                  {notificationIcon(n)}
-                </span>
+                <span className="navbar__notif-icon">{notificationIcon(n)}</span>
 
                 <div className="navbar__notif-body">
                   <p
@@ -124,7 +115,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 {!n.read && (
                   <button
                     type="button"
-                    onClick={(e) => handleMarkRead(e, n.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMarkRead(n.id);
+                    }}
                     aria-label={t("notifications.markRead")}
                     className="navbar__notif-mark-btn"
                   >
@@ -175,12 +169,7 @@ const Navbar: React.FC<NavbarProps> = ({
       return;
     }
 
-    if (IS_TEST) {
-      setAdminAllowed(false);
-      return;
-    }
-
-    if (!token) {
+    if (IS_TEST || !token) {
       setAdminAllowed(false);
       return;
     }
@@ -193,8 +182,7 @@ const Navbar: React.FC<NavbarProps> = ({
   }, [token, isAdmin]);
 
   useEffect(() => {
-    if (IS_TEST) return;
-    if (!token || externalNotifications) return;
+    if (IS_TEST || !token || externalNotifications) return;
 
     fetch(`${API}/notifications`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -216,7 +204,8 @@ const Navbar: React.FC<NavbarProps> = ({
       return;
     }
 
-    if (!token) return;
+    const authToken = localStorage.getItem("token");
+    if (!authToken) return;
 
     setInternalNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
@@ -225,7 +214,7 @@ const Navbar: React.FC<NavbarProps> = ({
     try {
       await fetch(`${API}/notifications/${id}/read`, {
         method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
     } catch {
       setInternalNotifications((prev) =>
@@ -235,25 +224,27 @@ const Navbar: React.FC<NavbarProps> = ({
   };
 
   const logout = async () => {
-    if (onLogout) {
-      await onLogout();
-      return;
-    }
+    const authToken = localStorage.getItem("token");
 
     try {
-      if (token) {
+      if (authToken) {
         await fetch(`${API}/logout`, {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${authToken}` },
         });
       }
     } catch {
-      // Aunque falle backend/red, cerramos sesión en cliente.
+      // Cerramos sesión en cliente aunque falle backend/red.
     } finally {
       localStorage.removeItem("username");
       localStorage.removeItem("token");
       sessionStorage.clear();
-      navigate("/", { replace: true });
+
+      if (onLogout) {
+        await onLogout();
+      } else {
+        navigate("/", { replace: true });
+      }
     }
   };
 
@@ -340,9 +331,7 @@ const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               className="navbtn"
-              aria-current={
-                location.pathname === "/social" ? "page" : undefined
-              }
+              aria-current={location.pathname === "/social" ? "page" : undefined}
               onClick={goSocial}
             >
               {t("common.social")}

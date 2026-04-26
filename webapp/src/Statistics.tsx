@@ -196,12 +196,6 @@ const Statistics: React.FC = () => {
 
     }, [username, token, navigate]);
 
-    const logout = () => {
-        localStorage.removeItem("username");
-        localStorage.removeItem("token");
-        navigate("/", { replace: true });
-    };
-
     const handlePrev = () => fetchStats(page - 1);
     const handleNext = () => fetchStats(page + 1);
 
@@ -311,7 +305,7 @@ const Statistics: React.FC = () => {
 
     return (
         <div className="page">
-            <Navbar username={username} onLogout={logout} />
+            <Navbar username={username} />
             <main className="container" style={{ paddingTop: 40 }}>
                 <div style={{ maxWidth: 860, margin: "0 auto",
                     display: "flex", flexDirection: "column", gap: 14 }}>

@@ -48,12 +48,6 @@ const SelectDifficulty: React.FC = () => {
         }
     }, [navigate]);
 
-    const logout = () => {
-        localStorage.removeItem("username");
-        localStorage.removeItem("token");
-        navigate("/", { replace: true });
-    };
-
     const handlePresetSize  = (size: number)                          => { setPresetSize(size);  setCustomSize(""); };
     const handleCustomSize  = (e: React.ChangeEvent<HTMLInputElement>) => { setPresetSize(null);  setCustomSize(e.target.value); };
     const handlePresetTimer = (seconds: number)                        => { setPresetTimer(seconds); setCustomTimer(""); };
@@ -96,7 +90,7 @@ const SelectDifficulty: React.FC = () => {
 
     return (
         <div className="page">
-            <Navbar username={username} onLogout={logout} />
+            <Navbar username={username} />
             <main className="container sd-container">
 
                 <div className="sd-wrapper">
