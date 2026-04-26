@@ -92,7 +92,11 @@ const SelectDifficulty: React.FC = () => {
 
     // Resolves random first player at the moment Start is pressed
     const resolveFirstPlayer = (): "player1" | "player2" => {
-        if (firstPlayer === "random") return Math.random() < 0.5 ? "player1" : "player2";
+        if (firstPlayer === "random") {
+            const arr = new Uint32Array(1);
+            crypto.getRandomValues(arr);
+            return arr[0] % 2 === 0 ? "player1" : "player2";
+        }
         return firstPlayer;
     };
 
