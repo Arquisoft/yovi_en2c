@@ -70,6 +70,9 @@ Bot --> Nginx : "HTTPS"
 
 * **Purpose**: Single public entry point. Handles HTTPS termination, HTTP->HTTPS redirect, and path-based routing
 to internal services. TLS certificates are mounted from `nginx/certs/`.
+
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Nginx[Nginx wiki page]
+
 * **Provided interfaces**: HTTPS on ports 80 and 443
 * **Routing rules**:
 ** `/` → webapp:80
@@ -91,6 +94,8 @@ human players and administrators. Communicates with backend exclusively through 
 
 ===== Gateway
 
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Gateway-Service[Gateway Service wiki page]
+
 * **Purpose**: Backend entry point for all webapp requests. Routes to the appropriate internal service, handles
 CORS, sanitizes path parameters, validates input, and exposes Prometheus metrics. Stateless — no session state.
 * **Provided interfaces**: REST API at port 8080 (internal), exposed via Nginx at `/api/*`
@@ -99,6 +104,9 @@ CORS, sanitizes path parameters, validates input, and exposes Prometheus metrics
 * **Location**: `gateway/gateway-service.js`
 
 ===== Authentication Service
+
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Authentication-Service[Authentication Service wiki page]
+
 
 * **Purpose**: Handles all identity operations: payload validation, bcrypt password hashing and comparison,
 JWT token generation and verification with role claims. Delegates user data persistence to the Users Service.
@@ -295,6 +303,10 @@ Key webapp building blocks:
 
 ==== White Box: Gamey (`gamey/`)
 
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Gamey-Service[Gamey Service wiki page]
+
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Bots-Implementations[Bot Implementations Wiki]
+
 [plantuml,"Gamey Internal Structure",png]
 ----
 @startuml
@@ -455,6 +467,8 @@ package "Users Service (Level 2)" {
 }
 @enduml
 ----
+
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Users-Service[Users Service wiki page]
 
 Key users service building blocks:
 

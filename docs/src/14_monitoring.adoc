@@ -6,6 +6,8 @@ ifndef::imagesdir[:imagesdir: ../images]
 This section documents the observability stack, the metrics collected, the Grafana dashboard, and how
 to access monitoring tools in local and production environments.
 
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Monitoring:-Prometheus-&-Grafana[Monitoring wiki page]
+
 === Overview
 
 YOVI uses a **Prometheus + Grafana** stack for metrics-based observability. Three services expose

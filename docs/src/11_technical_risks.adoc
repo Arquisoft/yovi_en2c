@@ -140,4 +140,5 @@ to `alfa_beta_bot` independent of the difficulty level the user has chosen. A us
 (heuristic_bot) receives a Hard-level hint.
 | Low — hints still work and are useful; inconsistency may confuse advanced users
 | Planned: pass the selected bot ID as a parameter to `POST /hint` and use it in the hint calculation.
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Hint-System[Player Hints wiki page]
 |===

@@ -237,6 +237,8 @@ Used in `PlayerSet` with `parent`, `touches_side_a/b/c` flags.
 
 === 5. Organizational and Process Decisions
 
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Meetings[Meeting minutes wiki page]
+
 [options="header", cols="2,2,2,2"]
 |===
 | Decision | Rationale | Impact | Constraint Addressed

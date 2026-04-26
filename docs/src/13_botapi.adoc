@@ -13,6 +13,9 @@ link:https://github.com/Arquisoft/yovi_en2c/tree/master/botapi/src/openapi/opena
 
 === Gateway (`/api/*`)
 
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Gateway-Service[Gateway Service wiki page]
+
+
 The gateway is the single entry point for all webapp traffic. All routes listed here are accessible
 at `https://yovi.13.63.89.84.sslip.io/api/<route>` in production. JWT is required on all protected
 routes unless stated otherwise.
@@ -43,6 +46,8 @@ routes unless stated otherwise.
 |===
 
 ==== User Routes
+
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Users-Service[Users Service wiki page]
 
 [options="header", cols="1,2,1,1,3"]
 |===
@@ -91,7 +96,7 @@ Forwards to `POST /v1/game/pvb/:bot_id` on Gamey.
 | Bearer JWT
 | `{yen}`
 | Returns a suggested move for the current position using `alfa_beta_bot`. Forwards to
-`POST /v1/ybot/choose/alfa_beta_bot` on Gamey.
+`POST /v1/ybot/choose/alfa_beta_bot` on Gamey. link:https://github.com/Arquisoft/yovi_en2c/wiki/Hint-System[Player Hints wiki page]
 |===
 
 ==== Game Result Routes

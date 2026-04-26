@@ -201,6 +201,9 @@ routing in the React application.
 
 === Level 3: Prometheus Scrape Configuration
 
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Monitoring:-Prometheus-&-Grafana[Monitoring wiki page]
+
+
 Prometheus scrapes metrics from three services on the Docker internal network every 15 seconds.
 
 [source,yaml]

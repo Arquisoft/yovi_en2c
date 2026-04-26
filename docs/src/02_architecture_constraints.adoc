@@ -159,6 +159,7 @@ for Load Testing, API Reference, and Monitoring).
 
 | **CI/CD**
 | Automated **build, test, and deployment** MUST be implemented via **GitHub Actions**.
+link:https://github.com/Arquisoft/yovi_en2c/wiki/CI-CD-Pipeline[CI/CD Pipeline wiki page]
 | Ensures reproducible builds and deployment automation.
 | No
 
@@ -212,6 +213,8 @@ no direct access to internal services.
 === Quality Constraints
 
 These constraints define the minimum acceptable quality levels the architecture must guarantee.
+
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Load-Testing-Guide[Load Testing Guide wiki page]
 
 [options="header", cols="2,2,2,1"]
 |===

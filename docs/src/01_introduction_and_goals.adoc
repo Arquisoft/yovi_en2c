@@ -17,6 +17,13 @@ an API gateway (`gateway`), a JWT authentication service (`authentication`), a u
 a Rust game engine and bot service (`gamey`), a real-time multiplayer service (`multiplayer`), a bot interoperability
 API (`botapi`), and an Nginx reverse proxy. Observability is provided by Prometheus and Grafana.
 
+Along all the development of the project, we have focused on keeping a clear documentation of our progress in the wiki the Github project.
+In the different section of the arc42 documentations, link can be find to these sections of the wiki
+
+Here the full wiki : link:https://github.com/Arquisoft/yovi_en2c/wiki[GitHub Wiki YOVI]
+
+And all the team meetings : link:https://github.com/Arquisoft/yovi_en2c/wiki/Meetings[Meetings]
+
 🎮 **Live deployment:** https://yovi.13.63.89.84.sslip.io
 
 === Requirements Overview
@@ -33,7 +40,7 @@ Key functional requirements include:
 * User registration and JWT-based authentication.
 * **Role-based access control**: regular users and administrators.
 * Match history and game statistics with pagination.
-* Six AI difficulty levels selectable by the user.
+* Six AI difficulty levels selectable by the user. link:https://github.com/Arquisoft/yovi_en2c/wiki/Bot-Implementations[Bot Implementations wiki page]
 * Real-time online multiplayer (Player vs Player) via WebSockets (Socket.IO).
 * Social features: friend requests, friend list management, and user search.
 * In-app notification system (friend requests, welcome messages).

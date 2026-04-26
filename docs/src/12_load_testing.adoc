@@ -7,6 +7,8 @@ This section documents the load testing strategy, tooling, test scenarios, thres
 the test suite. Load tests are a first-class concern in YOVI (see Section 2, Technical Constraints) and
 are maintained alongside the production code in `tests/load/`.
 
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Load-Testing-Guide[Load Testing Guide wiki page]
+
 === Tooling
 
 YOVI uses **k6** (https://k6.io) for load testing. k6 provides:
@@ -192,6 +194,8 @@ The runner scripts execute all three scenarios sequentially and save results as 
 to `tests/load/results/` with a timestamp suffix (e.g., `register_20260415_143022.json`).
 
 === Results Interpretation
+
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Load-Testing-Results[Load Testing Results wiki page]
 
 A k6 run produces a summary table on stdout. Key metrics to check:
 

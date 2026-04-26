@@ -7,6 +7,9 @@ This section documents the most significant architectural decisions made during 
 of the YOVI platform. Each decision follows the ADR (Architecture Decision Record) format providing context,
 rationale, and consequences.
 
+For the full ADR history see the
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Architecture-Decision-Record[GitHub Wiki — ADR].
+
 === ADR-001: Game Modes Available to the User
 
 * **Status**: Implemented ✅
@@ -17,6 +20,8 @@ rationale, and consequences.
 The platform needs to offer users different ways to play Game Y. The initial requirements specify
 player-versus-machine mode, but the architecture should be extensible to support additional modes.
 Real-time player-versus-player was subsequently added as a core requirement.
+
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Game-Modes[Game Modes wiki page]
 
 **Decision**:
 Design the game mode system with **extensibility as a core principle**. Implement PvM as the primary
@@ -128,6 +133,8 @@ Nginx handles HTTPS termination, HTTP→HTTPS redirect, and routes to four servi
 The system must support multiple AI strategies selectable at runtime. New strategies may be added without
 modifying existing code. The `YBot` trait must be `Send + Sync` for Axum's async handlers.
 
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Bots-Implementations[Bot Implementations Wiki]
+
 **Decision**:
 Implement the **Strategy Pattern** via the `YBot` trait in Rust. All six strategies are registered in
 `YBotRegistry` and selected by name at runtime.
@@ -161,6 +168,8 @@ Implement the **Strategy Pattern** via the `YBot` trait in Rust. All six strateg
 Authentication (JWT generation, bcrypt comparison) and user data management are distinct responsibilities.
 Mixing them in the users service violates SRP and reduces testability.
 
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Authentication-Service[Authentication Service wiki page]
+
 **Decision**:
 Extract a dedicated `authentication/` service responsible for: payload validation, bcrypt comparison,
 JWT generation with role claims, and exposing `/register`, `/login`, `/verify`, `/health`.
@@ -181,6 +190,8 @@ JWT generation with role claims, and exposing `/register`, `/login`, `/verify`, 
 **Context**:
 The `gamey` Rust service needs to expose a REST API. The choice affects ergonomics, async support, and
 testability.
+
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Gamey-Service[Gamey Service wiki page]
 
 **Decision**:
 Use **Axum** with **Tokio**. Key reasons: extractor-based API, `State<AppState>` for shared
