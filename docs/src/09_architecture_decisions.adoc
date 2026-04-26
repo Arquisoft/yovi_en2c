@@ -309,7 +309,7 @@ The gateway reads the role from the decoded token without querying the users ser
 
 [source,json]
 ----
-{ "id": "...", "username": "alice", "email": "...", "role": "admin", "iat": ..., "exp": ... }
+{ "id": "...", "username": "alice", "email": "...", "role": "admin", "iat": "...", "exp": "..." }
 ----
 
 Enforcement is applied at two layers:
