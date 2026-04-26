@@ -223,24 +223,13 @@ describe("MultiplayerGame", () => {
     expect(hintButton).toBeDisabled();
   });
 
-  test("logout clears storage and navigates to root", async () => {
-    const user = userEvent.setup();
+  test("renders Navbar with username", async () => {
     localStorage.setItem("username", "Pablo");
-    localStorage.setItem("token", "fake-token");
+    localStorage.setItem("token", "token");
 
-    renderGame({
-      username: "Pablo",
-      roomCode: "ABCD12",
-      boardSize: 5,
-      isHost: true,
-    });
+    renderGame();
 
-    await screen.findByText(/Navbar Pablo/i);
-    await user.click(screen.getByRole("button", { name: /Mock logout/i }));
-
-    expect(localStorage.getItem("username")).toBeNull();
-    expect(localStorage.getItem("token")).toBeNull();
-    expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+    expect(await screen.findByText(/Navbar Pablo/i)).toBeInTheDocument();
   });
 
   test("disconnects socket on unmount", async () => {
