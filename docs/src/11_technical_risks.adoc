@@ -1,47 +1,143 @@
+ifndef::imagesdir[:imagesdir: ../images]
+
 [[section-technical-risks]]
 == Risks and Technical Debts
-
-Following the principle that "risk management is project management for grown-ups" (Tim Lister), we systematically evaluate and track items that could impact project success.
 
 Each item is assessed using a **risk matrix**:
 
 * **Probability**: Low (1), Medium (2), High (3)
 * **Impact**: Low (1), Medium (2), High (3)
-* **Risk Score** = Probability × Impact (1-9)
+* **Risk Score** = Probability × Impact (1–9)
 
-Items with score ≥ 6 require active mitigation. Items with score ≥ 8 are critical and require immediate attention.
-
-
+Items with score ≥ 6 require active mitigation. Items with score ≥ 8 are critical.
 
 === Technical Risks
 
-The following table lists identified technical risks, ordered by **Risk Score** (highest first).
-
-[options="header",cols="1,3,1,1,1,3"]
+[options="header", cols="1,3,1,1,1,3"]
 |===
-| ID | Risk Description | Prob (1-3) | Impact (1-3) | Score | Mitigation Strategy
-| **R1** | **Rust learning curve** – Team lacks Rust experience | 3 (H) | 3 (H) | **9** | • Learning sprint (week 1) • Pair programming • Focus on core game verification first • Use Rust's type system
-| **R2** | **TypeScript-Rust integration** – Communication bugs between services | 3 (H) | 3 (H) | **9** | • Versioned JSON interface (YEN) • Contract tests • Integration tests in CI • OpenAPI docs
-| **R3** | **Game Y rules misunderstanding** – Incorrect implementation | 2 (M) | 3 (H) | **6** | • Domain analysis session • Shared glossary • Walking skeleton early • Reference authoritative sources
-| **R4** | **Scope creep** – Optional features delay mandatory ones | 2 (M) | 3 (H) | **6** | • MoSCoW prioritization • Clear DoD for optional features • Feature flags
-| **R5** | **API stability for bots** – Changes break external bots | 2 (M) | 2 (M) | **4** | • Versioned API (/v1/) • Documentation • Deprecation policy (6 months) • Compatibility tests
-| **R6** | **AI performance** – Slow on large boards | 2 (M) | 2 (M) | **4** | • Performance budget (< 2s) • Early profiling • CI performance tests
-| **R7** | **DevOps complexity** – Inconsistent deployments | 2 (M) | 2 (M) | **4** | • Docker + docker-compose • CI/CD automation • Environment parity
-| **R8** | **MongoDB data loss** – Corruption or deletion | 1 (L) | 3 (H) | **3** | • Daily backups • 30-day retention • Monthly restore tests • Replication
-| **R9** | **JWT vulnerability** – Weak secrets or token leakage | 1 (L) | 3 (H) | **3** | • Strong secrets (env vars) • Short expiration (1h) • Refresh tokens • GitHub Secrets
-| **R10** | **Gateway single point of failure** – Entire system down if gateway fails | 1 (L) | 3 (H) | **3** | • Stateless design • Multiple instances • Docker restart • Prometheus monitoring
+| ID | Risk Description | Prob | Impact | Score | Mitigation Strategy
+
+| **R1**
+| **TypeScript–Rust integration** — Serialization bugs in the YEN format between Node.js and Rust services
+(e.g., field naming, null vs. undefined, integer overflow)
+| 2 (M) | 3 (H) | **6**
+| Versioned JSON interface (YEN); contract tests in BotAPI (`yen.test.ts`); integration tests covering
+full round-trips; `assertValidYen()` validates on every BotAPI entry point
+
+| **R2**
+| **Game Y rules misunderstanding** — Incorrect Union-Find win detection (e.g., off-by-one in barycentric
+coordinates, wrong side-touch detection)
+| 2 (M) | 3 (H) | **6**
+| Property-based tests with `proptest` verify coordinate invariants; unit tests cover all edge cases
+including corner cells, full board, and known winning configurations
+
+| **R3**
+| **Multiplayer room state loss** — In-memory `RoomManager` loses all active rooms on container restart
+| 3 (H) | 2 (M) | **6**
+| Accepted trade-off for current scope; rooms are short-lived; players can create a new room; documented
+in Section 8; Redis adapter is the documented upgrade path for horizontal scaling
+
+| **R4**
+| **Socket.IO scalability** — Multiplayer service cannot be scaled horizontally without a shared session
+store; a single instance becomes a bottleneck under high PvP load
+| 2 (M) | 2 (M) | **4**
+| Current deployment is single-instance; Redis Socket.IO adapter documented as future upgrade;
+acceptable for course evaluation scale (< 50 concurrent users)
+
+| **R5**
+| **Bot API remote interop host allowlist** — The hardcoded allowlist in `remoteInteropClient` may
+block valid rival team APIs or become outdated between course iterations
+| 2 (M) | 2 (M) | **4**
+| Allowlist is configurable in source; update process is documented; fallback: disable check for
+trusted environments via environment variable
+
+| **R6**
+| **AI performance on large boards** — `monte_carlo_extreme` can exceed the 2-second response budget
+on boards > 11×11 due to exponential search space growth
+| 2 (M) | 2 (M) | **4**
+| Performance budget enforced in k6 threshold; board size is user-configurable with no enforced maximum;
+`MonteCarloBot` iteration count is constructor-configurable; documented as a known limitation
+
+| **R7**
+| **MongoDB Atlas dependency** — External managed database; outage would take down the entire platform
+since users, auth, and game results all depend on it
+| 1 (L) | 3 (H) | **3**
+| Atlas provides 99.95% SLA with automatic failover; `MONGODB_URI` can be switched to a local instance
+if needed; connection errors surface immediately via service health endpoints
+
+| **R8**
+| **JWT secret exposure** — If `JWT_SECRET` is leaked, all tokens can be forged, bypassing authentication
+and admin authorization
+| 1 (L) | 3 (H) | **3**
+| Secret stored in GitHub Secrets only; never committed; short token lifetime (`JWT_EXPIRES=24h`);
+SonarCloud scans for accidental credential commits
+
+| **R9**
+| **Nginx single point of failure** — All external traffic routes through a single Nginx container;
+a crash takes down the entire public-facing system
+| 1 (L) | 3 (H) | **3**
+| Docker `restart: unless-stopped`; stateless config (no in-memory state); health check on port 80;
+Prometheus monitors request rate drop as indirect availability signal
+
+| **R10**
+| **Scope creep — optional features delay evaluation deliverables** — Social features, admin panel,
+and cross-team interop were added incrementally; each adds surface area for bugs and testing debt
+| 2 (M) | 2 (M) | **4**
+| MoSCoW prioritisation; Definition of Done enforced per feature; SonarCloud coverage gate prevents
+shipping undertested features
 |===
 
 === Technical Debts
 
-Technical debts are **already incurred** design or implementation shortcuts that need to be addressed. These are tracked separately from risks.
-
-[options="header",cols="1,2,2,2"]
+[options="header", cols="1,2,2,2"]
 |===
-| ID | Debt Description |  Impact if not fixed | Planned Resolution
-| **TD1** | **Frontend Component Duplication** – Similar UI components (buttons, modals) are duplicated across files instead of using a shared library  | Medium – Inconsistent UI, harder maintenance | Refactor to use shared component library
-| **TD2** | **Hardcoded Configuration** – Some API endpoints are hardcoded in frontend instead of using environment variables | Low – Works in dev but causes issues in prod | Move all configuration to .env files
-| **TD3** | **Missing Input Validation** – Some user inputs in forms lack client-side validation | Medium – Poor user experience, extra server load | Add validation to all forms
-| **TD4** | **Incomplete Test Coverage** – Some modules have < 70% test coverage |  Medium – Higher risk of undetected bugs | Increase coverage to 80% (per QS-10)
-| **TD5** | **Plain Text Password Comparison** – The authentication service compares passwords in plain text (`user.password !== password`) instead of using bcrypt | High – Critical security vulnerability; passwords stored unhashed are exposed if the database is compromised | Implement bcrypt hashing on user creation (`/createuser`) and bcrypt comparison on login (`/login`)
+| ID | Debt Description | Impact if Not Fixed | Status / Planned Resolution
+
+| **TD1**
+| **Multiplayer room state is in-memory only** — Active PvP rooms are lost if the multiplayer container
+restarts. Players must create a new room after any service interruption.
+| Medium — poor UX during deployments or crashes; unacceptable for production at scale
+| Accepted for current scope. Future: Redis Socket.IO adapter for persistent room state across restarts
+and horizontal scaling.
+
+| **TD2**
+| **BotAPI remote host allowlist is hardcoded** — `remoteInteropClient` has a hardcoded `Set` of
+allowed hosts (`localhost:4001`, `equipo-rival:4001`, `yovi.13.63.89.84.sslip.io`). Adding a new
+rival team requires a code change and redeploy.
+| Low — only affects cross-team interop sessions; can be unblocked quickly
+| Planned: move allowlist to an environment variable (`REMOTE_INTEROP_ALLOWED_HOSTS`) parsed at startup.
+
+| **TD3**
+| **Users service `openapi.yaml` is outdated** — The OpenAPI spec served at `/api-docs` only documents
+`/createuser`. The many new endpoints (friends, notifications, ranking, search, admin, profile) are
+not documented in the YAML, reducing discoverability for internal consumers.
+| Low — internal service not consumed by external developers; Swagger UI is misleading
+| Planned: update `openapi.yaml` to cover all current endpoints before final evaluation.
+
+| **TD4**
+| **No pagination on most list endpoints** — `GET /gameresults/:username`, `GET /users/:username/friends`,
+`GET /users/:username/notifications` return all records without pagination. Users with large histories
+may experience slow responses.
+| Low-Medium — acceptable for current data volumes; degrades as user base grows
+| Planned: add `?page=&limit=` query parameters to list endpoints in the users service.
+
+| **TD5**
+| **Plain-text password comparison** — ~~The authentication service compared passwords in plain text~~
+| ~~High — critical security vulnerability~~
+| **✅ Resolved** (2026-03-05) — bcrypt hashing implemented in `POST /createuser` (cost factor 10) and
+`bcrypt.compare()` in `POST /login`. Passwords are never stored or transmitted in plain text.
+
+| **TD6**
+| **Multiplayer game results not persisted** — PvP game outcomes are not saved to MongoDB. The users
+service `GameResult` model supports `gameMode: "pvp"` but the multiplayer service does not call the
+users service on game completion. PvP wins do not appear in statistics or rankings.
+| Medium — users expect their multiplayer wins to count; ranking is PvM-only
+| Planned: multiplayer service calls `POST /gameresults` for both players on `game_over` event.
+
+| **TD7**
+| **Hint system uses alfa_beta_bot regardless of selected difficulty** — `POST /hint` always delegates
+to `alfa_beta_bot` independent of the difficulty level the user has chosen. A user playing on "Easy"
+(heuristic_bot) receives a Hard-level hint.
+| Low — hints still work and are useful; inconsistency may confuse advanced users
+| Planned: pass the selected bot ID as a parameter to `POST /hint` and use it in the hint calculation.
 |===
