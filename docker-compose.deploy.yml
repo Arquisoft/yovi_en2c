@@ -2,6 +2,12 @@ services:
   nginx:
     image: nginx:stable-alpine
     container_name: nginx
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
       - "80:80"
       - "443:443"
@@ -19,6 +25,12 @@ services:
   users:
     image: ghcr.io/arquisoft/yovi_en2c-users:latest
     container_name: users
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - MONGODB_URI=${MONGODB_URI}
     expose:
@@ -29,6 +41,12 @@ services:
   authentication:
     image: ghcr.io/arquisoft/yovi_en2c-authentication:latest
     container_name: authentication
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES=${JWT_EXPIRES}
@@ -44,6 +62,12 @@ services:
   webapp:
     image: ghcr.io/arquisoft/yovi_en2c-webapp:latest
     container_name: webapp
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     expose:
       - "80"
     depends_on:
@@ -54,6 +78,12 @@ services:
   multiplayer:
     image: ghcr.io/arquisoft/yovi_en2c-multiplayer:latest
     container_name: multiplayer
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - GAMEY_BASE_URL=http://gamey:4000
       - PORT=7000
@@ -67,6 +97,12 @@ services:
   gateway:
     image: ghcr.io/arquisoft/yovi_en2c-gateway:latest
     container_name: gateway
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - AUTH_BASE_URL=http://authentication:5000
       - GAMEY_BASE_URL=http://gamey:4000
@@ -86,6 +122,12 @@ services:
   botapi:
     image: ghcr.io/arquisoft/yovi_en2c-botapi:latest
     container_name: botapi
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - GAMEY_BASE_URL=http://gamey:4000
       - GAMEY_API_VERSION=v1
@@ -100,6 +142,12 @@ services:
   gamey:
     image: ghcr.io/arquisoft/yovi_en2c-gamey:latest
     container_name: gamey
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     expose:
       - "4000"
     networks:
@@ -108,6 +156,12 @@ services:
   prometheus:
     image: prom/prometheus
     container_name: prometheus
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
       - "9090:9090"
     volumes:
@@ -118,6 +172,12 @@ services:
   grafana:
     image: grafana/grafana
     container_name: grafana
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
       - "9091:3000"
     volumes:
