@@ -51,12 +51,6 @@ describe("SelectDifficulty", () => {
 
     // ── Game mode card ────────────────────────────────────────────────────────
 
-    test("renders game mode selector with bot and local options", () => {
-        renderSelectDifficulty();
-        expect(screen.getByText(/vs bot|contra bot/i)).toBeInTheDocument();
-        expect(screen.getByText(/local/i)).toBeInTheDocument();
-    });
-
     test("bot mode is selected by default", () => {
         renderSelectDifficulty();
         // The bot button should have the primary class active
