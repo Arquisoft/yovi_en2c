@@ -3,192 +3,411 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-context-and-scope]]
 == Context and Scope
 
-This section delimits the YOVI system from its environment. Following arc42 guidelines, we separate **business context**
-(what the system does, from a domain perspective) from **technical context** (how it communicates, from an infrastructure
-perspective).
+This section delimits the YOVI system from its environment. Following arc42 guidelines, we separate **business
+context** (what the system does, from a domain perspective) from **technical context** (how it communicates,
+from an infrastructure perspective).
 
 === Business Context
 
-The YOVI system is a web-based gaming platform for Game Y. From a business perspective, it provides two distinct value
-propositions:
+The YOVI system is a web-based gaming platform for Game Y. From a business perspective, it provides three distinct
+value propositions:
 
-* **For human players**: An intuitive web interface to play Game Y against AI opponents, register, and track their
-performance.
-* **For bot developers**: A public interoperability API (botapi) that allows automated bots to interact with the game engine, request moves, and
-play matches.
+* **For human players**: An intuitive web interface to play Game Y against AI opponents or other human players in
+real time, register an account, manage a profile, interact socially with other users, and track performance.
+* **For platform administrators**: A privileged management panel to oversee registered accounts, grant or revoke
+admin permissions, delete match histories, and remove user accounts from the platform.
+* **For bot developers**: A public interoperability API (`botapi`) that allows automated bots to interact with the
+game engine, request moves, create and manage game sessions, and participate in cross-team bot-vs-bot competitions.
 
-The system depends on no external business systems - it is self-contained in terms of domain functionality. All game
-logic, user management, and AI strategies are implemented within the YOVI system boundaries.
+The system depends on no external business systems — it is self-contained in terms of domain functionality. All game
+logic, user management, authentication, multiplayer coordination, and AI strategies are implemented within the YOVI
+system boundaries.
 
 ==== Business Context Diagram
 
 [plantuml,"Business Context Diagram - YOVI System",png]
 ----
 @startuml
-!define RECTANGLE class
-
 left to right direction
 
 actor "Human Player" as Human
-actor "Bot" as Bot
+actor "Administrator" as Admin
+actor "External Bot" as Bot
 
 rectangle "YOVI System (Business Scope)" {
-  usecase "Play Game Y" as UC_Play
-  usecase "Register/Login" as UC_Register
-  usecase "View Statistics" as UC_Stats
-  usecase "API: Request Move" as UC_API_Move
-  usecase "API: Get Game State" as UC_API_State
+  usecase "Play Game Y vs AI" as UC_PvM
+  usecase "Play Game Y vs Player" as UC_PvP
+  usecase "Register / Login" as UC_Register
+  usecase "View Profile & Statistics" as UC_Stats
+  usecase "Manage Friends" as UC_Social
+  usecase "Receive Notifications" as UC_Notif
+  usecase "Manage Users (Admin Panel)" as UC_Admin
+  usecase "API: Create / Play Game" as UC_API_Game
+  usecase "API: Request Bot Move" as UC_API_Move
+  usecase "API: Remote Interop Session" as UC_API_Remote
 }
 
-Human --> UC_Play : "uses web interface"
 Human --> UC_Register
+Human --> UC_PvM
+Human --> UC_PvP
 Human --> UC_Stats
+Human --> UC_Social
+Human --> UC_Notif
 
-Bot --> UC_API_Move : "calls API"
-Bot --> UC_API_State
+Admin --> UC_Register
+Admin --> UC_Admin
+
+Bot --> UC_API_Game
+Bot --> UC_API_Move
+Bot --> UC_API_Remote
+
+note right of UC_Admin
+  Grant / revoke admin role
+  Delete match history
+  Delete user accounts
+  View all users
+end note
 
 note right of UC_API_Move
-  Input: Board position in YEN notation
-  Output: Next move in YEN notation
+  Input: YEN position
+  Output: bot move coordinates
 end note
 @enduml
 ----
 
 ==== Business Interfaces
 
+[options="header", cols="2,2,1,1,2"]
 |===
 | Interface | Description | Input | Output | Communication Partner
-| **Game Play Interface** | Web UI for human players to interact with the game | Mouse clicks, keyboard | Visual board, game state | Human Player
-| **User Management** | Registration and login interface | Username, password | Session token, user profile | Human Player
-| **Statistics Interface** | Access to match history and metrics | User ID | Win/loss records, game history | Human Player
-| **Bot API - Move Request** | Programmatic interface for bots to get next move | Board state (YEN), strategy | Move (YEN) | Bot
-| **Bot API - Game State** | Programmatic interface to query game status | Game ID | Current board, turn, winner | Bot
+
+| **Game Play UI (PvM)**
+| Web UI for human players to play against AI
+| Mouse clicks on board cells
+| Visual board, updated YEN state
+| Human Player
+
+| **Game Play UI (PvP)**
+| Real-time web UI for human vs human matches
+| Mouse clicks; room code to join
+| Live board updates via WebSocket events
+| Human Player
+
+| **User Management**
+| Registration and login interface
+| Username, password, optional email
+| Session JWT token, user profile
+| Human Player
+
+| **Profile & Statistics**
+| Access to user profile and match history
+| User identity (JWT)
+| Profile fields, win/loss records, game history
+| Human Player
+
+| **Social Features**
+| Friend requests, friend list, user search
+| Username queries; friend request actions
+| Friend list, notifications, search results
+| Human Player
+
+| **Notification System**
+| In-app notifications for events
+| System-generated triggers (friend request, welcome)
+| Unread badge, notification list
+| Human Player
+
+| **Admin Panel**
+| Management UI for privileged users
+| Admin JWT; user selection; action selection
+| Updated user list; confirmation of action taken
+| Administrator
+
+| **Bot API — Game Session**
+| Programmatic interface for bots to create and play games
+| Board state (YEN), bot ID, move coordinates
+| Updated YEN state, game status
+| External Bot
+
+| **Bot API — Stateless Move**
+| Request a single bot move without session state
+| YEN position, optional bot ID
+| Move coordinates
+| External Bot
+
+| **Bot API — Remote Interop**
+| Client-mode sessions against other teams' APIs
+| Remote API base URL, game ID, local bot ID
+| Session state, move result, action taken
+| External Bot / Rival Team API
 |===
 
 === Technical Context
 
-From a technical perspective, the YOVI system is implemented as multiple independent services communicating via HTTP/REST. Public access is handled through an **Nginx reverse proxy**, which routes external requests to the appropriate services (webapp, gateway, botapi). This section describes the technical channels and
-protocols that enable the business interfaces defined above.
+From a technical perspective, the YOVI system is implemented as multiple independent services communicating via
+HTTP/REST and WebSockets. Public access is handled through an **Nginx reverse proxy**, which routes external
+requests to the appropriate services. This section describes the technical channels and protocols that enable
+the business interfaces defined above.
 
 ==== Technical Context Diagram
 
 [plantuml,"Technical Context Diagram - YOVI System",png]
 ----
 @startuml
-!define RECTANGLE node
-
 actor "Human Player" as Human
-actor "Bot" as Bot
+actor "Administrator" as Admin
+actor "External Bot" as Bot
+actor "Rival Team API" as Rival
 
 node "Internet" {
   frame "Client Side" {
     component "Web Browser" as Browser
-    component "Bot Client" as BotClient
+    component "Bot Client (HTTP)" as BotClient
   }
 }
 
-node "YOVI Deployment" {
-  frame "DMZ / Gateway" {
-    component "Nginx Reverse Proxy" as Nginx
-    component "API Gateway (Web Backend)" as Gateway
-    component "Bot API Service" as BotAPI
+node "YOVI Deployment (Docker Compose)" {
+  frame "Public Layer" {
+    component "Nginx Reverse Proxy\n(ports 80 / 443)" as Nginx
   }
 
-  frame "Internal Network" {
-    component "Web Frontend Service" as Webapp
-    component "Authentication Service" as Auth
-    component "User Service" as Users
-    component "Game Engine Service" as Gamey
+  frame "Application Layer" {
+    component "Webapp\n(React SPA, port 80)" as Webapp
+    component "Gateway\n(Express, port 8080)" as Gateway
+    component "Multiplayer Service\n(Socket.IO, port 7000)" as Multiplayer
+    component "Bot API Service\n(Express/TS, port 4001)" as BotAPI
+  }
+
+  frame "Internal Services" {
+    component "Authentication Service\n(Express, port 5000)" as Auth
+    component "Users Service\n(Express, port 3000)" as Users
+    component "Gamey\n(Rust/Axum, port 4000)" as Gamey
+  }
+
+  frame "Data & Monitoring" {
     database "MongoDB" as DB
+    component "Prometheus\n(port 9090)" as Prom
+    component "Grafana\n(port 9091)" as Graf
   }
 }
 
-Human --> Browser : HTTPS
-Browser --> Nginx : HTTPS (port 443)
-
+Human --> Browser
+Admin --> Browser
 Bot --> BotClient
-BotClient --> Nginx : HTTPS (port 443)
 
-Nginx --> Webapp : HTTP (internal)
-Nginx --> Gateway : HTTP /api/*
-Nginx --> BotAPI : HTTP /interop/*
+Browser --> Nginx : "HTTPS (443)"
+BotClient --> Nginx : "HTTPS (443)"
 
-Gateway --> Webapp : HTTP (internal)
-Gateway --> Auth : HTTP /register, /login, /verify
-Gateway --> Gamey : HTTP /game/*
+Nginx --> Webapp : "/ (HTTP)"
+Nginx --> Gateway : "/api/* (HTTP)"
+Nginx --> Multiplayer : "/socket.io/* (WS upgrade)"
+Nginx --> BotAPI : "/interop/* (HTTP)"
 
-BotAPI --> Gamey : HTTP (internal)
+Gateway --> Auth : "/register, /login, /verify"
+Gateway --> Users : "/users/*, /gameresults/*, /ranking, /search, /friends/*, /notifications/*"
+Gateway --> Gamey : "/game/*, /hint"
+Gateway --> Multiplayer : "/multiplayer/*"
 
-Webapp --> Gateway : HTTP (internal, for API calls)
-Auth --> Users : HTTP (internal, user lookup/creation)
-Users --> DB : MongoDB Wire Protocol
-Gamey --> Gamey : (self-contained, no external DB)
+Auth --> Users : "POST /createuser\nGET /users/:username"
 
-note right of Gateway
+Users --> DB : "MongoDB Wire Protocol"
+
+Multiplayer --> Gamey : "POST /game/new\nPOST /v1/game/pvp/move"
+
+BotAPI --> Gamey : "POST /game/new\nPOST /v1/ybot/choose/:bot\nPOST /v1/game/pvb/:bot"
+BotAPI --> Rival : "HTTP (remote interop client)"
+
+Prom --> Gateway : "scrape /metrics"
+Prom --> Users : "scrape /metrics"
+Prom --> Gamey : "scrape /metrics"
+Graf --> Prom : "query metrics"
+
+note right of Nginx
   Routes:
-  / → webapp
-  /api/* → gateway
-  /interop/* → botapi
+  /           -> webapp:80
+  /api/*      -> gateway:8080
+  /socket.io/ -> multiplayer:7000
+  /interop/*  -> botapi:4001
 end note
 @enduml
 ----
 
 ==== Technical Interfaces and Channels
 
-This table maps the **business interfaces** (what) to the **technical channels** (how), showing exactly how each domain interaction is implemented technically.
-
+[options="header", cols="2,2,1,1"]
 |===
 | Business Interface | Technical Channel | Protocol | Data Format
-| **Game Play UI** | Browser ↔ Nginx ↔ Webapp | HTTPS | HTML/CSS/JS + JSON
-| **User Registration** | Browser ↔ Gateway ↔ Auth ↔ Users | HTTPS → HTTP → HTTP | JSON
-| **User Login** | Browser ↔ Gateway ↔ Auth ↔ Users | HTTPS → HTTP → HTTP | JSON
-| **Token Verification** | Browser ↔ Gateway ↔ Auth | HTTPS → HTTP | JSON (JWT)
-| **Statistics Retrieval** | Browser ↔ Gateway ↔ Users | HTTPS → HTTP | JSON
-| **Bot API - Move Request** | Bot ↔ Nginx ↔ BotAPI ↔ Gamey | HTTPS → HTTP → JSON | JSON (YEN)
-| **Bot API - Game State** | Bot ↔ Nginx ↔ BotAPI ↔ Gamey | HTTPS → HTTP → JSON | JSON (YEN)
-| **Game Logic Execution** | Gateway ↔ Gamey Service | HTTP (internal) | JSON (YEN)
-| **Database Access** | Users Service ↔ MongoDB | MongoDB Wire Protocol | BSON
+
+| **Game Play UI (PvM)**
+| Browser -> Nginx -> Webapp; API calls via Gateway -> Gamey
+| HTTPS / HTTP
+| HTML/CSS/JS + JSON (YEN)
+
+| **Game Play UI (PvP)**
+| Browser -> Nginx -> Multiplayer (WebSocket upgrade); Multiplayer -> Gamey
+| HTTPS -> WSS (Socket.IO)
+| JSON events (room state, YEN, move result)
+
+| **User Registration**
+| Browser -> Gateway -> Auth -> Users
+| HTTPS -> HTTP -> HTTP
+| JSON
+
+| **User Login**
+| Browser -> Gateway -> Auth -> Users
+| HTTPS -> HTTP -> HTTP
+| JSON + JWT
+
+| **Token Verification**
+| Browser -> Gateway -> Auth
+| HTTPS -> HTTP
+| JSON (JWT)
+
+| **Profile & Statistics**
+| Browser -> Gateway -> Users
+| HTTPS -> HTTP
+| JSON
+
+| **Social Features**
+| Browser -> Gateway -> Users
+| HTTPS -> HTTP
+| JSON
+
+| **Notification System**
+| Browser -> Gateway -> Users
+| HTTPS -> HTTP
+| JSON
+
+| **Admin Panel**
+| Browser -> Gateway -> Users (admin-only endpoints)
+| HTTPS -> HTTP
+| JSON (role enforced via JWT claim)
+
+| **Bot API — Game Session**
+| Bot -> Nginx -> BotAPI -> Gamey
+| HTTPS -> HTTP -> HTTP
+| JSON (YEN)
+
+| **Bot API — Stateless Move**
+| Bot -> Nginx -> BotAPI -> Gamey
+| HTTPS -> HTTP -> HTTP
+| JSON (YEN)
+
+| **Bot API — Remote Interop**
+| BotAPI -> Rival Team API (outbound HTTP client)
+| HTTP
+| JSON (YEN, shared cross-team contract)
+
+| **Game Logic Execution**
+| Gateway -> Gamey; Multiplayer -> Gamey
+| HTTP (internal Docker network)
+| JSON (YEN)
+
+| **Database Access**
+| Users Service -> MongoDB
+| MongoDB Wire Protocol
+| BSON
+
+| **Metrics Collection**
+| Prometheus -> Gateway, Users, Gamey
+| HTTP (scrape `/metrics`)
+| Prometheus text format
+
+| **Metrics Visualization**
+| Grafana -> Prometheus
+| HTTP (PromQL queries)
+| JSON (time series)
 |===
 
 ==== Technology Stack per Component
 
+[options="header", cols="2,2,3"]
 |===
-| Component | Technology  | Justification
-| **Web Frontend** | React + TypeScript  | Client requirement, component reusability, i18n support
-| **Authentication Service** | Node.js + Express + jsonwebtoken | Lightweight, JWT generation and validation isolated from user data
-| **User Service** | Node.js + Express + Mongoose  | Lightweight, npm ecosystem, quick development
-| **Game Engine** | Rust + Axum  | Performance, memory safety, required by client
-| **Reverse Proxy** | Nginx | HTTPS termination and request routing
-| **API Gateway** | Node.js + Express | Backend entry point for webapp
-| **Bot API Service** | Node.js + Express | Public interoperability API for bots
-| **Database** | MongoDB | Flexible schema for user data, easy integration
-| **Containerization** | Docker + docker-compose | Consistent environments, easy deployment
-| **CI/CD** | GitHub Actions  | Integrated with repository, automated testing
+| Component | Technology | Justification
+
+| **Web Frontend (webapp)**
+| React + TypeScript + Vite
+| Client requirement (TypeScript); component reusability; custom i18n; theme switching (dark/light)
+
+| **API Gateway (gateway)**
+| Node.js + Express 5 + express-prom-bundle
+| Single entry point for webapp traffic; centralized CORS, input sanitization, and Prometheus metrics
+
+| **Authentication Service (authentication)**
+| Node.js + Express 5 + jsonwebtoken + bcryptjs
+| Isolated JWT logic with single responsibility; bcrypt for secure password hashing
+
+| **User Service (users)**
+| Node.js + Express 5 + Mongoose + express-prom-bundle
+| User data persistence, friend graph, notifications, game results, admin operations; Prometheus metrics
+
+| **Game Engine (gamey)**
+| Rust + Axum + Tokio + axum-prometheus
+| Mandated by client; memory safety and performance for game logic and six AI strategies
+
+| **Multiplayer Service (multiplayer)**
+| Node.js + Express + Socket.IO + axios
+| Real-time bidirectional WebSocket communication for PvP rooms; delegates game rules to Gamey
+
+| **Bot API (botapi)**
+| Node.js + Express + TypeScript
+| Public interoperability API for external bots; client-mode sessions against rival APIs
+
+| **Reverse Proxy (nginx)**
+| Nginx stable-alpine
+| HTTPS termination, HTTP->HTTPS redirect, path-based routing to all internal services
+
+| **Database**
+| MongoDB (via Mongoose ODM)
+| Flexible schema for user data; aggregation pipelines for ranking and statistics
+
+| **Monitoring**
+| Prometheus + Grafana
+| Metrics scraping from three services; pre-built dashboard ("Yovi Services Overview")
+
+| **Containerization**
+| Docker + Docker Compose
+| Consistent dev/test/prod environments across all eight services
+
+| **CI/CD**
+| GitHub Actions + GitHub Container Registry
+| Automated build, test, publish, and deploy pipeline on every release tag
 |===
 
 === Scope
 
+==== In Scope (Implemented)
 
-==== In Scope (Core Requirements)
-* Classic Game Y implementation with correct rules
-* Player-versus-machine game mode with variable board size
-* Multiple AI strategies (difficulties), user-selectable
-* User registration and authentication via dedicated JWT-based auth service
-* Match history and basic statistics (games played, wins/losses)
-* Public interoperability API (botapi) for bots with YEN notation
-* Docker containerization and docker-compose deployment
-* CI/CD pipeline with automated testing
-* Public web deployment
-* Internationalization (i18n) — English and Spanish supported
+* Classic Game Y implementation with correct rules (move validation, win condition: connect all 3 sides)
+* Player-versus-machine (PvM) game mode with variable board size and six AI difficulty levels
+* Player-versus-player (PvP) real-time multiplayer via Socket.IO rooms with unique room codes
+* User registration and JWT-based authentication with bcrypt password hashing
+* Role-based access control: regular users and administrators
+* Admin panel: view all users, grant/revoke admin role, delete match history, delete accounts
+* User profiles with editable fields (real name, bio, city, country, preferred language)
+* Match history and game statistics stored in MongoDB
+* Top-10 ranking by wins via MongoDB aggregation
+* Social features: friend requests, friend list management, bidirectional unfriend
+* In-app notification system (friend requests, welcome messages) with mark-as-read
+* User search by username or real name
+* Hint system: AI suggests a move using `alfa_beta_bot` via `POST /hint`
+* Public interoperability API (botapi) for external bots using YEN notation
+* Remote interop client mode: our bots play against other teams' APIs
+* Internationalization (EN/ES) via custom i18n module with `localStorage` persistence
+* Dark/light theme switching with `localStorage` persistence
+* Prometheus metrics on gateway, users, and gamey services
+* Grafana dashboard ("Yovi Services Overview") with request rate, p95 latency, and error rate panels
+* Load testing suite with k6 (register, login, start_game scenarios)
+* Swagger UI for users service OpenAPI spec at `/api-docs`
+* Docker Compose for local development and production deployment
+* GitHub Actions CI/CD pipeline with automated test, build, publish, and deploy stages
+* SonarCloud code quality integration
 
-==== Out of Scope (Optional / Future)
-* Game variants (Poly-Y, Hex, etc.) - optional features if time permits
-* User ranking/leaderboard system - optional
-* Mobile applications
-* Multiplayer (human vs. human)
-* Advanced analytics or machine learning
+==== Out of Scope
 
-==== In Scope but Implemented Simply
-* **Bot strategies**: Six strategies implemented (random, heuristic, minimax, alfa-beta, monte carlo hard/extreme)
-* **Statistics**: Basic counters only, not yet visible to the user in the UI
-* **Authentication**: Simple JWT-based, no OAuth/social login, bcrypt hashing pending
+* Game variants (Poly-Y, Hex, Tabu Y) — not implemented
+* Mobile native applications (iOS / Android)
+* OAuth / social login (Google, GitHub)
+* Persistent multiplayer room state (rooms are in-memory; lost on service restart)
+* Advanced analytics or machine learning for AI
+* Real-time admin notifications (admin panel requires manual refresh)
