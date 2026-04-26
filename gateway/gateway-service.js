@@ -41,6 +41,8 @@ const AUTH_VERIFY_URL = `${AUTH_BASE_URL}/verify`;
 const GAME_RESULT_URL = `${USERS_BASE_URL}/gameresult`;
 const MULTIPLAYER_HEALTH_URL = `${MULTIPLAYER_BASE_URL}/health`;
 const MULTIPLAYER_GAME_RESULT_URL = `${USERS_BASE_URL}/gameresult/multiplayer`;
+const ADMIN_USERS_URL = `${USERS_BASE_URL}/admin/users`;
+const ADMIN_ME_URL = `${USERS_BASE_URL}/admin/me`;
 
 const PVB_MOVE_ROUTES = {
   random_bot: `${GAMEY_BASE_URL}/v1/game/pvb/random_bot`,
@@ -632,6 +634,58 @@ app.post("/multiplayer/room/leave", async (req, res) => {
     { code: normalizedCode, username: username.trim() },
     "Multiplayer service unavailable"
   );
+});
+
+app.get("/admin/me", async (req, res) => {
+  return proxyUsersGet(res, ADMIN_ME_URL, req.headers.authorization);
+});
+
+app.get("/admin/users", async (req, res) => {
+  return proxyUsersGet(res, ADMIN_USERS_URL, req.headers.authorization);
+});
+
+app.patch("/admin/users/:username/role", async (req, res) => {
+  const { username } = req.params;
+  if (!validateUsernameParam(res, username)) return;
+
+  const auth = sanitizeAuthHeader(req.headers.authorization);
+  if (!requireAuth(res, auth)) return;
+
+  const usersUrl = internalUrl(
+    USERS_BASE_URL,
+    `/admin/users/${safeUsernameSegment(username)}/role`
+  );
+
+  try {
+    const response = await axios.patch(usersUrl, { role: req.body?.role }, {
+      headers: { Authorization: auth },
+    });
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
+});
+
+app.delete("/admin/users/:username/history", async (req, res) => {
+  const { username } = req.params;
+  if (!validateUsernameParam(res, username)) return;
+
+  const auth = sanitizeAuthHeader(req.headers.authorization);
+  if (!requireAuth(res, auth)) return;
+
+  const usersUrl = internalUrl(
+    USERS_BASE_URL,
+    `/admin/users/${safeUsernameSegment(username)}/history`
+  );
+
+  try {
+    const response = await axios.delete(usersUrl, {
+      headers: { Authorization: auth },
+    });
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    return forwardAxiosError(res, error, "Users service unavailable");
+  }
 });
 
 if (process.env.NODE_ENV !== "test") {
