@@ -1,0 +1,271 @@
+ifndef::imagesdir[:imagesdir: ../images]
+
+[[section-monitoring]]
+== Monitoring and Observability
+
+This section documents the observability stack, the metrics collected, the Grafana dashboard, and how
+to access monitoring tools in local and production environments.
+
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Monitoring:-Prometheus-&-Grafana[Monitoring wiki page]
+
+=== Overview
+
+YOVI uses a **Prometheus + Grafana** stack for metrics-based observability. Three services expose
+Prometheus-compatible `/metrics` endpoints: the gateway, the users service, and the gamey service.
+Prometheus scrapes all three every 15 seconds. Grafana visualises the collected time series in a
+pre-built dashboard that auto-provisions at container startup.
+
+[plantuml,"Monitoring Architecture",png]
+----
+@startuml
+skinparam componentStyle rectangle
+
+component "Gateway\n(express-prom-bundle)" as GW
+component "Users Service\n(express-prom-bundle)" as US
+component "Gamey\n(axum-prometheus)" as GAMEY
+
+component "Prometheus\n(port 9090)" as PROM
+component "Grafana\n(port 9091)" as GRAF
+
+GW --> PROM : "GET /metrics\n(scrape every 15s)"
+US --> PROM : "GET /metrics\n(scrape every 15s)"
+GAMEY --> PROM : "GET /metrics\n(scrape every 15s)"
+
+PROM --> GRAF : "PromQL queries\n(30s refresh)"
+
+note right of PROM
+  job: users-service  → users:3000
+  job: gateway-service → gateway:8080
+  job: gamey-service  → gamey:4000
+end note
+@enduml
+----
+
+=== Instrumented Services
+
+[options="header", cols="2,2,2,2"]
+|===
+| Service | Library | Metrics endpoint | Metric prefix
+
+| **Gateway**
+| `express-prom-bundle` (Node.js)
+| `GET http://gateway:8080/metrics`
+| `http_requests_total`, `http_request_duration_seconds`
+
+| **Users Service**
+| `express-prom-bundle` (Node.js)
+| `GET http://users:3000/metrics`
+| `http_requests_total`, `http_request_duration_seconds`
+
+| **Gamey**
+| `axum-prometheus` (Rust)
+| `GET http://gamey:4000/metrics`
+| `axum_http_requests_total`, `axum_http_requests_duration_seconds`
+|===
+
+All `express-prom-bundle` instances are configured with:
+
+[source,javascript]
+----
+promBundle({
+  includeMethod: true,
+  includePath: true,
+  includeStatusCode: true,
+  normalizePath: true,   // prevents cardinality explosion from dynamic path params
+})
+----
+
+See <<section-design-decisions,ADR-013>> for the rationale behind `normalizePath: true`.
+
+=== Prometheus Configuration
+
+Prometheus is configured via `users/monitoring/prometheus/prometheus.yml`:
+
+[source,yaml]
+----
+global:
+  scrape_interval: 15s    # standard recommended value for production
+
+scrape_configs:
+  - job_name: 'users-service'
+    static_configs:
+      - targets: ['users:3000']
+
+  - job_name: 'gateway-service'
+    static_configs:
+      - targets: ['gateway:8080']
+
+  - job_name: 'gamey-service'
+    static_configs:
+      - targets: ['gamey:4000']
+----
+
+Key decisions:
+
+* **15-second scrape interval** — the standard recommended value; balances resolution with storage overhead
+* **Static targets** — service discovery is not needed since all containers are on a fixed internal Docker
+network with predictable hostnames
+* **No authentication on `/metrics`** — endpoints are only reachable on the internal Docker network;
+Nginx does not expose `/metrics` externally
+
+=== Grafana Dashboard
+
+The "Yovi Services Overview" dashboard (UID `yovi-overview`) auto-provisions at Grafana startup via
+the provisioning directory at `users/monitoring/grafana/provisioning/`.
+
+Provisioning files:
+
+* `datasources/datasource.yml` — registers Prometheus at `http://prometheus:9090` as the default
+data source
+* `dashboards/dashboard.yml` — configures the dashboard provider (file-based, 30s update interval)
+* `dashboards/dashboard.json` — the dashboard definition with all panels
+
+==== Dashboard Panels
+
+The dashboard contains three panels, each covering all three instrumented services simultaneously:
+
+===== Panel 1 — Request Rate (req/s)
+
+Displays the per-second HTTP request rate for each service, broken down by method, path, and status code.
+
+[source,promql]
+----
+# Users and Gateway (express-prom-bundle)
+rate(http_requests_total{job="users-service"}[1m])
+rate(http_requests_total{job="gateway-service"}[1m])
+
+# Gamey (axum-prometheus)
+rate(axum_http_requests_total{job="gamey-service"}[1m])
+----
+
+Legend format: `{service} — {method} {path} {status_code}`
+
+===== Panel 2 — P95 Request Duration (seconds)
+
+Displays the 95th percentile request duration for each service over a 5-minute window.
+
+[source,promql]
+----
+# Users and Gateway
+histogram_quantile(0.95,
+  rate(http_request_duration_seconds_bucket{job="users-service"}[5m])
+)
+histogram_quantile(0.95,
+  rate(http_request_duration_seconds_bucket{job="gateway-service"}[5m])
+)
+
+# Gamey
+histogram_quantile(0.95,
+  rate(axum_http_requests_duration_seconds_bucket{job="gamey-service"}[5m])
+)
+----
+
+This panel directly corresponds to the performance quality scenarios
+<<section-quality-scenarios,QS-01>> and <<section-quality-scenarios,QS-02>>.
+
+===== Panel 3 — Error Rate (4xx + 5xx)
+
+Displays the per-second rate of HTTP error responses (client and server errors combined) per service.
+
+[source,promql]
+----
+# Users and Gateway
+rate(http_requests_total{
+  job="users-service",
+  status_code=~"4..|5.."
+}[1m])
+
+rate(http_requests_total{
+  job="gateway-service",
+  status_code=~"4..|5.."
+}[1m])
+
+# Gamey
+rate(axum_http_requests_total{
+  job="gamey-service",
+  status_code=~"4..|5.."
+}[1m])
+----
+
+A sustained spike in this panel indicates a service degradation or upstream dependency failure (e.g.,
+MongoDB unavailable, Gamey container restarting).
+
+=== Accessing Monitoring Tools
+
+==== Local Development
+
+After running `docker-compose up`:
+
+[options="header", cols="1,2,2"]
+|===
+| Tool | URL | Notes
+
+| **Prometheus**
+| http://localhost:9090
+| Query interface; check targets at `http://localhost:9090/targets`
+
+| **Grafana**
+| http://localhost:9091
+| Default credentials: `admin` / `admin`; dashboard auto-loads on first visit
+
+| **Users metrics**
+| http://localhost:3000/metrics
+| Raw Prometheus text format; useful for debugging metric labels
+
+| **Gateway metrics**
+| http://localhost:8080/metrics
+| Raw Prometheus text format
+
+| **Gamey metrics**
+| http://localhost:4000/metrics
+| Raw Prometheus text format (axum-prometheus format)
+|===
+
+==== Production
+
+In production, Prometheus (9090) and Grafana (9091) are exposed on the VM's public IP but are not
+routed through Nginx. They should be protected by a firewall rule limiting access to trusted IPs.
+
+To verify the monitoring stack is healthy in production:
+
+[source,bash]
+----
+# Check all scrape targets are UP
+curl http://<VM_IP>:9090/api/v1/targets | jq '.data.activeTargets[].health'
+
+# Check Grafana is running
+curl -u admin:admin http://<VM_IP>:9091/api/health
+----
+
+=== Observability Gaps and Planned Improvements
+
+[options="header", cols="2,2,2"]
+|===
+| Gap | Impact | Planned improvement
+
+| **Multiplayer service has no Prometheus metrics**
+| No visibility into WebSocket connection count, room creation rate, or move throughput
+| Add `express-prom-bundle` to multiplayer service; add Socket.IO connection gauge
+
+| **BotAPI has no Prometheus metrics**
+| No visibility into external bot session count or interop request rate
+| Add `express-prom-bundle` to botapi service
+
+| **Authentication service has no Prometheus metrics**
+| No visibility into login/register rates or bcrypt latency
+| Add `express-prom-bundle` to authentication service
+
+| **No alerting rules defined**
+| Grafana shows degradation visually but no automatic alerts are triggered
+| Define Grafana alert rules for: error rate > 10% sustained for 2 minutes; p95 latency > 3s on gateway
+
+| **No structured logging**
+| Service logs are unstructured `console.log` / `eprintln!` output; no log aggregation
+| Add structured JSON logging (e.g., `pino` for Node.js, `tracing-subscriber` JSON layer for Rust);
+integrate with a log aggregator (e.g., Loki + Grafana)
+
+| **No uptime / synthetic monitoring**
+| No external check verifies the system is reachable from outside the VM
+| Add an external uptime check (e.g., UptimeRobot, Grafana Cloud Synthetic Monitoring) hitting
+`https://yovi.13.63.89.84.sslip.io/api/health`
+|===

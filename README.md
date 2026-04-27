@@ -1,179 +1,160 @@
-# yovi_en2c - Game Y at UniOvi
+# yovi_en2c — Game Y at UniOvi
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Arquisoft/yovi_en2c/master/webapp/img/logo.png" alt="YOVI Logo" width="220"/>
 </p>
 
-[![Release — Test, Build, Publish, Deploy](https://github.com/arquisoft/yovi_en2c/actions/workflows/release-deploy.yml/badge.svg)](https://github.com/arquisoft/yovi_en2c/actions/workflows/release-deploy.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_en2c&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_en2c)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_en2c&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_en2c)
+<p align="center">
+  <a href="https://github.com/arquisoft/yovi_en2c/actions/workflows/release-deploy.yml">
+    <img src="https://github.com/arquisoft/yovi_en2c/actions/workflows/release-deploy.yml/badge.svg" alt="Release — Test, Build, Publish, Deploy"/>
+  </a>
+  <a href="https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_en2c">
+    <img src="https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_en2c&metric=alert_status" alt="Quality Gate Status"/>
+  </a>
+  <a href="https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_en2c">
+    <img src="https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_en2c&metric=coverage" alt="Coverage"/>
+  </a>
+  <img src="https://img.shields.io/badge/deployed-April%202026-success" alt="Deployed April 2026"/>
+  <img src="https://img.shields.io/badge/status-live-brightgreen" alt="Status: Live"/>
+</p>
 
-**YOVI** is a web platform for playing **Game Y** — an abstract strategy board game where players compete to connect all three sides of a triangular board. The project is developed as part of the Software Architecture (ASW) course at the University of Oviedo.
+<p align="center">
+  <strong>YOVI</strong> is a fully deployed web platform for playing <strong>Game Y</strong> — an abstract strategy board game where two players compete to connect all three sides of a triangular board. Developed as part of the Software Architecture (ASW) course at the University of Oviedo.
+</p>
 
-🎮 **Play here:** [https://yovi.13.63.89.84.sslip.io](https://yovi.13.63.89.84.sslip.io)
-
-## Contributors
-
-| Name | GitHub | Email |
-|------|--------|-------|
-| Ana Pérez Bango | [@AnaPB8](https://github.com/AnaPB8) | UO294100@uniovi.es |
-| Adriana García Suárez | [@Adrigarsu](https://github.com/Adrigarsu) | UO300042@uniovi.es |
-
----
-
-## Project Structure
-
-The project follows a **microservices architecture** with five independent services orchestrated via Docker Compose and exposed through an **NGINX reverse proxy**:
-
-```
-yovi_en2c/
-├── webapp/          # React + TypeScript frontend (SPA)
-├── users/           # Node.js + Express user management service
-├── authentication/  # Node.js + Express JWT authentication service
-├── gateway/         # Node.js + Express API gateway
-├── gamey/           # Rust game engine and bot service
-├── botapi/             # Interoperability API (bot vs bot)
-├── nginx/             # Reverse proxy
-└── docs/            # Architecture documentation (Arc42 + ADRs)
-```
+<p align="center">
+  🎮 <strong><a href="https://yovi.13.63.89.84.sslip.io">Play now → yovi.13.63.89.84.sslip.io</a></strong>
+</p>
 
 ---
 
-## Request Flow
+## 👥 Contributors
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <a href="https://github.com/AnaPB8">
+        <img src="https://github.com/AnaPB8.png" width="80" style="border-radius:50%"/><br/>
+        <strong>Ana Pérez Bango</strong>
+      </a><br/>
+      <a href="mailto:UO294100@uniovi.es">UO294100@uniovi.es</a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Adrigarsu">
+        <img src="https://github.com/Adrigarsu.png" width="80" style="border-radius:50%"/><br/>
+        <strong>Adriana García Suárez</strong>
+      </a><br/>
+      <a href="mailto:UO300042@uniovi.es">UO300042@uniovi.es</a>
+    </td>
+  </tr>
+</table>
+
+---
+
+## What is Game Y?
+
+Game Y is an abstract two-player strategy game played on a **triangular board**. Each player takes turns placing pieces of their colour. The first player to form a **connected group that simultaneously touches all three sides** of the triangle wins.
 
 ```
-Browser -> NGINX (80/443)
-            ├── /        -> webapp
-            ├── /api     -> gateway -> services (users, auth, gamey)
-            └── /interop -> botapi -> gamey
+        ●          ← Blue (B) piece
+       ● ●
+      · · ·
+     · · · ·
+    · · · · ·
 ```
 
-NGINX handles:
-- HTTPS termination (production)
-- HTTP → HTTPS redirect
-- routing
-
-- The **gateway is used only by the webapp** to access backend services.
-- The **interop API is independent** and communicates directly with `gamey`.
+Blue wins by connecting the top, left, and right edges with a single connected group. Simple rules, deep strategy.
 
 ---
 
 ## Features
 
-- **User registration and login** with JWT-based authentication
-- **Play Game Y vs AI bot** with 5 difficulty levels
-- **Variable board sizes** configurable by the user
-- **Match history and game results** stored in MongoDB
-- **Internationalization (i18n)** — English and Spanish supported
-- **Public REST API** for external bots using YEN notation
-- **Bot interoperability API** for cross-team competitions
-- **Monitoring** with Prometheus and Grafana
+| Feature | Description |
+|---------|-------------|
+|  **AI opponents** | Six difficulty levels from random to Monte Carlo Tree Search |
+|  **Real-time multiplayer** | Private rooms with shareable codes via Socket.IO |
+|  **Admin panel** | Manage users, roles, and account data |
+|  **User profiles** | Editable name, bio, location, and preferred language |
+|  **Social** | Friend requests, friend list, and user search |
+|  **Notifications** | In-app friend request and welcome notifications |
+|  **Statistics** | Match history, personal stats, and top-10 ranking |
+|  **Hint system** | AI-powered move suggestions during gameplay |
+|  **Internationalization** | English and Spanish |
+|  **Themes** | Dark and light mode, persisted per user |
+|  **Bot interop API** | External bots can compete against our AI via REST |
+|  **Monitoring** | Prometheus metrics + Grafana dashboard |
 
 ---
 
-## Components
+##  Architecture
 
-### Webapp (`webapp/`)
+YOVI follows an **eight-service microservices architecture** with Nginx as the single public entry point.
 
-A single-page application (SPA) built with [Vite](https://vitejs.dev/), [React](https://reactjs.org/), and TypeScript.
+```
+Browser / External Bot
+         │
+         ▼
+   Nginx (80 / 443)
+         │
+         ├── /              → webapp:80         React SPA
+         ├── /api/*         → gateway:8080      REST API
+         ├── /socket.io/*   → multiplayer:7000  WebSocket (Socket.IO)
+         └── /interop/*     → botapi:4001       Bot interoperability API
 
-- `src/App.tsx` — Main router with all application routes
-- `src/LoginForm.tsx` — Login form with JWT token handling
-- `src/RegistrationForm.tsx` — User registration form
-- `src/Home.tsx` — Home dashboard with session verification
-- `src/Game.tsx` — Main game board component
-- `src/SelectDifficulty.tsx` — Bot difficulty selection screen
-- `src/GameFinished.tsx` — End of game screen (win/loss/draw)
-- `src/i18n/` — Internationalization module (ES/EN)
-- `Dockerfile` — Docker image definition
+Gateway routes internally to:
+         ├── authentication:5000   register · login · verify
+         ├── users:3000            profiles · friends · notifications · admin · game results
+         ├── gamey:4000            game logic · bot moves · hints
+         └── multiplayer:7000      room management (REST)
 
-### Users Service (`users/`)
+Multiplayer and BotAPI also call:
+         └── gamey:4000            game/new · pvp/move · pvb/move · ybot/choose
+```
 
-A REST API built with [Node.js](https://nodejs.org/) and [Express](https://expressjs.com/), connected to MongoDB.
+> **Key architectural decisions**: Rust was chosen for the game engine for memory safety and performance.
+> Socket.IO powers real-time multiplayer with automatic reconnection. JWT with role claims enables
+> stateless admin authorization without extra database lookups. See the
+> [Arc42 architecture docs](https://arquisoft.github.io/yovi_en2c/) and
+> [Architecture Decision Records](https://github.com/Arquisoft/yovi_en2c/wiki/Architecture-Decision-Record-(ADR))
+> for full rationale on all 16 architectural decisions.
 
-- `users-service.js` — Main service file
-- `models/User.js` — Mongoose user schema
-- `models/GameResult.js` — Mongoose game result schema
-- `db.js` — MongoDB connection setup
+### Project structure
 
-**Endpoints:**
+```
+yovi_en2c/
+├── webapp/          # React + TypeScript SPA (Vite)
+├── gateway/         # Node.js + Express API gateway        (port 8080)
+├── authentication/  # Node.js + Express JWT auth service   (port 5000)
+├── users/           # Node.js + Express user management    (port 3000)
+├── gamey/           # Rust + Axum game engine              (port 4000)
+├── multiplayer/     # Node.js + Socket.IO PvP service      (port 7000)
+├── botapi/          # Node.js + TypeScript interop API     (port 4001)
+├── nginx/           # Reverse proxy config + TLS certs
+├── tests/load/      # k6 load test scripts
+└── docs/            # Arc42 architecture documentation
+```
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| `POST` | `/createuser` | Create a new user |
-| `GET` | `/users/:username` | Get user by username |
-| `GET` | `/users` | List all users |
-| `POST` | `/gameresult` | Save a game result |
-| `GET` | `/history/:username` | Get match history for a user |
-| `GET` | `/ranking` | Top 10 players by wins |
-| `GET` | `/health` | Health check |
+---
 
-### Authentication Service (`authentication/`)
+## AI Bot Strategies
 
-A Node.js service responsible for JWT token generation and validation.
+| Bot ID | Algorithm | Difficulty |
+|--------|-----------|------------|
+| `random_bot` | Random valid move | — |
+| `heuristic_bot` | Side connection heuristic | Easy |
+| `minimax_bot` | Minimax (depth 3) | Medium |
+| `alfa_beta_bot` | Minimax + alpha-beta pruning | Hard |
+| `monte_carlo_hard` | Monte Carlo Tree Search | Expert |
+| `monte_carlo_extreme` | MCTS (more iterations) | Extreme |
 
-- `auth-service.js` — Main service file
+All strategies implement the `YBot` Rust trait — adding a new strategy requires only a new struct and
+one registration call. See the [Bot Implementations wiki page](https://github.com/Arquisoft/yovi_en2c/wiki/Bot-Implementations).
 
-**Endpoints:**
+---
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| `POST` | `/register` | Validate credentials and create user via users service |
-| `POST` | `/login` | Authenticate user and return JWT |
-| `GET` | `/verify` | Verify a JWT token |
-| `GET` | `/health` | Health check |
+## Game State — YEN Notation
 
-### Gateway (`gateway/`)
-
-A Node.js + Express API gateway — the single entry point for all external requests. Routes traffic to the appropriate internal service.
-
-- `gateway-service.js` — Main gateway file
-
-**Routes:**
-
-| Method | Route | Forwards to |
-|--------|-------|-------------|
-| `POST` | `/game/new` | gamey — create new game |
-| `POST` | `/game/pvb/move` | gamey — player vs bot move |
-| `POST` | `/game/bot/choose` | gamey — bot move selection |
-| `GET` | `/game/status` | gamey — health check |
-| `POST` | `/register` | authentication service |
-| `POST` | `/login` | authentication service |
-| `GET` | `/verify` | authentication service |
-
-### Game Engine (`gamey/`)
-
-A [Rust](https://www.rust-lang.org/) service implementing all Game Y logic: move validation, win condition detection, and AI bot strategies.
-
-- `src/main.rs` — Binary entry point (CLI and server modes)
-- `src/lib.rs` — Library exports
-- `src/core/` — Core game types: board, coordinates (barycentric), players, moves
-- `src/bot/` — Bot trait (`YBot`), registry, and all strategy implementations
-- `src/notation/` — YEN (Y Exchange Notation) serialization/deserialization
-- `src/game_server/` — Axum HTTP server with REST endpoints
-- `Cargo.toml` — Project manifest
-
-**Available bot strategies:**
-
-| Bot ID | Difficulty | Algorithm |
-|--------|-----------|-----------|
-| `random_bot` | — | Random valid move |
-| `heuristic_bot` | Easy | Side connection heuristic |
-| `minimax_bot` | Medium | Minimax (depth 3) |
-| `alfa_beta_bot` | Hard | Minimax with alpha-beta pruning |
-| `monte_carlo_hard` | Expert | Monte Carlo Tree Search |
-| `monte_carlo_extreme` | Extreme | Monte Carlo Tree Search (more iterations) |
-
-**Game API endpoints (prefix `/v1`):**
-
-| Method | Route | Description |
-|--------|-------|-------------|
-| `GET` | `/status` | Health check |
-| `POST` | `/game/new` | Create a new game, returns YEN |
-| `POST` | `/v1/game/pvb/{bot_id}` | Player move + bot response |
-| `POST` | `/v1/ybot/choose/{bot_id}` | Request bot move coordinates |
-
-All game state is exchanged in **YEN (Y Exchange Notation)** — a JSON format inspired by chess FEN:
+All game state is exchanged in **YEN (Y Exchange Notation)**, a JSON format inspired by chess FEN:
 
 ```json
 {
@@ -184,68 +165,38 @@ All game state is exchanged in **YEN (Y Exchange Notation)** — a JSON format i
 }
 ```
 
-### Interoperability API (`botapi/`)
-
-A Node.js + Express service that enables **bot vs bot interoperability between teams**.
-
-This API acts as a bridge between external bots and the internal `gamey` engine, allowing:
-- external bots to play against our bots
-- our bots to play against other teams' APIs
-
-It follows a standardized contract based on **YEN (Y Exchange Notation)**.
-
-**Key responsibilities:**
-- expose public HTTP endpoints
-- manage active games (in-memory)
-- connect to remote APIs
-- translate requests to `gamey`
-- orchestrate game flow
-
-**Base public URL (deployment):** https://yovi.13.63.89.84.sslip.io/interop
-
+- `size` — board edge length (size 7 → 28 total cells)
+- `turn` — index into `players` array (0 = Blue's turn)
+- `players` — token characters; Blue (`B`) always moves first
+- `layout` — rows separated by `/`; `.` = empty, `B`/`R` = occupied
 
 ---
 
-### Local Endpoints
+## Bot Interoperability API
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| `POST` | `/games` | Create a new local game |
-| `GET` | `/games/{id}` | Get game state |
-| `POST` | `/games/{id}/play` | Play a move |
-| `POST` | `/play` | Stateless move |
-| `GET` | `/health` | Health check |
+External bots can compete against our AI at:
+**`https://yovi.13.63.89.84.sslip.io/interop`**
 
----
-
-### Remote Endpoints
-
-| Method | Route | Description |
-|--------|-------|-------------|
-| `POST` | `/remote-games/create` | Create remote game |
-| `POST` | `/remote-games/connect` | Connect to existing game |
-| `GET` | `/remote-games/{id}` | Get session info |
-| `POST` | `/remote-games/{id}/play-turn` | Play remote turn |
-
----
-
-### Example (create game)
+**Create a game and play:**
 
 ```bash
+# 1. Create a game against random_bot
 curl -X POST "https://yovi.13.63.89.84.sslip.io/interop/games" \
   -H "Content-Type: application/json" \
-  -d '{"size":3,"bot_id":"random_bot"}'
+  -d '{"size": 5, "bot_id": "random_bot"}'
+# → {"game_id": "...", "position": {...YEN...}, "status": "ONGOING"}
+
+# 2. Play a move (send updated YEN with your piece placed)
+curl -X POST "https://yovi.13.63.89.84.sslip.io/interop/games/{game_id}/play" \
+  -H "Content-Type: application/json" \
+  -d '{"position": {...YEN with your move...}}'
+# → {"position": {...YEN after bot response...}, "status": "ONGOING"}
+
+# 3. Stateless move (no session required)
+curl "https://yovi.13.63.89.84.sslip.io/interop/play?position={YEN_JSON}&bot_id=heuristic_bot"
 ```
----
-### YEN format
-```json
-{
-  "size": 3,
-  "turn": 0,
-  "players": ["B", "R"],
-  "layout": "./../..."
-}
-```
+
+Full OpenAPI 3.1 spec at [`botapi/src/openapi/openapi.yaml`](botapi/src/openapi/openapi.yaml).
 
 ---
 
@@ -255,9 +206,7 @@ curl -X POST "https://yovi.13.63.89.84.sslip.io/interop/games" \
 
 Requires [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/).
 
-**1. Set up environment variables:**
-
-Create a `.env` file in the root directory:
+**1. Create a `.env` file at the project root:**
 
 ```env
 MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/yovi
@@ -271,109 +220,99 @@ JWT_EXPIRES=24h
 docker-compose up --build
 ```
 
-**3. Access the application:**
+**3. Open the app:** [http://localhost](http://localhost)
 
-| Service | Internal Port | External Access |
-|---------|-----|--------|
-| Web application | 80/443 | https://yovi.13.63.89.84.sslip.io |
-| Web application | 80 | via nginx (/) |
-| Gateway API | 8080 | via nginx (/api) |
-| botapi | 4001 | via nginx (/interop) |
-| Users service | 3000 | internal |
-| Auth service | 5000 | internal |
-| Game engine | 4000 | internal |
-| Prometheus | 9090 | http://localhost:9090 |
-| Grafana | 9091 | http://localhost:9091 |
+| Service | URL |
+|---------|-----|
+| Web application | http://localhost |
+| Bot interop API | http://localhost/interop |
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:9091 (`admin` / `admin`) |
 
 ---
 
 ### Without Docker (local development)
 
-You need [Node.js](https://nodejs.org/), [npm](https://www.npmjs.com/), and [Rust](https://www.rust-lang.org/) installed.
-
-**1. Users service:**
+Requires [Node.js ≥ 20](https://nodejs.org/) and [Rust](https://www.rust-lang.org/).
 
 ```bash
-cd users
-npm install
-npm start
-# Available at http://localhost:3000
-```
+# Start all backend services
+cd users          && npm install && npm start          # :3000
+cd authentication && npm install && npm start          # :5000
+cd gateway        && npm install && npm start          # :8080
+cd multiplayer    && npm install && npm start          # :7000
+cd botapi         && npm install && npm run build && npm start  # :4001
+cd gamey          && cargo run -- --mode server --port 4000    # :4000
 
-**2. Authentication service:**
-
-```bash
-cd authentication
-npm install
-npm start
-# Available at http://localhost:5000
-```
-
-**3. Gateway:**
-
-```bash
-cd gateway
-npm install
-npm start
-# Available at http://localhost:8080
-```
-
-**4. Game engine:**
-
-```bash
-cd gamey
-cargo run -- --mode server --port 4000
-# Available at http://localhost:4000
-```
-
-**5. Web application:**
-
-```bash
-cd webapp
-npm install
-npm run dev
-# Available at http://localhost:5173
+# Start the frontend
+cd webapp && npm install && npm run dev                # :5173
 ```
 
 ---
 
-## Available Scripts
+## Testing
 
-### Webapp (`webapp/`)
-
-```bash
-npm run dev        # Start development server
-npm test           # Run unit tests
-npm run test:e2e   # Run end-to-end tests (Playwright)
-npm run build      # Production build
-```
-
-### Users / Auth / Gateway (Node.js services)
+### Unit and integration tests
 
 ```bash
-npm start          # Start the service
-npm test           # Run tests
+cd users          && npm test    # Jest + mongodb-memory-server
+cd authentication && npm test    # Vitest + Supertest
+cd gateway        && npm test    # Vitest + Supertest
+cd multiplayer    && npm test    # Jest + socket.io-client
+cd botapi         && npm test    # Vitest + Supertest
+cd gamey          && cargo test  # unit + integration + property-based (proptest)
 ```
 
-### Game Engine (`gamey/`)
+### End-to-end tests
 
 ```bash
-cargo build        # Build the project
-cargo test         # Run all tests
-cargo run          # Run in CLI mode (human vs human)
-cargo run -- --mode server --port 4000   # Run as HTTP server
-cargo doc --open   # Generate and open documentation
+cd webapp && npm run test:e2e    # Playwright
 ```
+
+### Load tests (k6)
+
+```bash
+# Requires k6: https://k6.io/docs/getting-started/installation/
+
+./tests/load/run_load_tests.sh                                      # local
+./tests/load/run_load_tests.sh https://yovi.13.63.89.84.sslip.io/api  # production
+```
+
+| Scenario | VUs | p95 threshold |
+|----------|-----|---------------|
+| Registration | 50 | < 2 000 ms |
+| Login | 50 | < 1 500 ms |
+| Start game | 20 | < 3 000 ms |
+
+See the [Load Testing Guide](https://github.com/Arquisoft/yovi_en2c/wiki/Load-Testing-Guide) and [Load Testing Results](https://github.com/Arquisoft/yovi_en2c/wiki/Load-Testing-Results).
 
 ---
 
-## Architecture
+## Monitoring
 
-The system follows a microservices architecture with NGINX as the single external entry point.
-The gateway is used for webapp traffic, while the interop API provides a separate access path for external bots.
+Prometheus scrapes metrics from gateway, users, and gamey every 15 seconds. The **"Yovi Services Overview"**
+Grafana dashboard shows request rate, p95 latency, and error rate for all three services in real time.
 
-For detailed architecture documentation, see the [project wiki](https://github.com/Arquisoft/yovi_en2c/wiki) and the [Architecture Decision Records (ADRs)](https://github.com/Arquisoft/yovi_en2c/wiki/Architecture-Decision-Record).
+- **Prometheus:** http://localhost:9090
+- **Grafana:** http://localhost:9091
+
+See the [Monitoring wiki page](https://github.com/Arquisoft/yovi_en2c/wiki/Monitoring-(Prometheus-&-Grafana)).
 
 ---
 
+## Documentation
 
+| Resource | Link |
+|----------|------|
+| 📖 Arc42 Architecture Docs | [arquisoft.github.io/yovi_en2c](https://arquisoft.github.io/yovi_en2c/) |
+| 📝 GitHub Wiki | [wiki home](https://github.com/Arquisoft/yovi_en2c/wiki) |
+| 🧠 Architecture Decision Records | [16 ADRs documented](https://github.com/Arquisoft/yovi_en2c/wiki/Architecture-Decision-Record-(ADR)) |
+| 🔌 Bot API OpenAPI spec | [openapi.yaml](botapi/src/openapi/openapi.yaml) |
+| 🚀 CI/CD Pipeline | [pipeline docs](https://github.com/Arquisoft/yovi_en2c/wiki/CI-CD-Pipeline) |
+| 🧪 Usability Testing | [usability results](https://github.com/Arquisoft/yovi_en2c/wiki/Usability-Test) |
+
+---
+
+## License
+
+This project is developed for educational purposes as part of the ASW course at the University of Oviedo.

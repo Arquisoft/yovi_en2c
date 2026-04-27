@@ -94,7 +94,19 @@ include::src/10_quality_requirements.adoc[]
 include::src/11_technical_risks.adoc[]
 
 <<<<
-// 12. Glossary
-include::src/12_glossary.adoc[]
+// 12. Load testing
+include::src/12_load_testing.adoc[]
+
+<<<<
+// 13. APIs
+include::src/13_botapi.adoc[]
+
+<<<<
+// 14. APIs
+include::src/14_monitoring.adoc[]
+
+<<<<
+// 15. Glossary
+include::src/15_glossary.adoc[]
 
 

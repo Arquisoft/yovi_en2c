@@ -1,273 +1,415 @@
-
+ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-deployment-view]]
-
-
 == Deployment View
 
-This section describes the **technical infrastructure** that executes the YOVI system and the **mapping of building blocks** (from Section 5) to infrastructure elements. Following arc42 guidelines, we present:
+This section describes the **technical infrastructure** that executes the YOVI system and the **mapping of
+building blocks** to infrastructure elements. The application is built on Docker containerization running on
+a cloud virtual machine, combining the portability of containers with the security and isolation of the VM.
 
-* **Level 1**: Overall deployment environment (production)
-* **Level 2**: Internal structure of key infrastructure nodes
-* **Environment variations**: Development, test, and production differences
-The application is built to use Docker and a Virtual Machine as a host in such a way that it combines the portability of
-the containers with the security and isolation features of the VM.
+Two Docker Compose configurations are maintained:
+
+* **`docker-compose.yml`** — development/CI build: builds images from local source code and tags them for
+publication to GitHub Container Registry (GHCR).
+* **`docker-compose.deploy.yml`** — production deployment: pulls pre-built images from GHCR; no build step.
 
 === Level 1: Production Deployment Overview
 
-The YOVI system is deployed as a **containerized application** running on a **cloud virtual machine**. All services run in Docker containers, orchestrated with docker-compose.
+All services run as Docker containers on a single cloud VM, orchestrated with `docker-compose.deploy.yml`.
+All containers share the `monitor-net` bridge network. Only Nginx exposes ports externally.
 
 [plantuml,"Production Deployment Level 1",png]
 ----
 @startuml
-!define RECTANGLE node
-!define DATABASE database
-!define CLOUD cloud
-
 skinparam componentStyle rectangle
-skinparam backgroundColor #FEFEFE
 
 cloud "Internet" {
-  actor "Human Player" as User
+  actor "Human Player / Admin" as User
   actor "External Bot" as Bot
 }
 
-node "Cloud VM (Production)\nUbuntu 22.04 LTS\n4 vCPUs, 8GB RAM" as VM {
+node "Cloud VM\n(Ubuntu, AWS EC2)" as VM {
   frame "Docker Host" {
-    component "Docker Engine\n(v24.0+)" as Docker
 
-    rectangle "Application Containers" {
-      component "gateway_container\nport 443 (HTTPS)" as GatewayCont
-      component "webapp_container\nport 80 (HTTP)" as WebappCont
-      component "users_container\nport 3000" as UsersCont
-      component "gamey_container\nport 4000" as GameyCont
-      database "mongodb_container\nport 27017" as DBCont
+    rectangle "Publicly exposed" {
+      component "nginx\nports 80:80, 443:443" as Nginx
+    }
 
-      component "prometheus_container\nport 9090" as PromCont
-      component "grafana_container\nport 9091" as GrafCont
+    rectangle "Application containers (internal only)" {
+      component "webapp\nexposes 80" as Webapp
+      component "gateway\nexposes 8080" as Gateway
+      component "authentication\nexposes 5000" as Auth
+      component "users\nexposes 3000" as Users
+      component "gamey\nexposes 4000" as Gamey
+      component "multiplayer\nexposes 7000" as Multi
+      component "botapi\nexposes 4001" as BotAPI
+    }
+
+    rectangle "Data" {
+      database "MongoDB\n(MONGODB_URI env var)" as DB
+    }
+
+    rectangle "Monitoring (optional ports)" {
+      component "prometheus\nport 9090:9090" as Prom
+      component "grafana\nport 9091:3000" as Graf
     }
   }
 }
 
 node "External Services" {
-  database "GitHub Container Registry" as Registry
-  database "MongoDB Atlas\n(Optional backup)" as Atlas
+  database "GitHub Container Registry\n(ghcr.io/arquisoft)" as GHCR
+  database "MongoDB Atlas\n(optional)" as Atlas
 }
 
-User --> VM : HTTPS (port 443)
-Bot --> VM : HTTPS (port 443)
+User --> VM : "HTTPS 443"
+Bot --> VM : "HTTPS 443"
+VM --> GHCR : "docker pull"
 
-VM --> Registry : docker pull images
+Nginx --> Webapp : "/ HTTP"
+Nginx --> Gateway : "/api/* HTTP"
+Nginx --> Multi : "/socket.io/* WS upgrade"
+Nginx --> BotAPI : "/interop/* HTTP"
 
-GatewayCont --> WebappCont : internal HTTP
-GatewayCont --> UsersCont : internal HTTP
-GatewayCont --> GameyCont : internal HTTP
+Gateway --> Auth
+Gateway --> Users
+Gateway --> Gamey
+Gateway --> Multi
 
-UsersCont --> DBCont : MongoDB Wire Protocol
+Auth --> Users
+Users --> DB
 
-PromCont --> GatewayCont : metrics scrape
-PromCont --> UsersCont : metrics scrape
-PromCont --> GameyCont : metrics scrape
-PromCont --> DBCont : metrics scrape
-GrafCont --> PromCont : query metrics
+Multi --> Gamey
+BotAPI --> Gamey
 
+Prom --> Gateway : "scrape /metrics"
+Prom --> Users : "scrape /metrics"
+Prom --> Gamey : "scrape /metrics"
+Graf --> Prom : "PromQL"
+@enduml
+----
 
+=== Level 2: Container Detail
 
-note bottom of GatewayCont
-  **Routes:**
-  / → webapp:80
-  /api/users → users:3000
-  /api/game → gamey:4000
-  /metrics → prometheus:9090
+This table lists every container in the production deployment, its image, internal port, dependencies,
+and key environment variables.
+
+[options="header", cols="1,2,1,2,2"]
+|===
+| Container | Image | Exposes | Depends On | Key Env Vars
+
+| **nginx**
+| `nginx:stable-alpine`
+| 80, 443 (public)
+| webapp, gateway, botapi, multiplayer
+| —
+
+| **webapp**
+| `ghcr.io/arquisoft/yovi_en2c-webapp:latest`
+| 80 (internal)
+| gateway
+| `VITE_API_URL=/api` (build arg)
+
+| **gateway**
+| `ghcr.io/arquisoft/yovi_en2c-gateway:latest`
+| 8080 (internal)
+| authentication, gamey, users, multiplayer
+| `AUTH_BASE_URL`, `GAMEY_BASE_URL`, `MULTIPLAYER_BASE_URL`, `USERS_BASE_URL`, `PORT=8080`
+
+| **authentication**
+| `ghcr.io/arquisoft/yovi_en2c-authentication:latest`
+| 5000 (internal)
+| users
+| `JWT_SECRET`, `JWT_EXPIRES`, `USERS_SERVICE_URL=http://users:3000`, `PORT=5000`
+
+| **users**
+| `ghcr.io/arquisoft/yovi_en2c-users:latest`
+| 3000 (internal)
+| MongoDB
+| `MONGODB_URI`, `PORT=3000`
+
+| **gamey**
+| `ghcr.io/arquisoft/yovi_en2c-gamey:latest`
+| 4000 (internal)
+| —
+| —
+
+| **multiplayer**
+| `ghcr.io/arquisoft/yovi_en2c-multiplayer:latest`
+| 7000 (internal)
+| gamey
+| `GAMEY_BASE_URL=http://gamey:4000`, `PORT=7000`
+
+| **botapi**
+| `ghcr.io/arquisoft/yovi_en2c-botapi:latest`
+| 4001 (internal)
+| gamey
+| `GAMEY_BASE_URL=http://gamey:4000`, `GAMEY_API_VERSION=v1`, `PORT=4001`
+
+| **prometheus**
+| `prom/prometheus`
+| 9090:9090
+| —
+| Config: `users/monitoring/prometheus/prometheus.yml`
+
+| **grafana**
+| `grafana/grafana`
+| 9091:3000
+| prometheus
+| Provisioning: `users/monitoring/grafana/provisioning/`
+|===
+
+=== Level 3: Nginx Routing Configuration
+
+Nginx is the only container with publicly exposed ports. It routes all inbound traffic to the appropriate
+internal container based on the request path.
+
+[plantuml,"Nginx Routing Detail",png]
+----
+@startuml
+skinparam componentStyle rectangle
+
+component "Nginx\n(ports 80 / 443)" as Nginx
+
+component "webapp:80" as WA
+component "gateway:8080" as GW
+component "multiplayer:7000\n(Socket.IO)" as Multi
+component "botapi:4001" as BAPI
+
+Nginx --> WA : "location /\n(static SPA)"
+Nginx --> GW : "location /api/\nproxy_pass http://gateway:8080/"
+Nginx --> Multi : "location /socket.io/\nproxy_pass http://multiplayer:7000\nupgrade: websocket"
+Nginx --> BAPI : "location /interop/\nproxy_pass http://botapi:4001/"
+
+note top of Nginx
+  port 80 -> 301 redirect to HTTPS
+  port 443 -> TLS termination
+  certs: nginx/certs/fullchain.pem
+         nginx/certs/privkey.pem
 end note
 @enduml
 ----
 
-==== Infrastructure Elements (Level 1)
+Key Nginx configuration decisions:
 
+* **HTTPS only** — port 80 redirects permanently (301) to port 443.
+* **TLS certificates** — mounted read-only from `nginx/certs/` (Let's Encrypt format).
+* **WebSocket upgrade** — the `/socket.io/` location sets `Upgrade` and `Connection` headers to allow
+Socket.IO to negotiate the WebSocket protocol through the proxy.
+* **SPA fallback** — the `/` location serves `index.html` for any unmatched path, enabling client-side
+routing in the React application.
+* **Security header** — `x-powered-by` is disabled on all Node.js services.
+
+=== Level 3: Prometheus Scrape Configuration
+
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Monitoring:-Prometheus-&-Grafana[Monitoring wiki page]
+
+
+Prometheus scrapes metrics from three services on the Docker internal network every 15 seconds.
+
+[source,yaml]
+----
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'users-service'
+    static_configs:
+      - targets: ['users:3000']
+
+  - job_name: 'gateway-service'
+    static_configs:
+      - targets: ['gateway:8080']
+
+  - job_name: 'gamey-service'
+    static_configs:
+      - targets: ['gamey:4000']
+----
+
+The Grafana dashboard ("Yovi Services Overview", UID `yovi-overview`) is provisioned automatically at startup
+via the `users/monitoring/grafana/provisioning/` directory. It includes three panels:
+
+* **Request Rate (req/s)** — `rate(http_requests_total[1m])` per service, method, path, and status code
+* **P95 Request Duration (s)** — `histogram_quantile(0.95, ...)` per service
+* **Error Rate (4xx+5xx)** — `rate(http_requests_total{status_code=~"4..|5.."}[1m])` per service
+
+=== Development vs Production Differences
+
+[options="header", cols="2,2,2"]
 |===
-| Element | Description | Technology | Purpose
-| **Cloud VM** | Virtual machine hosting all containers | Ubuntu 22.04 LTS | Execution environment
-| **Docker Engine** | Container runtime | Docker v24.0+ | Container orchestration
-| **Gateway Container** | API Gateway service | Nginx / Express Gateway | Request routing, SSL termination
-| **Webapp Container** | Frontend service | Node.js + React (static files) | Serve UI to users
-| **Users Container** | User management service | Node.js + Express | User data & auth
-| **Gamey Container** | Game engine service | Rust | Game logic & AI
-| **MongoDB Container** | Database | MongoDB 7.x | Data persistence
-| **Prometheus Container** | Metrics collection | Prometheus latest | Monitoring
-| **Grafana Container** | Metrics visualization | Grafana latest | Dashboards
-| **GitHub Registry** | Container image registry | GitHub Container Registry | Image storage
+| Aspect | Development (`docker-compose.yml`) | Production (`docker-compose.deploy.yml`)
+
+| **Image source**
+| Built from local source (`build: ./service`)
+| Pulled from GHCR (`image: ghcr.io/arquisoft/...`)
+
+| **Build args**
+| `VITE_API_URL=/api` passed to webapp build
+| Not needed (image already built)
+
+| **Volumes**
+| Source code not mounted (clean build)
+| Config files mounted read-only (`nginx/conf.d`, `nginx/certs`)
+
+| **Secrets**
+| `.env` file at project root
+| Environment variables injected by CI/CD on the VM
+
+| **Monitoring ports**
+| Prometheus 9090, Grafana 9091 accessible locally
+| Same ports — restrict via firewall in production if needed
+
+| **MongoDB**
+| Local container or Atlas URI in `.env`
+| Atlas URI in production environment variable
 |===
 
-==== Communication Channels (Level 1)
+=== CI/CD and Deployment Pipeline
 
-|===
-| Channel | Protocol | Source | Destination | Purpose
-| **External HTTPS** | HTTPS (TLS 1.3) | Internet | Gateway (port 443) | User/bot access
-| **Internal HTTP** | HTTP (plain) | Gateway | Webapp/Users/Gamey | Service communication
-| **MongoDB Wire** | MongoDB protocol | Users | MongoDB (27017) | Database access
-| **Docker Pull** | HTTPS | VM | GitHub Registry | Image download
-| **Metrics Scrape** | HTTP | Prometheus | All services | Monitoring data
-| **Grafana Query** | HTTP | Grafana | Prometheus | Dashboard queries
-|===
+The GitHub Actions workflow (`release-deploy.yml`) automates the full pipeline on every release tag:
 
-=== Level 2: Internal Structure of Key Nodes
-
-==== Level 2: Cloud VM Internal Structure
-
-This diagram zooms into the Cloud VM, showing the container organization and internal networks.
-
-[plantuml,"Cloud VM Internal Structure",png]
+[plantuml,"CI/CD Pipeline",png]
 ----
 @startuml
-!define RECTANGLE node
-!define DATABASE database
+|GitHub Actions|
+start
+:Push release tag (e.g. v1.2.0);
 
-node "Cloud VM (Production)" {
+fork
+  :Test — users service\n(npm test --coverage);
+fork again
+  :Test — gateway service\n(npm test --coverage);
+fork again
+  :Test — auth service\n(npm test --coverage);
+fork again
+  :Test — gamey service\n(cargo test);
+fork again
+  :Test — botapi service\n(npm test --coverage);
+fork again
+  :Test — multiplayer service\n(npm test --coverage);
+end fork
 
-  frame "Docker Networks" {
-    rectangle "frontend_network\n172.20.0.0/24" as NetFront
-    rectangle "backend_network\n172.20.1.0/24" as NetBack
-    rectangle "monitoring_network\n172.20.2.0/24" as NetMon
-  }
+:Build Docker images\n(docker-compose.yml);
 
-  frame "Containers" {
-    component "gateway\n(port 443)" as G
-    component "webapp\n(port 80)" as W
-    component "users\n(port 3000)" as U
-    component "gamey\n(port 4000)" as Y
-    database "mongodb\n(port 27017)" as D
-    component "prometheus\n(port 9090)" as P
-    component "grafana\n(port 9091)" as Graf
-  }
+fork
+  :Publish webapp image\nghcr.io/arquisoft/yovi_en2c-webapp;
+fork again
+  :Publish gateway image\nghcr.io/arquisoft/yovi_en2c-gateway;
+fork again
+  :Publish auth image\nghcr.io/arquisoft/yovi_en2c-authentication;
+fork again
+  :Publish users image\nghcr.io/arquisoft/yovi_en2c-users;
+fork again
+  :Publish gamey image\nghcr.io/arquisoft/yovi_en2c-gamey;
+fork again
+  :Publish multiplayer image\nghcr.io/arquisoft/yovi_en2c-multiplayer;
+fork again
+  :Publish botapi image\nghcr.io/arquisoft/yovi_en2c-botapi;
+end fork
 
-  frame "Volumes" {
-    database "mongodb_data\n/var/lib/docker/volumes/mongodb" as VolDB
-    database "grafana_data\n/var/lib/docker/volumes/grafana" as VolGraf
-    database "prometheus_data\n/var/lib/docker/volumes/prometheus" as VolProm
-  }
-
-  ' Network assignments (relationships to networks - these are notes, not connections)
-  note right of G : connected to frontend_network
-  note right of W : connected to frontend_network
-  note right of U : connected to backend_network
-  note right of Y : connected to backend_network
-  note right of D : connected to backend_network
-  note right of P : connected to monitoring_network
-  note right of Graf : connected to monitoring_network
-
-  ' Actual communication between containers
-  G --> W : "serves static files\n(HTTP)"
-
-  G --> U : "HTTP /api/users/*"
-  G --> Y : "HTTP /api/game/*"
-
-  U --> D : "MongoDB Wire Protocol"
-
-  P --> G : "scrape metrics (HTTP)"
-  P --> U : "scrape metrics (HTTP)"
-  P --> Y : "scrape metrics (HTTP)"
-  P --> D : "scrape metrics (HTTP)"
-
-  Graf --> P : "query metrics (HTTP)"
-
-  ' Volume persistence
-  D --> VolDB : "persists data"
-  P --> VolProm : "persists data"
-  Graf --> VolGraf : "persists data"
-
-  note top of NetFront
-    **frontend_network:**
-    * gateway
-    * webapp
-  end note
-
-  note top of NetBack
-    **backend_network:**
-    * users
-    * gamey
-    * mongodb
-  end note
-
-  note top of NetMon
-    **monitoring_network:**
-    * prometheus
-    * grafana
-  end note
-}
-
+:SSH to cloud VM;
+:docker-compose -f docker-compose.deploy.yml pull;
+:docker-compose -f docker-compose.deploy.yml up -d;
+stop
 @enduml
 ----
 
-
-
-==== Production Environment
-
-[options="header",cols="1,2,2"]
-|===
-| Aspect | Configuration | Justification
-| **Location** | Cloud VM (AWS EC2 / DigitalOcean) | Public accessibility
-| **Orchestration** | docker-compose + systemd | Simple, sufficient for scale
-| **Networking** | Public IP + domain | User access
-| **Data** | Persistent volumes | Data durability
-| **Monitoring** | Prometheus + Grafana | Observability
-| **Backup** | Daily automated backups | Disaster recovery
-| **SSL** | Let's Encrypt auto-renew | Security
-|===
-
 === Mapping of Building Blocks to Infrastructure
 
-This table maps the **building blocks** from Section 5 to the **infrastructure elements** described above.
-
-[options="header",cols="1,1,1,1,1,1"]
+[options="header", cols="2,2,1,2"]
 |===
-| Building Block | Deployed As | Environment | Node | Container | Network
-| **Web Frontend Service** | Static files + Node server | Production | Cloud VM | webapp_container | frontend_network
-| **User Service** | Node.js application | Production | Cloud VM | users_container | backend_network
-| **Game Engine Service** | Rust binary | Production | Cloud VM | gamey_container | backend_network
-| **API Gateway** | Nginx configuration | Production | Cloud VM | gateway_container | frontend_network
-| **MongoDB Database** | MongoDB instance | Production | Cloud VM | mongodb_container | backend_network
-| **Prometheus** | Prometheus server | Production | Cloud VM | prometheus_container | monitoring_network
-| **Grafana** | Grafana server | Production | Cloud VM | grafana_container | monitoring_network
+| Building Block | Container | Network | Notes
+
+| Nginx Reverse Proxy
+| `nginx`
+| monitor-net + public
+| Only container with external ports (80, 443)
+
+| Webapp (React SPA)
+| `webapp`
+| monitor-net (internal)
+| Served as static files; built with Vite
+
+| API Gateway
+| `gateway`
+| monitor-net (internal)
+| Prometheus metrics at `/metrics`
+
+| Authentication Service
+| `authentication`
+| monitor-net (internal)
+| Stateless; no persistent storage
+
+| Users Service
+| `users`
+| monitor-net (internal)
+| Prometheus metrics; Swagger UI at `/api-docs`
+
+| Game Engine
+| `gamey`
+| monitor-net (internal)
+| Stateless Rust binary; Prometheus via axum-prometheus
+
+| Multiplayer Service
+| `multiplayer`
+| monitor-net (internal)
+| In-memory room state; lost on container restart
+
+| Bot API
+| `botapi`
+| monitor-net (internal)
+| In-memory session state; lost on container restart
+
+| MongoDB
+| External (Atlas URI)
+| — (external)
+| URI injected via `MONGODB_URI` env var
+
+| Prometheus
+| `prometheus`
+| monitor-net
+| Scrapes gateway, users, gamey every 15s
+
+| Grafana
+| `grafana`
+| monitor-net
+| Dashboard auto-provisioned; port 9091 external
 |===
 
-=== Deployment Decisions and Rationale
+=== Quality and Operational Considerations
 
-[options="header",cols="1,2,2,2"]
+[options="header", cols="2,3"]
 |===
-| Decision | Rationale | Alternatives Considered | Trade-offs
-| **Single VM with docker-compose** | Simplicity, cost-effective for expected load (10 concurrent users) | Kubernetes (overkill), separate VMs (costly) | Limited horizontal scaling, but simpler operations
-| **Separate networks** | Security isolation between frontend and backend | Single flat network | More complex config, but better security
-| **Monitoring stack included** | Required for observability and course evaluation | External monitoring service | Additional resource usage, but integrated
-| **Persistent volumes** | Data durability across container restarts | Ephemeral storage | Requires backup strategy
-| **Let's Encrypt SSL** | Free, automated certificates | Paid certificates, self-signed | Auto-renewal complexity, but free
+| Concern | Approach
+
+| **Isolation**
+| All containers share a single `monitor-net` bridge network. Only Nginx has external port bindings.
+Internal services are not reachable from outside the VM.
+
+| **Portability**
+| All services are containerized with multi-stage Dockerfiles (where applicable). Images are published to
+GHCR and pulled on the target VM — no build tools required in production.
+
+| **Stateless services**
+| Gateway, authentication, and gamey are fully stateless. Multiplayer and botapi hold in-memory state
+(rooms and sessions respectively) which is lost on container restart — acceptable for the current scope.
+
+| **Data durability**
+| MongoDB Atlas provides managed persistence with automatic backups. The `MONGODB_URI` env var is the only
+configuration needed; no data volume is managed by Docker Compose.
+
+| **Secret management**
+| `JWT_SECRET` and `MONGODB_URI` are stored as GitHub Secrets and injected as environment variables during
+the deploy step. They are never committed to the repository.
+
+| **Restart policy**
+| Docker Compose `restart: unless-stopped` (implicit in deploy config) ensures containers are automatically
+restarted after crashes or VM reboots.
+
+| **Monitoring**
+| Prometheus + Grafana are always-on in production. The "Yovi Services Overview" dashboard shows request
+rate, p95 latency, and error rate for gateway, users, and gamey in real time with a 30-second refresh.
+
+| **SSL certificates**
+| TLS certificates are mounted from `nginx/certs/` (Let's Encrypt format: `fullchain.pem` + `privkey.pem`).
+Certificate renewal is managed externally and requires an Nginx reload.
 |===
-
-=== Deployment Scripts and Configuration
-
-The deployment is automated via:
-
-* **`docker-compose.yml`** – at repository root. Defines all services.
-* **`deploy.sh`** – script for production deployment.
-* **GitHub Actions workflow** – CI/CD pipeline for testing and deployment.
-
-=== Quality and Performance Features
-
-Some of the characteristics obtained by the use of the specified implementation:
-
-* **Isolation**: Both thanks to the container isolation of Docker and the own security features of the Virtual Machine.
-* **Portability and Compatibility**: Thanks to the use of the Docker containers.
-* **Security**: If a container is compromised, the VM can act as another security layer.
-* **Others**: Scalability, easily maintainable, would be very simple to backup...
-
-=== Mapping of Building Blocks to Infrastructure
-
-The building blocks of the current infrastructure would be:
-
-* **Webapp**: Located in port 80, it is the one the user will connect to and interact with. It is the GUI (Graphic User Interface), and as such the frontend of the application.
-* **Gateway**: This block has port 8080 assigned, and it is in charge of acting as a bridge between the rest of the building blocks of the application.
-* **Users**: It is in charge of the user management as well as the authentication feature, and its port is 3000.
-* **Gamey**: This service, written in Rust, is the one containing the complete functionality of the Y Game. It uses port 4000.
-* **Database**: It is an external block containing all the information of the application (user data, game data...).
-
-Additionally, it is worth mentioning the presence of **Prometheus** and **Grafana**, located in ports 9090 and 9091 respectively, are external blocks that will be used to monitor and obtain metrics of the application and its usage.

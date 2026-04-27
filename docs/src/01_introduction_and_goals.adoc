@@ -3,57 +3,132 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-introduction-and-goals]]
 == Introduction and Goals
 
-We are a team of two Software Engineering students from the University of Oviedo developing YOVI, a web-based gaming
-platform for the company Micrati
-as part of our Architecture of Software Systems (ASW) course project.
+YOVI is a web-based platform for playing **Game Y** — an abstract strategy board game where two players compete to
+connect all three sides of a triangular board with their pieces. The project is developed as part of the Software
+Architecture (ASW) course at the University of Oviedo, for the company Micrati.
 
-The platform will allow users to play Game Y against AI opponents, interact with external bots, and track their games via their own account. Our solution follows a service-oriented
-architecture composed of a React frontend (webapp/), a Node.js user service (users/), a Rust
-game engine (gamey/), and a dedicated interoperability API for bots (botapi/). Public access is handled through an Nginx reverse proxy, which provides HTTPS termination and routes requests to the appropriate internal services.
-This architecture ensures clarity, maintainability, and
-scalability while fulfilling both academic requirements and player expectations.
+The platform allows users to play against AI opponents with six difficulty levels, compete against other human players
+online via real-time multiplayer, interact with social features (friends, notifications), and track their performance
+through match history and statistics. An admin role provides privileged users with a management panel to oversee the
+platform. External bots can integrate with the system via a dedicated public interoperability API.
 
-This document outlines the architectural vision for YOVI, balancing functionality with clarity and maintainability to
-meet both academic requirements and player expectations.
+The system follows a **microservices architecture** composed of eight independent services: a React frontend (`webapp`),
+an API gateway (`gateway`), a JWT authentication service (`authentication`), a user management service (`users`),
+a Rust game engine and bot service (`gamey`), a real-time multiplayer service (`multiplayer`), a bot interoperability
+API (`botapi`), and an Nginx reverse proxy. Observability is provided by Prometheus and Grafana.
+
+Along all the development of the project, we have focused on keeping a clear documentation of our progress in the wiki the Github project.
+In the different section of the arc42 documentations, link can be find to these sections of the wiki
+
+Here the full wiki : link:https://github.com/Arquisoft/yovi_en2c/wiki[GitHub Wiki YOVI]
+
+And all the team meetings : link:https://github.com/Arquisoft/yovi_en2c/wiki/Meetings[Meetings]
+
+🎮 **Live deployment:** https://yovi.13.63.89.84.sslip.io
 
 === Requirements Overview
 
-
-The YOVI system is a web-based gaming platform based on Game Y, developed for the company Micrati. The main goal is to
-allow users to play matches against the machine or via bots, with support for registration and statistics functionalities.
+The YOVI system is a web-based gaming platform based on Game Y, developed for the company Micrati. The main goal is
+to allow users to play matches against the machine or against other players online, with support for registration,
+social features, administration, and statistics.
 
 Key functional requirements include:
 
-* Public deployment and web accessibility.
-* Development of a web application in React that allows playing at least the classic version of Game Y.
-* Implementation of a Rust module to verify the game state and suggest moves to the bot.
-* User registration, JWT-based authentication, and access to match history.
-* Support for multiple strategies and difficulty levels in the vs. machine mode.
-* Exposure of a public interoperability API for external bots.
-
-
-
-
+* Public deployment and web accessibility via HTTPS.
+* Web application in React + TypeScript supporting the classic version of Game Y.
+* Rust game engine to validate game state and compute bot moves.
+* User registration and JWT-based authentication.
+* **Role-based access control**: regular users and administrators.
+* Match history and game statistics with pagination.
+* Six AI difficulty levels selectable by the user. link:https://github.com/Arquisoft/yovi_en2c/wiki/Bot-Implementations[Bot Implementations wiki page]
+* Real-time online multiplayer (Player vs Player) via WebSockets (Socket.IO).
+* Social features: friend requests, friend list management, and user search.
+* In-app notification system (friend requests, welcome messages).
+* User profile with editable fields (name, bio, location, preferred language).
+* **Admin panel**: privileged users can view all registered accounts, grant or revoke admin
+permissions, delete a user's match history, and permanently delete accounts.
+* Public interoperability API for external bots using YEN notation.
+* Interoperability client mode: our bots can play against other teams' APIs.
+* Internationalization (i18n) — English and Spanish supported.
+* Monitoring with Prometheus metrics and Grafana dashboards.
+* Load testing suite with k6.
 
 === Quality Goals
 
 The main quality attributes for the system architecture are:
 
-- **Functionality**: The system must correctly implement Game Y rules and provide at least one working AI strategies.
-- **Usability**: The React-based interface must be intuitive for players. The component-based architecture of the webapp supports internationalization (i18n)
-- **Modularity & Maintainability**: The clear separation into services ensures that components can be developed, tested, and extended independently.
-- **Deployability & Availability**: Using Docker and Docker Compose ensures that the multi-service application can be consistently deployed in any environment. The gateway provides a single entry point, simplifying deployment. Nginx centralizes public access, HTTPS termination, and request routing.
-- **Security**: JWT-based authentication protects user-specific operations, while the reverse proxy limits direct exposure of internal services.
-- **Testability**: The separation of concerns allows for comprehensive testing at multiple levels: unit tests in Rust and Node.js, integration tests between services, and end-to-end tests for the webapp.
+[options="header", cols="1,2,3"]
+|===
+| Priority | Quality Goal | Motivation
+
+| 1
+| **Functionality**
+| The system must correctly implement Game Y rules and provide all six working AI strategies. The multiplayer mode
+must accurately synchronize game state between two players in real time. The admin panel must correctly enforce
+role-based access so that only admin users can perform privileged operations.
+
+| 2
+| **Usability**
+| The React-based interface must be intuitive for new players. The component-based architecture supports
+internationalization (EN/ES), theme switching (dark/light), and responsive layout.
+
+| 3
+| **Reliability & Availability**
+| Using Docker and Docker Compose ensures consistent deployment. The gateway, multiplayer service, and Nginx are
+designed to be stateless and restartable. Docker restart policies limit downtime in case of failure.
+
+| 4
+| **Modularity & Maintainability**
+| The eight-service architecture ensures components can be developed, tested, and extended independently. The
+Strategy Pattern in `gamey` allows new AI strategies to be added without modifying existing code.
+
+| 5
+| **Security**
+| JWT-based authentication protects user-specific operations. bcrypt hashing is used for passwords. Role claims
+in the JWT payload allow the gateway and frontend to enforce admin-only routes without additional service calls.
+The reverse proxy limits direct exposure of internal services. The gateway sanitizes and validates all path
+parameters.
+
+| 6
+| **Testability**
+| The separation of concerns allows comprehensive testing: unit tests in Rust (`cargo test`) and Node.js (Vitest,
+Jest), integration tests via `supertest` and `tower::ServiceExt`, property-based tests with `proptest`, and
+end-to-end tests via Playwright. Load tests use k6.
+|===
 
 === Stakeholders
 
-[options="header",cols="1,2,2"]
+[options="header", cols="1,2,2"]
 |===
-| Role/Name | Contact | Expectations
-| Development Team | yovi_en2c | Implement a scalable, maintainable, and well-documented solution.
-| End Users | N/A | Usable, stable interface with complete gameplay and statistics features.
-| Micrati (Client) | N/A | Fulfillment of game, API, and public deployment requirements.
-| Project Evaluators | Arquisoft | Compliance with documentation, testing, deployment, and code quality criteria.
-| Bot Developers | API users | Well-documented and stable API for automated integration.
+| Role / Name | Contact | Expectations
+
+| Development Team
+| Ana Pérez Bango (UO294100), Adriana García Suárez (UO300042)
+| Implement a scalable, maintainable, and well-documented solution that fulfills all course requirements.
+
+| End Users (Human Players)
+| N/A
+| Usable, stable interface with complete gameplay, multiplayer, social features, and statistics.
+
+| Platform Administrators
+| Privileged users via the admin panel
+| Ability to manage user accounts, grant or revoke admin permissions, delete match histories, and remove accounts
+from the platform.
+
+| Micrati (Client)
+| N/A
+| Fulfillment of game, API, public deployment, and interoperability requirements.
+
+| Project Evaluators
+| Arquisoft course staff
+| Compliance with documentation (Arc42 + ADRs), testing, deployment, code quality (SonarCloud), and feature
+completeness criteria.
+
+| External Bot Developers
+| API users via `/interop/*`
+| Well-documented, stable, and versioned API for automated bot integration using YEN notation.
+
+| Rival Teams (Interop)
+| Other ASW course teams
+| Stable bot interoperability API that allows bot-vs-bot matches between teams following the shared YEN contract.
 |===

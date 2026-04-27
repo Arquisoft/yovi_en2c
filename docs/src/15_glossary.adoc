@@ -1,0 +1,319 @@
+ifndef::imagesdir[:imagesdir: ../images]
+
+[[section-glossary]]
+== Glossary
+
+This glossary defines the most important **domain and technical terms** used throughout the YOVI project.
+It ensures that all stakeholders — developers, client, evaluators, and bot developers — have an identical
+understanding of these terms.
+
+=== Domain Terms
+
+[cols="e,3e", options="header"]
+|===
+| Term | Definition
+
+| **YOVI**
+| The name of the system developed in this project. A web-based platform for playing Game Y, supporting
+human players, administrators, and external bots.
+
+| **Game Y**
+| An abstract strategy board game played on a triangular board where two players compete to connect all
+three sides of the board with a connected group of their pieces.
+
+| **Classic Game Y**
+| The standard version of Game Y with the original rules and a triangular board. Mandatory implementation
+for this project.
+
+| **YEN (Y Exchange Notation)**
+| A JSON-based format for representing Game Y state, inspired by chess FEN notation. Consists of `size`,
+`turn`, `players`, and `layout` fields. Mandated by the client for all service-to-service and external
+communication involving game state.
+
+| **Board Size**
+| The edge length of the triangular board. A board of size N has N×(N+1)/2 total cells. The default size
+in YOVI is 7 (28 cells). Users can configure this when starting a game.
+
+| **Barycentric Coordinates**
+| The coordinate system used in YOVI to address cells on the triangular board. A cell is identified by
+three non-negative integers (x, y, z) where x + y + z = N − 1, and N is the board size. Each coordinate
+represents the distance from one of the three sides.
+
+| **Side A / Side B / Side C**
+| The three edges of the triangular board. A player wins by connecting all three sides with a single
+connected group of pieces. In barycentric coordinates: Side A = cells where x = 0; Side B = cells where
+y = 0; Side C = cells where z = 0.
+
+| **Player (Blue / Red)**
+| The two participants in a Game Y match. Blue (`"B"`) moves first; Red (`"R"`) moves second. Tokens
+are single characters in the YEN `layout` string.
+
+| **Move / Placement**
+| A single action where a player places one piece on an empty cell of the board. Represented in YEN by
+changing a `.` character to the player's token (`B` or `R`).
+
+| **Win Condition**
+| A player wins when they have a connected group of pieces that simultaneously touches all three sides of
+the board. Detected via Union-Find (Disjoint Set Union) in the game engine.
+
+| **PvM (Player vs Machine)**
+| A game mode where a human player competes against an AI bot. The bot is selected by the player from
+six available difficulty levels.
+
+| **PvP (Player vs Player)**
+| A game mode where two human players compete in real time via WebSockets. Each player joins the same
+room using a shared room code.
+
+| **Room**
+| A private multiplayer session identified by a unique 6-character code. Contains two player slots
+(Blue and Red), the current YEN state, and the room status (`waiting`, `active`, `finished`). Room
+state is held in memory by the multiplayer service.
+
+| **Room Code**
+| A 6-character identifier used to join a multiplayer room. Generated from an unambiguous alphabet
+(no O/0/I/1) to minimise transcription errors. Example: `ABCD23`.
+
+| **User**
+| A registered human account with a username, bcrypt-hashed password, optional email, profile fields,
+friend list, notification list, and match history.
+
+| **Administrator (Admin)**
+| A user with the `role: "admin"` claim in their JWT. Can access the admin panel to view all users,
+grant or revoke admin privileges, delete match histories, and delete accounts.
+
+| **Match History**
+| A record of all games played by a user, stored in the `gameresults` MongoDB collection. Includes
+opponent, result (win/loss), score, board size, game mode (pvb/pvp), and date.
+
+| **Ranking**
+| A top-10 leaderboard of users ordered by number of wins. Computed via MongoDB aggregation pipeline on
+the `gameresults` collection.
+
+| **Friend Request**
+| An invitation sent by one user to another. Stored in the recipient's `friendRequests[]` array and
+creates a `friend_request` notification. Can be accepted (bidirectional add) or rejected (remove only).
+
+| **Notification**
+| An in-app message for a user. Two types: `friend_request` (from another user) and `welcome` (system,
+on registration). Stored in the `notifications` MongoDB collection with a `read` boolean flag.
+
+| **Hint**
+| A suggested move computed by `alfa_beta_bot` for the current board position, returned by `POST /hint`.
+Helps human players when they are unsure of their next move.
+
+| **Bot**
+| An automated program that interacts with the YOVI system through the public interoperability API
+(`botapi`) to play Game Y. Bots communicate exclusively via YEN notation over HTTP.
+
+| **Interoperability (Interop)**
+| The capability of the YOVI system to interact with external bots and rival teams' APIs using a shared
+contract based on YEN notation. Supported in both server mode (external bots play our bots) and client
+mode (our bots play rival APIs).
+|===
+
+=== Technical Terms
+
+[cols="e,3e", options="header"]
+|===
+| Term | Definition
+
+| **Microservice**
+| An independently deployable service with a single well-defined responsibility. YOVI comprises eight
+microservices: nginx, webapp, gateway, authentication, users, gamey, multiplayer, and botapi.
+
+| **Docker / Docker Compose**
+| Containerization platform (Docker) and multi-container orchestration tool (Docker Compose) used to
+package, run, and manage all YOVI services consistently across environments.
+
+| **GitHub Container Registry (GHCR)**
+| The container image registry at `ghcr.io/arquisoft/` where published Docker images for each YOVI
+service are stored and pulled from during production deployment.
+
+| **Nginx**
+| The reverse proxy used as the single public entry point for YOVI. Handles HTTPS termination,
+HTTP→HTTPS redirect, and path-based routing to webapp, gateway, multiplayer, and botapi.
+
+| **JWT (JSON Web Token)**
+| A compact, URL-safe token used for stateless authentication. Contains user identity claims (`id`,
+`username`, `email`, `role`) signed with `JWT_SECRET` using HS256. Expires after `JWT_EXPIRES` (default
+24h).
+
+| **bcrypt**
+| A password hashing algorithm used to store user passwords securely. YOVI uses a cost factor of 10
+via the `bcryptjs` library. Hashing is performed in the users service at account creation; comparison
+is performed in the authentication service at login.
+
+| **RBAC (Role-Based Access Control)**
+| An authorization model where access to resources is determined by the user's role. YOVI has two roles:
+`user` (default) and `admin`. The role is embedded in the JWT payload and enforced at both the client
+(webapp route guard) and server (gateway middleware) levels.
+
+| **Socket.IO**
+| A JavaScript library providing real-time bidirectional event-based communication over WebSockets, with
+automatic HTTP long-polling fallback. Used by the multiplayer service for PvP game events.
+
+| **WebSocket**
+| A communication protocol providing full-duplex channels over a single TCP connection. Used by Socket.IO
+for real-time PvP communication. Nginx proxies WebSocket connections to the multiplayer service via the
+`Upgrade` header.
+
+| **REST API**
+| Representational State Transfer. The architectural style used for all HTTP-based service-to-service
+and external communication in YOVI. Resources are accessed via standard HTTP methods (GET, POST, PUT,
+PATCH, DELETE).
+
+| **Express**
+| A web framework for Node.js used in gateway (v5), authentication (v5), users (v5), and multiplayer
+(v4) services. Provides routing, middleware, and HTTP request/response handling.
+
+| **Axum**
+| An async HTTP framework for Rust built on Tokio. Used by the gamey service. Provides type-safe
+request extractors, shared state via `Arc<AppState>`, and native Tower middleware compatibility.
+
+| **Tokio**
+| An asynchronous runtime for Rust. Used by the gamey service to handle concurrent HTTP requests
+efficiently without blocking threads.
+
+| **Mongoose**
+| An Object Document Mapper (ODM) for MongoDB in Node.js. Used by the users service to define schemas
+(`User`, `GameResult`, `Notification`), perform validation, and build queries.
+
+| **MongoDB**
+| A NoSQL document database used for user data persistence. Collections: `users`, `gameresults`,
+`notifications`. Accessed exclusively by the users service.
+
+| **MongoDB Atlas**
+| MongoDB's managed cloud database service. Used in production; connection URI injected via `MONGODB_URI`
+environment variable.
+
+| **Union-Find (Disjoint Set Union)**
+| A data structure used in the gamey game engine to efficiently track connected components of each
+player's pieces. The `PlayerSet` struct tracks `touches_side_a`, `touches_side_b`, `touches_side_c`
+flags per component to detect the win condition in O(α(N)) amortised time.
+
+| **YBot**
+| The Rust trait that all AI bot strategies implement. Defines `name() -> &str` and
+`choose_move(&GameY) -> Option<Coordinates>`. The `Send + Sync` bounds allow safe use across Axum's
+async handlers.
+
+| **YBotRegistry**
+| A `HashMap<String, Arc<dyn YBot>>` that stores and retrieves bot implementations by name. Populated
+at server startup and shared across all request handlers via `Arc<AppState>`.
+
+| **Vite**
+| A modern frontend build tool used by the webapp. Provides a fast development server with hot module
+replacement and an optimised production build pipeline.
+
+| **React**
+| A JavaScript library for building user interfaces via components. Used by the webapp for all UI pages,
+the notification panel, the admin panel, and the game board.
+
+| **React Context**
+| A React mechanism for sharing global state without prop drilling. Used in YOVI for `ThemeProvider`
+(dark/light) and `I18nProvider` (EN/ES).
+
+| **Vitest**
+| A Vite-native unit testing framework used by gateway, authentication, and botapi services. Compatible
+with the Jest API; supports coverage via `@vitest/coverage-v8`.
+
+| **Jest**
+| A JavaScript testing framework used by the users and multiplayer services.
+
+| **Supertest**
+| A Node.js HTTP assertion library used alongside Vitest/Jest to test Express HTTP endpoints without
+starting a real server.
+
+| **proptest**
+| A property-based testing library for Rust. Used in `gamey/src/core/coord.rs` to verify coordinate
+invariants (index roundtrip, barycentric sum) across a large input space.
+
+| **k6**
+| An open-source load testing tool with a JavaScript API. Used for three load test scenarios:
+registration (50 VUs), login (50 VUs), and game start (20 VUs). Threshold definitions enforce SLAs
+on `p(95)` latency and error rate.
+
+| **SonarCloud**
+| A cloud-based code quality and security analysis platform. Integrated into the CI pipeline to enforce
+a minimum 80% code coverage and detect code smells, bugs, and security hotspots.
+
+| **Prometheus**
+| An open-source time-series metrics collection system. Scrapes `/metrics` endpoints on gateway, users,
+and gamey every 15 seconds.
+
+| **Grafana**
+| A metrics visualization platform. Provides the "Yovi Services Overview" dashboard with request rate,
+p95 latency, and error rate panels. Auto-provisioned at container startup.
+
+| **express-prom-bundle**
+| A Node.js middleware that automatically instruments Express apps with Prometheus metrics
+(`http_requests_total`, `http_request_duration_seconds`). Used with `normalizePath: true` to prevent
+high-cardinality label explosion from dynamic route parameters.
+
+| **axum-prometheus**
+| A Rust crate that adds Prometheus metrics to Axum services via Tower middleware. Exposes
+`axum_http_requests_total` and `axum_http_requests_duration_seconds` on the `/metrics` endpoint.
+
+| **GitHub Actions**
+| A CI/CD platform integrated into the GitHub repository. Runs parallel test jobs, builds Docker images,
+publishes to GHCR, and deploys to the cloud VM on every release tag.
+
+| **OpenAPI**
+| A specification format for describing REST APIs. Used by the botapi service (`src/openapi/openapi.yaml`)
+to document all public interoperability endpoints. The users service also has an `openapi.yaml` at `/api-docs`
+(currently outdated — tracked as TD3).
+
+| **Debounce**
+| A technique that delays execution of a function until after a specified idle period. Used in `Social.tsx`
+to limit user search API calls to once per 400ms pause in typing. Contrasted with throttle (fires at a
+fixed interval regardless of pauses).
+
+| **Normalization (Prometheus path)**
+| The process of replacing dynamic path segments (e.g., usernames, ObjectIds) with a generic placeholder
+(e.g., `#val`) in Prometheus metric labels. Prevents unbounded cardinality growth as the user base grows.
+
+| **Cardinality (Prometheus)**
+| The number of unique time series in a Prometheus database. High cardinality (e.g., one series per
+username in metric labels) degrades query performance and can cause OOM errors. Controlled via
+`normalizePath: true` in `express-prom-bundle`.
+
+| **SSRF (Server-Side Request Forgery)**
+| A security vulnerability where an attacker tricks a server into making HTTP requests to unintended
+targets. Mitigated in the botapi `remoteInteropClient` via a hardcoded allowlist of permitted hosts.
+
+| **ADR (Architecture Decision Record)**
+| A document that captures an important architectural decision, including its context, the decision made,
+alternatives considered, and its consequences. YOVI maintains 16 ADRs in this document and the GitHub
+wiki.
+|===
+
+=== Acronyms
+
+[cols="e,2e", options="header"]
+|===
+| Acronym | Definition
+
+| ADR | Architecture Decision Record
+| API | Application Programming Interface
+| CI/CD | Continuous Integration / Continuous Deployment
+| GHCR | GitHub Container Registry
+| HTTP | Hypertext Transfer Protocol
+| HTTPS | Hypertext Transfer Protocol Secure
+| i18n | Internationalization
+| JSON | JavaScript Object Notation
+| JWT | JSON Web Token
+| MCTS | Monte Carlo Tree Search
+| ODM | Object Document Mapper
+| OOM | Out Of Memory
+| PvM | Player versus Machine
+| PvP | Player versus Player
+| RBAC | Role-Based Access Control
+| REST | Representational State Transfer
+| SLA | Service Level Agreement
+| SPA | Single-Page Application
+| SSRF | Server-Side Request Forgery
+| TLS | Transport Layer Security
+| UI | User Interface
+| VU | Virtual User (k6 load testing)
+| WS / WSS | WebSocket / WebSocket Secure
+| YEN | Y Exchange Notation
+|===

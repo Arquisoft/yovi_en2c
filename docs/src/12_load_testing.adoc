@@ -1,0 +1,316 @@
+ifndef::imagesdir[:imagesdir: ../images]
+
+[[section-load-testing]]
+== Load Testing
+
+This section documents the load testing strategy, tooling, test scenarios, thresholds, and how to execute
+the test suite. Load tests are a first-class concern in YOVI (see Section 2, Technical Constraints) and
+are maintained alongside the production code in `tests/load/`.
+
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Load-Testing-Guide[Load Testing Guide wiki page]
+
+=== Tooling
+
+YOVI uses **k6** (https://k6.io) for load testing. k6 provides:
+
+* JavaScript-based test scripts with a familiar API
+* Built-in virtual user (VU) management with ramping stages
+* Custom metrics (`Trend`, `Rate`) for fine-grained measurement
+* Threshold definitions that fail the test if SLAs are breached
+* JSON result export for archiving and trend analysis
+* `setup()` / `teardown()` lifecycle hooks for prerequisite data
+
+=== Test Scenarios
+
+Three scenarios are defined, each targeting a different critical user flow:
+
+==== Scenario 1: User Registration (`register.js`)
+
+Simulates 50 concurrent users registering new accounts against `POST /register`.
+
+[options="header", cols="1,2"]
+|===
+| Parameter | Value
+
+| **Target endpoint**
+| `POST /register`
+
+| **VU ramp**
+| 0 → 50 VUs over 10s; hold 50 VUs for 30s; ramp down over 10s
+
+| **Custom metrics**
+| `register_duration` (Trend, ms); `register_success` (Rate)
+
+| **Thresholds**
+| `p(95) < 2000ms`; success rate > 95%; `http_req_failed < 5%`
+
+| **Request body**
+| Unique username per VU+timestamp: `loaduser_{VU}_{timestamp}@test.com`
+
+| **Expected response**
+| HTTP 200 or 201; no `error` field in JSON body
+|===
+
+[source,javascript]
+----
+export const options = {
+  scenarios: {
+    registration_load: {
+      executor: "ramping-vus",
+      startVUs: 0,
+      stages: [
+        { duration: "10s", target: 50 },
+        { duration: "30s", target: 50 },
+        { duration: "10s", target: 0  },
+      ],
+    },
+  },
+  thresholds: {
+    register_duration: ["p(95)<2000"],
+    register_success:  ["rate>0.95"],
+    http_req_failed:   ["rate<0.05"],
+  },
+};
+----
+
+==== Scenario 2: User Login (`login.js`)
+
+Simulates 50 concurrent users logging in with pre-seeded credentials against `POST /login`.
+
+[options="header", cols="1,2"]
+|===
+| Parameter | Value
+
+| **Target endpoint**
+| `POST /login`
+
+| **VU ramp**
+| 0 → 50 VUs over 10s; hold 50 VUs for 30s; ramp down over 10s
+
+| **Custom metrics**
+| `login_duration` (Trend, ms); `login_success` (Rate)
+
+| **Thresholds**
+| `p(95) < 1500ms`; success rate > 95%; `http_req_failed < 5%`
+
+| **setup() hook**
+| Creates 10 seed users (`seed_login_user_0` ... `seed_login_user_9`) via `POST /register` before VUs
+start. 409/400 responses (users already exist) are ignored.
+
+| **VU behaviour**
+| Each VU picks a seed user in round-robin: `data.users[__VU % data.users.length]`
+
+| **Expected response**
+| HTTP 200; `token` field present in JSON body
+|===
+
+[source,javascript]
+----
+export const options = {
+  thresholds: {
+    login_duration: ["p(95)<1500"],
+    login_success:  ["rate>0.95"],
+    http_req_failed: ["rate<0.05"],
+  },
+};
+----
+
+==== Scenario 3: Start Bot Game (`start_game.js`)
+
+Simulates 20 concurrent users starting a new bot game against `POST /game/new`.
+
+[options="header", cols="1,2"]
+|===
+| Parameter | Value
+
+| **Target endpoint**
+| `POST /game/new` (via gateway → gamey)
+
+| **VU ramp**
+| 0 → 20 VUs over 10s; hold 20 VUs for 30s; ramp down over 10s
+
+| **Custom metrics**
+| `start_game_duration` (Trend, ms); `start_game_success` (Rate)
+
+| **Thresholds**
+| `p(95) < 3000ms`; success rate > 90%; `http_req_failed < 10%`
+
+| **setup() hook**
+| Registers `game_load_user` and logs in to obtain a JWT token. VUs include
+`Authorization: Bearer <token>` in the request.
+
+| **Request body**
+| `{"size": 7}` — creates a standard 7×7 board
+
+| **Expected response**
+| HTTP 200 or 201; `yen` field present in JSON body (initial YEN state)
+|===
+
+Note: The game start threshold (`p(95) < 3000ms`) is more lenient than auth endpoints because the Rust
+game engine initialises board state synchronously on each request.
+
+=== Running the Tests
+
+==== Prerequisites
+
+* k6 installed: https://k6.io/docs/getting-started/installation/
+* YOVI services running (locally or pointing to production)
+
+==== Run a single scenario
+
+[source,bash]
+----
+# Against local deployment (default)
+k6 run tests/load/register.js
+
+# Against production
+k6 run -e BASE_URL=https://yovi.13.63.89.84.sslip.io/api tests/load/login.js
+----
+
+==== Run all scenarios sequentially
+
+Two runner scripts are provided:
+
+**Linux / macOS:**
+[source,bash]
+----
+chmod +x tests/load/run_load_tests.sh
+./tests/load/run_load_tests.sh
+
+# Against production:
+./tests/load/run_load_tests.sh https://yovi.13.63.89.84.sslip.io/api
+----
+
+**Windows (PowerShell):**
+[source,powershell]
+----
+.\tests\load\run_load_tests.ps1
+
+# Against production:
+.\tests\load\run_load_tests.ps1 -BaseUrl https://yovi.13.63.89.84.sslip.io/api
+----
+
+The runner scripts execute all three scenarios sequentially and save results as JSON and plain text logs
+to `tests/load/results/` with a timestamp suffix (e.g., `register_20260415_143022.json`).
+
+=== Results Interpretation
+
+link:https://github.com/Arquisoft/yovi_en2c/wiki/Load-Testing-Results[Load Testing Results wiki page]
+
+A k6 run produces a summary table on stdout. Key metrics to check:
+
+[options="header", cols="2,2,3"]
+|===
+| Metric | Threshold | What to look for
+
+| `register_duration p(95)`
+| < 2000ms
+| High p95 indicates database pressure or auth service saturation
+
+| `login_duration p(95)`
+| < 1500ms
+| Login is faster than register (no bcrypt hash write); high p95 indicates auth or users service bottleneck
+
+| `start_game_duration p(95)`
+| < 3000ms
+| High p95 may indicate gamey is CPU-bound on bot initialisation for size 7
+
+| `http_req_failed rate`
+| < 5% (< 10% for game)
+| Any failures above threshold indicate service errors under load; check service logs
+
+| `register_success rate`
+| > 95%
+| Failures may indicate duplicate username collisions (expected ~5%) or service errors
+
+| `login_success rate`
+| > 95%
+| Failures indicate seed users were not created or credential mismatch
+|===
+
+A ✓ next to each threshold in the k6 summary means the SLA was met. A ✗ means the threshold was
+breached and the test suite should be considered failed.
+
+=== Architecture of the Load Test Suite
+
+[plantuml,"Load Test Architecture",png]
+----
+@startuml
+skinparam componentStyle rectangle
+
+package "tests/load/" {
+  component "register.js" as REG
+  component "login.js" as LOG
+  component "start_game.js" as GAME
+  component "run_load_tests.sh\n(Linux/macOS)" as SH
+  component "run_load_tests.ps1\n(Windows)" as PS1
+  component "results/\n*.json + *.txt" as RES
+}
+
+component "k6 runtime" as K6
+component "YOVI Gateway\n(BASE_URL)" as GW
+
+SH --> K6 : "k6 run --out json"
+PS1 --> K6 : "k6 run --out json"
+
+K6 --> REG
+K6 --> LOG
+K6 --> GAME
+
+REG --> GW : "POST /register"
+LOG --> GW : "POST /login"
+GAME --> GW : "POST /game/new"
+
+K6 --> RES : "JSON results\n+ stdout log"
+@enduml
+----
+
+=== Custom Metrics Detail
+
+Each scenario defines two custom k6 metrics:
+
+[options="header", cols="1,1,1,2"]
+|===
+| Scenario | Metric | Type | What it measures
+
+| Register
+| `register_duration`
+| Trend
+| End-to-end latency of `POST /register` including gateway → auth → users → MongoDB
+
+| Register
+| `register_success`
+| Rate
+| Proportion of requests that returned HTTP 2xx without an `error` field
+
+| Login
+| `login_duration`
+| Trend
+| End-to-end latency of `POST /login` including gateway → auth → users (bcrypt compare)
+
+| Login
+| `login_success`
+| Rate
+| Proportion of requests that returned HTTP 200 with a `token` field
+
+| Start Game
+| `start_game_duration`
+| Trend
+| End-to-end latency of `POST /game/new` including gateway → gamey (board initialisation)
+
+| Start Game
+| `start_game_success`
+| Rate
+| Proportion of requests that returned HTTP 2xx with a `yen` field
+|===
+
+=== Known Limitations
+
+* **No multiplayer load test**: Socket.IO load testing requires a dedicated k6 xk6-websockets extension
+or a separate tool (e.g., Artillery). Not included in the current suite.
+* **No admin endpoint load test**: Admin operations are low-frequency by design and not included.
+* **Seed user collisions**: The login test creates 10 seed users before the VUs start. If the test is
+run repeatedly without cleanup, `409 Conflict` responses are expected and ignored in `setup()`.
+* **Production rate limits**: Running the full suite against the production URL
+(`https://yovi.13.63.89.84.sslip.io/api`) may impact real users during the test window. Prefer
+running against a local or staging deployment for development purposes.
