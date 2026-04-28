@@ -270,6 +270,15 @@ jobs:
           cp -r monitoring/grafana/provisioning/datasources/* deploy_bundle/monitoring/grafana/provisioning/datasources/
           cp -r monitoring/grafana/provisioning/dashboards/* deploy_bundle/monitoring/grafana/provisioning/dashboards/
 
+      - name: Clean monitoring folder on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            rm -rf ${{ secrets.DEPLOY_PATH }}/monitoring
+
       - name: Upload deployment bundle to VM
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -292,7 +301,6 @@ jobs:
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
 
-            rm -rf monitoring/
             mkdir -p nginx/certs
 
             echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
