@@ -277,7 +277,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
-            rm -rf ${{ secrets.DEPLOY_PATH }}/monitoring
+            sudo rm -rf ${{ secrets.DEPLOY_PATH }}/monitoring
 
       - name: Upload deployment bundle to VM
         uses: appleboy/scp-action@v0.1.7
