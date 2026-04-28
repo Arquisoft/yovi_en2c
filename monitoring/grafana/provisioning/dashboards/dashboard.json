@@ -1,0 +1,169 @@
+{
+  "title": "Yovi Services Overview",
+  "uid": "yovi-overview",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Service Status (1 = UP, 0 = DOWN)",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        { "expr": "up{job=\"users-service\"}", "legendFormat": "users" },
+        { "expr": "up{job=\"gateway-service\"}", "legendFormat": "gateway" },
+        { "expr": "up{job=\"authentication-service\"}", "legendFormat": "auth" },
+        { "expr": "up{job=\"multiplayer-service\"}", "legendFormat": "multiplayer" },
+        { "expr": "up{job=\"gamey-service\"}", "legendFormat": "gamey" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "P95 Request Duration (s) — all services",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(http_request_duration_seconds_bucket{job=\"users-service\"}[5m])))",
+          "legendFormat": "users p95"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(http_request_duration_seconds_bucket{job=\"gateway-service\"}[5m])))",
+          "legendFormat": "gateway p95"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(http_request_duration_seconds_bucket{job=\"authentication-service\"}[5m])))",
+          "legendFormat": "auth p95"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(http_request_duration_seconds_bucket{job=\"multiplayer-service\"}[5m])))",
+          "legendFormat": "multiplayer p95"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(axum_http_requests_duration_seconds_bucket{job=\"gamey-service\"}[5m])))",
+          "legendFormat": "gamey p95"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Error Rate (4xx+5xx) — all services",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{job=\"users-service\",status_code=~\"4..|5..\"}[1m])",
+          "legendFormat": "users errors"
+        },
+        {
+          "expr": "rate(http_requests_total{job=\"gateway-service\",status_code=~\"4..|5..\"}[1m])",
+          "legendFormat": "gateway errors"
+        },
+        {
+          "expr": "rate(http_requests_total{job=\"authentication-service\",status_code=~\"4..|5..\"}[1m])",
+          "legendFormat": "auth errors"
+        },
+        {
+          "expr": "rate(http_requests_total{job=\"multiplayer-service\",status_code=~\"4..|5..\"}[1m])",
+          "legendFormat": "multiplayer errors"
+        },
+        {
+          "expr": "rate(axum_http_requests_total{job=\"gamey-service\",status_code=~\"4..|5..\"}[1m])",
+          "legendFormat": "gamey errors"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Total Requests Served — Node.js services",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(http_request_duration_seconds_count{job=\"users-service\"})",
+          "legendFormat": "users"
+        },
+        {
+          "expr": "sum(http_request_duration_seconds_count{job=\"gateway-service\"})",
+          "legendFormat": "gateway"
+        },
+        {
+          "expr": "sum(http_request_duration_seconds_count{job=\"authentication-service\"})",
+          "legendFormat": "auth"
+        },
+        {
+          "expr": "sum(http_request_duration_seconds_count{job=\"multiplayer-service\"})",
+          "legendFormat": "multiplayer"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Total Requests by Service — table",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 32, "w": 24, "h": 8 },
+      "options": {
+        "sortBy": [{ "displayName": "Requests", "desc": true }]
+      },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Requests" }, "properties": [{ "id": "custom.width", "value": 200 }] }
+        ]
+      },
+      "transformations": [
+        { "id": "reduce", "options": { "reducers": ["lastNotNull"] } },
+        { "id": "organize", "options": { "renameByName": { "Field": "Service", "Last *": "Requests" } } }
+      ],
+      "targets": [
+        {
+          "expr": "sum(http_request_duration_seconds_count{job=\"users-service\"})",
+          "legendFormat": "users",
+          "instant": true
+        },
+        {
+          "expr": "sum(http_request_duration_seconds_count{job=\"gateway-service\"})",
+          "legendFormat": "gateway",
+          "instant": true
+        },
+        {
+          "expr": "sum(http_request_duration_seconds_count{job=\"authentication-service\"})",
+          "legendFormat": "auth",
+          "instant": true
+        },
+        {
+          "expr": "sum(http_request_duration_seconds_count{job=\"multiplayer-service\"})",
+          "legendFormat": "multiplayer",
+          "instant": true
+        },
+        {
+          "expr": "sum(axum_http_requests_total{job=\"gamey-service\"})",
+          "legendFormat": "gamey",
+          "instant": true
+        }
+      ]
+    }
+
+  ]
+}
