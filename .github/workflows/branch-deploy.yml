@@ -261,13 +261,14 @@ jobs:
       - name: Prepare deployment bundle
         run: |
           mkdir -p deploy_bundle/nginx/conf.d
-          mkdir -p deploy_bundle/users/monitoring/prometheus
-          mkdir -p deploy_bundle/users/monitoring/grafana/provisioning
+          mkdir -p deploy_bundle/monitoring/grafana/provisioning/datasources
+          mkdir -p deploy_bundle/monitoring/grafana/provisioning/dashboards
 
           cp docker-compose.deploy.yml deploy_bundle/docker-compose.yml
           cp nginx/conf.d/default.conf deploy_bundle/nginx/conf.d/default.conf
-          cp -r users/monitoring/prometheus/* deploy_bundle/users/monitoring/prometheus/ || true
-          cp -r users/monitoring/grafana/provisioning/* deploy_bundle/users/monitoring/grafana/provisioning/ || true
+          cp monitoring/prometheus.yml deploy_bundle/monitoring/prometheus.yml
+          cp -r monitoring/grafana/provisioning/datasources/* deploy_bundle/monitoring/grafana/provisioning/datasources/
+          cp -r monitoring/grafana/provisioning/dashboards/* deploy_bundle/monitoring/grafana/provisioning/dashboards/
 
       - name: Upload deployment bundle to VM
         uses: appleboy/scp-action@v0.1.7
