@@ -12,11 +12,13 @@ const app = express();
 app.disable("x-powered-by");
 
 app.use(express.json());
-app.use(cors({
-  origin: true,
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+app.use(
+    cors({
+      origin: true,
+      methods: ["GET", "POST", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+    })
+);
 
 // Standard: express-prom-bundle exposes /metrics automatically.
 // normalizePath prevents high-cardinality labels from dynamic route params.
@@ -27,6 +29,7 @@ const metricsMiddleware = promBundle({
   normalizePath: [
     ['^/register', '/register'],
     ['^/login', '/login'],
+    ['^/logout', '/logout'],
     ['^/verify', '/verify'],
     ['^/health', '/health'],
   ],
@@ -34,7 +37,8 @@ const metricsMiddleware = promBundle({
 app.use(metricsMiddleware);
 
 const PORT = process.env.PORT || 5000;
-const USERS_SERVICE_URL = process.env.USERS_SERVICE_URL || "http://localhost:3000";
+const USERS_SERVICE_URL =
+    process.env.USERS_SERVICE_URL || "http://localhost:3000";
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES = process.env.JWT_EXPIRES || "24h";
 
@@ -44,45 +48,61 @@ if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is required in environment variables");
 }
 
-/**
- * Generate JWT token for a user
- */
 function generateToken(user) {
   return jwt.sign(
       {
         id: user.id || user._id,
         username: user.username,
-        email: user.email || null
+        email: user.email || null,
       },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES }
   );
 }
 
-/**
- * Extract Bearer token from Authorization header
- */
 function getTokenFromHeader(authHeader) {
-  if (!authHeader || typeof authHeader !== "string") {
-    return null;
-  }
-  if (!authHeader.startsWith("Bearer ")) {
-    return null;
-  }
+  if (!authHeader || typeof authHeader !== "string") return null;
+  if (!authHeader.startsWith("Bearer ")) return null;
 
   return authHeader.substring(7).trim();
 }
 
-/**
- * Middleware to verify JWT
- */
+function revokeToken(token) {
+  const decoded = jwt.decode(token);
+  const expiresAt = decoded?.exp
+      ? decoded.exp * 1000
+      : Date.now() + 24 * 60 * 60 * 1000;
+
+  revokedTokens.set(token, expiresAt);
+}
+
+function isTokenRevoked(token) {
+  const expiresAt = revokedTokens.get(token);
+
+  if (!expiresAt) return false;
+
+  if (Date.now() > expiresAt) {
+    revokedTokens.delete(token);
+    return false;
+  }
+
+  return true;
+}
+
 function authenticateToken(req, res, next) {
   const token = getTokenFromHeader(req.headers.authorization);
 
   if (!token) {
     return res.status(401).json({
       success: false,
-      error: "Missing or invalid Authorization header"
+      error: "Missing or invalid Authorization header",
+    });
+  }
+
+  if (isTokenRevoked(token)) {
+    return res.status(401).json({
+      success: false,
+      error: "Token has been revoked",
     });
   }
 
@@ -94,14 +114,11 @@ function authenticateToken(req, res, next) {
     console.error("JWT verification failed:", error);
     return res.status(401).json({
       success: false,
-      error: "Invalid or expired token"
+      error: "Invalid or expired token",
     });
   }
 }
 
-/**
- * Validate register payload
- */
 function validateRegisterData(body) {
   const { username, email, password, repeatPassword } = body;
 
@@ -132,9 +149,6 @@ function validateRegisterData(body) {
   return null;
 }
 
-/**
- * Validate login payload
- */
 function validateLoginData(body) {
   const { username, password } = body;
 
@@ -149,22 +163,15 @@ function validateLoginData(body) {
   return null;
 }
 
-/**
- * Health endpoint
- */
-app.get("/health", async (req, res) => {
+app.get("/health", async (_req, res) => {
   res.json({
     status: "OK",
     server: "running",
     service: "auth-service",
-    timestamp: new Date()
+    timestamp: new Date(),
   });
 });
 
-/**
- * POST /register
- * Validates credentials and delegates user creation to users-service
- */
 app.post("/register", async (req, res) => {
   try {
     const validationError = validateRegisterData(req.body);
@@ -172,7 +179,7 @@ app.post("/register", async (req, res) => {
     if (validationError) {
       return res.status(400).json({
         success: false,
-        error: validationError
+        error: validationError,
       });
     }
 
@@ -181,18 +188,17 @@ app.post("/register", async (req, res) => {
     const response = await axios.post(`${USERS_SERVICE_URL}/createuser`, {
       username: username.trim(),
       email,
-      password
+      password,
     });
 
     const createdUser = response.data?.user;
-
     const token = generateToken(createdUser);
 
     return res.status(201).json({
       success: true,
       message: "User registered successfully",
       token,
-      user: createdUser
+      user: createdUser,
     });
   } catch (error) {
     const status = error.response?.status || 500;
@@ -201,23 +207,20 @@ app.post("/register", async (req, res) => {
     return res.status(status).json(
         data || {
           success: false,
-          error: "Internal server error"
+          error: "Internal server error",
         }
     );
   }
 });
 
-/**
- * POST /login
- * Delegates user lookup to users-service and creates JWT
- */
 app.post("/login", async (req, res) => {
   try {
     const validationError = validateLoginData(req.body);
+
     if (validationError) {
       return res.status(400).json({
         success: false,
-        error: validationError
+        error: validationError,
       });
     }
 
@@ -232,7 +235,7 @@ app.post("/login", async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: "User not found"
+        error: "User not found",
       });
     }
 
@@ -241,7 +244,7 @@ app.post("/login", async (req, res) => {
     if (!passwordMatches) {
       return res.status(401).json({
         success: false,
-        error: "Invalid credentials"
+        error: "Invalid credentials",
       });
     }
 
@@ -255,49 +258,61 @@ app.post("/login", async (req, res) => {
         id: user.id || user._id,
         username: user.username,
         email: user.email || null,
-        createdAt: user.createdAt || null
-      }
+        createdAt: user.createdAt || null,
+      },
     });
   } catch (error) {
     if (error.response?.status === 404) {
       return res.status(404).json({
         success: false,
-        error: "User not found"
+        error: "User not found",
       });
     }
 
     return res.status(error.response?.status || 500).json(
         error.response?.data || {
           success: false,
-          error: "Internal server error"
+          error: "Internal server error",
         }
     );
   }
 });
 
-/**
- * GET /verify
- * Verifies that the JWT is valid
- */
 app.get("/verify", authenticateToken, async (req, res) => {
   return res.json({
     success: true,
     message: "Token valid",
-    user: req.user
+    user: req.user,
+  });
+});
+
+app.post("/logout", authenticateToken, async (req, res) => {
+  const token = getTokenFromHeader(req.headers.authorization);
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      error: "Missing or invalid Authorization header",
+    });
+  }
+
+  revokeToken(token);
+
+  return res.json({
+    success: true,
+    message: "Logged out successfully",
   });
 });
 
 export default app;
 
-/**
- * Start server only if this file is executed directly
- */
 if (process.argv[1]?.includes("auth-service.js")) {
   app.listen(PORT, () => {
     console.log(`🚀 Auth service running on http://localhost:${PORT}`);
     console.log("📡 Endpoints available:");
     console.log("   POST   /register");
     console.log("   POST   /login");
+    console.log("   POST   /logout");
     console.log("   GET    /verify");
     console.log("   GET    /health");
     console.log("   GET    /metrics");
