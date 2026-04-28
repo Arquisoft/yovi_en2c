@@ -56,11 +56,11 @@
 Game Y is an abstract two-player strategy game played on a **triangular board**. Each player takes turns placing pieces of their colour. The first player to form a **connected group that simultaneously touches all three sides** of the triangle wins.
 
 ```
-        ●          ← Blue (B) piece
-       ● ●
-      · · ·
-     · · · ·
-    · · · · ·
+        B          ← Blue (B) piece
+       . B
+      B B ·
+     · · B ·
+    · · · B ·
 ```
 
 Blue wins by connecting the top, left, and right edges with a single connected group. Simple rules, deep strategy.
@@ -115,7 +115,7 @@ Multiplayer and BotAPI also call:
 > Socket.IO powers real-time multiplayer with automatic reconnection. JWT with role claims enables
 > stateless admin authorization without extra database lookups. See the
 > [Arc42 architecture docs](https://arquisoft.github.io/yovi_en2c/) and
-> [Architecture Decision Records](https://github.com/Arquisoft/yovi_en2c/wiki/Architecture-Decision-Record-(ADR))
+> [Architecture Decision Records](https://github.com/Arquisoft/yovi_en2c/wiki/Architecture-Decision-Record)
 > for full rationale on all 16 architectural decisions.
 
 ### Project structure
@@ -296,7 +296,7 @@ Grafana dashboard shows request rate, p95 latency, and error rate for all three 
 - **Prometheus:** http://localhost:9090
 - **Grafana:** http://localhost:9091
 
-See the [Monitoring wiki page](https://github.com/Arquisoft/yovi_en2c/wiki/Monitoring-(Prometheus-&-Grafana)).
+See the [Monitoring wiki page](https://github.com/Arquisoft/yovi_en2c/wiki/Monitoring:-Prometheus-&-Grafana).
 
 ---
 
