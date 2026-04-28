@@ -121,7 +121,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./users/monitoring/prometheus:/etc/prometheus
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     networks:
       - monitor-net
 
@@ -131,7 +131,7 @@ services:
     ports:
       - "9091:3000"
     volumes:
-      - ./users/monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
     networks:
