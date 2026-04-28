@@ -4,6 +4,7 @@ const express = require("express");
 const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
+const promBundle = require("express-prom-bundle");
 
 const { RoomManager } = require("./rooms");
 const { createNewGame, applyPvpMove } = require("./gamey-client");
@@ -16,11 +17,23 @@ app.disable("x-powered-by");
 
 app.use(express.json());
 app.use(
-  cors({
-    origin: CORS_ORIGIN === "*" ? true : CORS_ORIGIN,
-    methods: ["GET", "POST", "OPTIONS"]
-  })
+    cors({
+      origin: CORS_ORIGIN === "*" ? true : CORS_ORIGIN,
+      methods: ["GET", "POST", "OPTIONS"]
+    })
 );
+
+// Standard: express-prom-bundle exposes /metrics automatically.
+// normalizePath prevents high-cardinality labels from dynamic route params.
+const metricsMiddleware = promBundle({
+  includeMethod: true,
+  includePath: true,
+  includeStatusCode: true,
+  normalizePath: [
+    ['^/rooms/[A-Z0-9]+$', '/rooms/:code'],
+  ],
+});
+app.use(metricsMiddleware);
 
 const server = http.createServer(app);
 
@@ -281,9 +294,9 @@ app.post("/rooms/move", async (req, res) => {
     });
   } catch (error) {
     if (
-      error.message === "Room is not active" ||
-      error.message === "You are not a player in this room" ||
-      error.message === "It is not your turn"
+        error.message === "Room is not active" ||
+        error.message === "You are not a player in this room" ||
+        error.message === "It is not your turn"
     ) {
       return badRequest(res, error.message);
     }
@@ -364,8 +377,8 @@ io.on("connection", (socket) => {
       const existingColor = rooms.getPlayerColorByUsername(existingRoom, username);
 
       const room = existingColor
-        ? rooms.attachSocketToPlayer(code, username, socket.id)
-        : rooms.joinRoom({ code, username, socketId: socket.id });
+          ? rooms.attachSocketToPlayer(code, username, socket.id)
+          : rooms.joinRoom({ code, username, socketId: socket.id });
 
       socket.join(room.code);
 
@@ -467,6 +480,7 @@ if (process.env.NODE_ENV !== "test") {
   server.listen(PORT, () => {
     console.log(`Realtime multiplayer service running on http://localhost:${PORT}`);
     console.log(`Health endpoint: http://localhost:${PORT}/health`);
+    console.log(`Metrics endpoint: http://localhost:${PORT}/metrics`);
   });
 }
 
