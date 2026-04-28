@@ -292,6 +292,7 @@ jobs:
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
 
+            rm -rf monitoring/
             mkdir -p nginx/certs
 
             echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
